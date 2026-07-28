@@ -20,7 +20,7 @@ class App : Application() {
         }
         Timber.plant(MyDebugTree())
         Timber.i("App onCreate")
-        val useOpenGL = BuildConfig.USE_OPEN_GL // true: not vulkan (Nokia 1), false: vulkan
+        val useOpenGL = BuildConfig.USE_OPEN_GL // true: not Vulkan (Nokia 1), false: vulkan
         Timber.i("useOpenGL: $useOpenGL")
         ThreadUtils.init(this)  // moved here from LauncherActivity
         try {
