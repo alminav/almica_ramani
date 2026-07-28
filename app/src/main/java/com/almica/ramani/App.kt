@@ -9,6 +9,9 @@ import org.maplibre.android.MapLibre
 import org.maplibre.android.utils.ThreadUtils
 import timber.log.Timber
 
+/**
+ * Project linked to GitHub: https://github.com/almica/ramani 28jul2026
+ */
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
