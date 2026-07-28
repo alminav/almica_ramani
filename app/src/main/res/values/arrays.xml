@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="arrows_directions">
+        <item>&#x21D1;</item>
+        <item>&#x21D7;</item>
+        <item>&#x21D2;</item>
+        <item>&#x21D8;</item>
+        <item>&#x21D3;</item>
+        <item>&#x21D9;</item>
+        <item>&#x21D0;</item>
+        <item>&#x21D6;</item>
+        <item>&#x21D1;</item>
+    </string-array>
+    <array name="pref_tilemaker_maptypes_entries">
+        <item>@string/phonemaps</item>
+        <item>@string/opentopo</item>
+        <item>@string/outdoor</item>
+        <item>@string/thunderforest</item>
+    </array>
+
+    <array name="pref_tilemaker_maptypes_urls">
+        <item>@string/phonemaps_url</item>
+        <item>@string/opentopo_url</item>
+        <item>@string/outdoor_url</item>
+        <item>@string/thunderforest_url</item>
+    </array>
+    <string name="phonemaps" translatable="false">Phonemaps</string>
+    <string name="opentopo" translatable="false">OpenTopo</string>
+    <string name="outdoor" translatable="false">Outdoor</string>
+    <string name="thunderforest" translatable="false">Thunderforest</string>
+    <string name="phonemaps_url" translatable="false">https://webtiles.timepress.cz/open/hike_256/{z}/{x}/{y}.png</string>
+    <string name="opentopo_url" translatable="false">https://a.tile.opentopomap.org/{z}/{x}/{y}.png</string>
+    <string name="outdoor_url" translatable="false">https://sgx.geodatenzentrum.de/wmts_topplus_open/tile/1.0.0/web/default/WEBMERCATOR/{z}/{y}/{x}.png</string>
+    <string name="thunderforest_url" translatable="false">https://a.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=5e2a4558d7a64cbe93fbe6740b019177</string>
+    <string-array name="map_render_entries">
+        <item>Follow OFF</item>
+        <item>Follow GPS\nMoving Direction</item>
+        <item>Follow GPS\nNorth Up</item>
+    </string-array>
+    <string-array name="map_render_values" translatable="false">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+    <string-array name="map_render_entries_short">
+        <item>Follow OFF</item>
+        <item>Follow GPS Compass</item>
+        <item>Follow GPS North</item>
+    </string-array>
+
+    <string-array name="map_render_default_values">
+        <item>0</item>
+    </string-array>
+</resources>

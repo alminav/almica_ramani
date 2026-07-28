@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <style name="Theme.Ramani" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.RamaniCompat" parent="@style/Theme.AppCompat.Light.NoActionBar" />
+    <style name="Theme.GoogleMapsJetpackCompose" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

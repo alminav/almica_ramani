@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.library'
+//    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.almica.gpssatstatus'
+    compileSdkVersion 37
+
+    defaultConfig {
+        minSdkVersion 26
+        targetSdkVersion 37
+        //testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_18
+        targetCompatibility JavaVersion.VERSION_18
+    }
+//    kotlinOptions {
+//        jvmTarget = "18"
+//    }
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+    //implementation project(':common')
+    implementation libs.androidx.appcompat
+    implementation libs.material
+}

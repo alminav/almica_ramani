@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="poi_small">24dp</dimen>
+    <dimen name="thumbSize">160dp</dimen>
+    <dimen name="thumbLineWidth">1.5dp</dimen>
+    <color name="colorThumbnailLineColor">#c9c9c9</color>
+    <dimen name="thumbnailMargin">10dp</dimen>
+</resources>

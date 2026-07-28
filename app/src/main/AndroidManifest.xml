@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <!-- uses-permission android:name="android.permission.MANAGE_DOCUMENTS"/-->
+    <queries>
+        <intent>
+            <action android:name="androidx.pdf.service.PdfDocumentServiceImpl" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".App"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.RamaniCompat">
+        <activity
+            android:name=".LauncherActivity"
+            android:launchMode="standard"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".MainActivity"/>
+        <activity android:name=".filepicker.FileImportActivity"/>
+        <activity android:name=".geojsonMaps.MapsManagerActivity"/>
+        <activity android:name=".geojsonMaps.TilemakerActivity"/>
+        <activity android:name=".geojsonMaps.MvtmakerActivity"/>
+        <activity android:name=".geojsonMaps.GeojsonMakerActivity"/>
+        <activity android:name=".routes.RouteActivity"/>
+        <activity android:name=".ListGhActivity"/>
+        <activity android:name=".ListRouteFoldersActivity"/>
+        <activity android:name=".ListGeojsonActivity"/>
+        <activity android:name=".ListHgtActivity"/>
+        <activity android:name=".ImportGeojsonActivity"/>
+        <activity android:name=".TilemakerPreferenceActivity"/>
+        <activity android:name="com.strongtogether.googlemapsjetpackcompose.PlacesActivity"/>
+        <activity android:name="com.almica.ramani.pdfcreator.MainActivity"/>
+        <activity
+            android:name=".googlemaps.GoogleMapsActivity"
+            android:exported="true"
+            android:theme="@style/Theme.GoogleMapsJetpackCompose"/>
+        <activity
+            android:name=".googlemaps.GmsTileOverlayActivity"
+            android:exported="true"
+            android:theme="@style/Theme.GoogleMapsJetpackCompose"/>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
+        <receiver android:name=".bglocationaccess.AlarmReceiver" />
+        <service
+            android:name=".bglocationaccess.LocationService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+        <service
+            android:name="androidx.pdf.service.PdfDocumentServiceImpl"
+            android:enabled="true"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:process=":androidx.pdf.service.PdfDocumentServiceImpl" />
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyD3i7HcguIVj2fWH9H_syOc2zjQM6n2zLc"/>
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
+    </application>
+
+</manifest>

@@ -1,0 +1,47 @@
+package com.almica.ramani_lib
+
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ComposeNode
+import androidx.compose.runtime.currentComposer
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.plugins.annotation.FillOptions
+
+@Composable
+@MapLibreComposable
+fun Fill(
+    points: List<LatLng>,
+    fillColor: String = "Transparent",
+    opacity: Float = 1.0f,
+    zIndex: Int = 0,
+    isDraggable: Boolean = false,
+) {
+    val mapApplier = currentComposer.applier as MapApplier
+
+    ComposeNode<FillNode, MapApplier>(factory = {
+        val fillManager = mapApplier.getOrCreateFillManagerForZIndex(zIndex)
+        val fillOptions = FillOptions()
+            .withLatLngs(mutableListOf(points))
+            .withFillColor(fillColor)
+            .withFillOpacity(opacity)
+            .withDraggable(isDraggable)
+        val fill = fillManager.create(fillOptions)
+
+        FillNode(fillManager, fill)
+    }, update = {
+        set(points) {
+            fill.latLngs = mutableListOf(points)
+            fillManager.update(fill)
+        }
+
+        set(fillColor) {
+            fill.fillColor = fillColor
+            fillManager.update(fill)
+        }
+
+        set(opacity) {
+            fill.fillOpacity = opacity
+            fillManager.update(fill)
+        }
+    })
+}

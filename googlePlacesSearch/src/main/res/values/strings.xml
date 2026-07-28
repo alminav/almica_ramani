@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">GoogleMapsJetpackCompose</string>
+    <string name="city_name">City name or empty</string>
+</resources>

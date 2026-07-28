@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="@string/tilemaker_preferences">
+        <ListPreference android:defaultValue="@string/phonemaps"
+            android:icon="@drawable/category_dark_24px"
+            android:key="@string/pref_tilemaker_url"
+            android:entries="@array/pref_tilemaker_maptypes_entries"
+            android:entryValues="@array/pref_tilemaker_maptypes_urls"
+            android:title="@string/maptype"/>
+        <EditTextPreference
+            android:icon="@drawable/outline_zoom_in_map_24"
+            android:defaultValue="14"
+            android:dialogTitle="@string/title_tilemaker_maxzoom"
+            android:inputType="number"
+            android:key="@string/pref_tilemaker_maxzoom"
+            android:summary="@string/summary_tilemaker_maxzoom"
+            android:title="@string/title_tilemaker_maxzoom" />
+        <EditTextPreference
+            android:icon="@drawable/outline_zoom_out_map_24"
+            android:defaultValue="8"
+            android:dialogTitle="@string/title_tilemaker_minzoom"
+            android:inputType="number"
+            android:key="@string/pref_tilemaker_minzoom"
+            android:summary="@string/summary_tilemaker_minzoom"
+            android:title="@string/title_tilemaker_minzoom" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/maplibre_offline_manager">
+        <EditTextPreference
+            android:icon="@drawable/maplibre_logo_icon"
+            android:defaultValue="10000"
+            android:dialogTitle="@string/title_OfflineMapboxTileCountLimit"
+            android:inputType="number"
+            android:key="@string/pref_OfflineMapboxTileCountLimit"
+            android:summary="@string/summary_OfflineMapboxTileCountLimit"
+            android:title="@string/title_OfflineMapboxTileCountLimit" />
+    </PreferenceCategory>
+</PreferenceScreen>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!--    val locationRequestBuilder = LocationRequest.Builder(TimeUnit.SECONDS.toMillis(1))-->
+    <!--    locationRequestBuilder.setMinUpdateDistanceMeters(3F)-->
+    <!--    val minUpdateIntervalMillis = TimeUnit.SECONDS.toMillis(2)-->
+    <!--    Log.i(TAG, "minUpdateIntervalMillis: $minUpdateIntervalMillis")-->
+    <!--    locationRequestBuilder.setMinUpdateIntervalMillis(TimeUnit.SECONDS.toMillis(2))    -->
+    <PreferenceCategory android:title="@string/gps">
+        <SeekBarPreference
+            android:icon="@drawable/outline_difference_24"
+            android:defaultValue="0"
+            android:key="@string/pref_gps_altitude_correction_key"
+            android:max="100"
+            android:summary="@string/altitude_conversion"
+            android:title="@string/gps_altitude_correction_"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true"
+            app:min="-100"
+            app:showSeekBarValue="true" />
+        <Preference
+            android:icon="@drawable/outline_settings_backup_restore_24"
+            android:key="@string/pref_gps_altitude_correction_reset_key"
+            android:title="@string/gps_altitude_correction_reset" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/map">
+        <!--SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:icon="@drawable/maplibre_compass_icon"
+            android:key="@string/pref_render_mode"
+            android:summaryOff="@string/renderMode_normal"
+            android:summaryOn="@string/renderMode_compass"
+            android:title="@string/renderMode_title"
+            app:allowDividerAbove="true" /-->
+        <androidx.preference.ListPreference
+            android:defaultValue="2"
+            android:dialogIcon="@drawable/maplibre_compass_icon"
+            android:entries="@array/map_render_entries"
+            android:entryValues="@array/map_render_values"
+            android:icon="@drawable/maplibre_compass_icon"
+            android:key="@string/pref_render_mode"
+            android:title="@string/renderMode_title"
+            android:summary="@string/renderMode_normal"
+            app:allowDividerAbove="true"/>
+    </PreferenceCategory>
+</PreferenceScreen>

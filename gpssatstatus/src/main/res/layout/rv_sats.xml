@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp"
+    android:orientation="vertical">
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:paddingStart="20dp"
+      android:paddingEnd="20dp"
+      android:orientation="horizontal">
+
+    <TextView android:textColor="@color/black"
+        android:textStyle="bold"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/total" />
+    <Space
+        android:layout_width="6dp"
+        android:layout_height="0dp"/>
+    <TextView android:textColor="@color/black"
+        android:id="@+id/total_sat_v"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+    <Space
+        android:layout_width="40dp"
+        android:layout_height="0dp"/>
+    <TextView android:textColor="@color/black"
+        android:textStyle="bold"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/good" />
+    <Space
+        android:layout_width="6dp"
+        android:layout_height="0dp"/>
+    <TextView android:textColor="@color/black"
+        android:id="@+id/good_sat_v"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+    <Space
+        android:layout_width="40dp"
+        android:layout_height="0dp"/>
+    <TextView android:textColor="@color/black"
+        android:textStyle="bold"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/fixed" />
+    <Space
+        android:layout_width="6dp"
+        android:layout_height="0dp"/>
+    <TextView android:textColor="@color/black"
+        android:id="@+id/used_sat_v"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+  </LinearLayout>
+
+  <androidx.recyclerview.widget.RecyclerView
+      android:id="@+id/rv"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:scrollbars="vertical" />
+
+</LinearLayout>

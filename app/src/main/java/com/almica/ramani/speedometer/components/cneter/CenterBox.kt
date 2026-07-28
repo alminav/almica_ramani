@@ -1,0 +1,23 @@
+package com.almica.ramani.speedometer.components.cneter
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+
+/**
+ * @author Anas Altair
+ */
+@Composable
+internal fun CenterBox(
+    modifier: Modifier = Modifier,
+    center: @Composable BoxScope.() -> Unit,
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        center()
+    }
+}

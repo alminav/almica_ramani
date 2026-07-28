@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="5dp"
+    android:paddingEnd="5dp">
+
+    <Button
+        android:id="@+id/categories"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="@style/TextAppearance.AppCompat.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:textColor="@color/design_default_color_primary"
+        style="@style/Widget.AppCompat.Button.Borderless"
+        android:gravity="center" />
+</LinearLayout>

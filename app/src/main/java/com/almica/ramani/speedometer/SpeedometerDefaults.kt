@@ -1,0 +1,66 @@
+package com.almica.ramani.speedometer
+
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.almica.ramani.speedometer.components.Section
+import com.almica.ramani.speedometer.components.indicators.NormalIndicator
+import com.almica.ramani.speedometer.components.text.SpeedText
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+
+@Immutable
+object SpeedometerDefaults {
+
+    const val MinSpeed = 0f
+    const val MaxSpeed = 100f
+    const val StartDegree = 135
+    const val EndDegree = 405
+    const val Unit = "KmH"
+    val UnitSpeedSpace: Dp = 2.dp
+    const val UnitUnderSpeed: Boolean = false
+    val BackgroundCircleColor: Color = Color.Transparent
+    val Indicator: @Composable BoxScope.() -> Unit
+        get() = { NormalIndicator() }
+    val CenterContent: @Composable BoxScope.() -> Unit
+        get() = { }
+
+    val Sections: ImmutableList<Section> = persistentListOf(
+        Section(0f, .6f, Color(0xFF00FF00.toInt())),
+        Section(.6f, .87f, Color(0xFFFFFF00.toInt())),
+        Section(.87f, 1f, Color(0xFFFF0000.toInt())),
+    )
+
+    const val marksCount: Int = 0
+    val marksColor: Color = Color.White
+    val marksPadding: Dp = 0.dp
+    val marksWidth: Dp = 3.dp
+    val marksHeight: Dp = 9.dp
+    val marksCap: StrokeCap = StrokeCap.Butt
+
+    val Ticks: ImmutableList<Float> = persistentListOf(0f, 1f)
+    val TickPadding: Dp = 30.dp
+    const val TickRotate: Boolean = true
+    val TickLabel: @Composable BoxScope.(index: Int, tickSpeed: Float) -> Unit
+        get() = { _, tickSpeed ->
+            SpeedText(
+                speed = tickSpeed,
+                style = TextStyle.Default.copy(fontSize = 15.sp),
+            )
+        }
+
+    fun SpeedometerText(speed: Float): @Composable () -> Unit = { SpeedText(speed = speed) }
+    fun UnitText(unit: String): @Composable () -> Unit = { BasicText(text = unit) }
+    val SpeedUnitAlignment: Alignment = Alignment.BottomCenter
+    val SpeedUnitPadding: Dp = 10.dp
+
+    val Decoration: SpeedometerDecoration = { _, _ -> }
+}

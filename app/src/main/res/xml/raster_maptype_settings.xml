@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="@string/raster_map_type">
+        <ListPreference android:defaultValue="@string/phonemaps"
+            android:icon="@drawable/category_dark_24px"
+            android:key="@string/pref_tilemaker_url"
+            android:entries="@array/pref_tilemaker_maptypes_entries"
+            android:entryValues="@array/pref_tilemaker_maptypes_urls"
+            android:title="@string/maptype"/>
+    </PreferenceCategory>
+</PreferenceScreen>

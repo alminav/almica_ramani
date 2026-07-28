@@ -1,0 +1,26 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The item tag controls positioning -->
+    <item android:gravity="top|center_horizontal"
+        android:width="60dp" android:height="60dp">
+        <rotate
+            android:fromDegrees="90"
+            android:toDegrees="90">
+        <shape android:shape="line">
+            <stroke android:width="3dp" android:color="#FF0000"
+                android:dashGap="3dp"
+                android:dashWidth="3dp"/>
+        </shape>
+        </rotate>
+    </item>
+    <item
+        android:gravity="top|center_horizontal"
+        android:width="12dp"
+        android:height="12dp">
+
+        <!-- The shape tag defines the circle -->
+        <shape android:shape="oval">
+            <solid android:color="#FF0000" />
+        </shape>
+    </item>
+</layer-list>
+
