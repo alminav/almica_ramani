@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Calculate
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.LinearScale
 import androidx.compose.material.icons.outlined.LocationSearching
@@ -75,10 +76,25 @@ enum class HairCrossAction {
     NearestPoi
 }
 
-@SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HairCrossBottomMenu(
+    latLng: LatLng?,
+    stopPosition: LatLng?,
+    callback: (HairCrossAction) -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = { callback(HairCrossAction.Close) }) {
+        HairCrossBottomMenuContent(
+            latLng = latLng,
+            stopPosition = stopPosition,
+            callback = callback
+        )
+    }
+}
+
+@SuppressLint("LocalContextGetResourceValueCall")
+@Composable
+fun HairCrossBottomMenuContent(
     latLng: LatLng?,
     stopPosition: LatLng?,
     callback: (HairCrossAction) -> Unit
@@ -115,38 +131,46 @@ fun HairCrossBottomMenu(
         value = hl
     }
 
-    val preferences = remember(context) { PreferenceManager.getDefaultSharedPreferences(context) }
-    val currentCode = remember(preferences, context) {
-        preferences.getString(
-            context.getString(R.string.setting_locomotion),
-            Const.DEFAULT_LOCOMOTION
-        )
+    val currentId = remember(context, isPreview) {
+        if (isPreview) {
+            -1
+        } else {
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+            val currentCode = preferences.getString(
+                context.getString(R.string.setting_locomotion),
+                Const.DEFAULT_LOCOMOTION
+            )
+            currentCode?.let { GhHelper.getVehicleIcon(context, it) }
+        }
     }
-    val currentId = remember(currentCode, context) {
-        currentCode?.let { GhHelper.getVehicleIcon(context, it) }
-    }
-    val ghFolder = remember(context) { "(${GhHelper.getGhFilename(context)})" }
 
-    ModalBottomSheet(onDismissRequest = { callback(HairCrossAction.Close) }) {
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 20.dp)
-                .fillMaxWidth()
-        ) {
-            if (latLng != null) {
-                Text(
-                    text = headLine,
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-            }
-            val buttonModifier = Modifier
-                .weight(0.5f)
-                .height(48.dp)
+    val ghFolder = remember(context, isPreview) {
+        if (isPreview) {
+            "(preview)"
+        } else {
+            "(${GhHelper.getGhFilename(context)})"
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 20.dp)
+            .fillMaxWidth()
+    ) {
+        if (latLng != null) {
+            Text(
+                text = headLine,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            )
+        }
+        val buttonModifier = Modifier
+            .weight(0.5f)
+            .height(48.dp)
 
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             HairCrossMenuItem(
@@ -240,6 +264,7 @@ fun HairCrossBottomMenu(
     }
 }
 
+
 @Composable
 private fun HairCrossMenuItem(
     modifier: Modifier = Modifier,
@@ -310,7 +335,7 @@ private fun HairCrossMenuItem(
 @Composable
 fun HairCrossBottomMenuPreview() {
     RamaniTheme {
-        HairCrossBottomMenu(
+        HairCrossBottomMenuContent(
             latLng = LatLng(48.8584, 2.2945),
             stopPosition = null,
             callback = {}

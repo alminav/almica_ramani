@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CidrRootsConfiguration">
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/.artifacts" />
+      <file path="$PROJECT_DIR$/.artifacts/180ead7c-4746-4c3d-befb-08162977f85c" />
+      <file path="$PROJECT_DIR$/.artifacts/1b57a599-0999-4ff4-8bf5-0000d7f1ec41" />
+      <file path="$PROJECT_DIR$/.artifacts/1c63686a-f6fb-4921-a86e-10175cb567fa" />
+      <file path="$PROJECT_DIR$/.artifacts/20d4bca3-08ec-47ca-ab35-ff7a6df788b4" />
+      <file path="$PROJECT_DIR$/.artifacts/2fc6cbab-bdf1-4d6c-8f60-58864e77347d" />
+      <file path="$PROJECT_DIR$/.artifacts/3c6e5f38-e371-4d9c-ad90-93e4ab85a267" />
+      <file path="$PROJECT_DIR$/.artifacts/4836ee8c-d698-469b-9e7c-5d13d2ddc0b7" />
+      <file path="$PROJECT_DIR$/.artifacts/5d399094-1b67-4a34-b744-78fc8c1ba989" />
+      <file path="$PROJECT_DIR$/.artifacts/6e339167-f37c-435d-9501-c4f14925a491" />
+      <file path="$PROJECT_DIR$/.artifacts/86458498-811d-4eee-a1d8-80ca59dc7e41" />
+      <file path="$PROJECT_DIR$/.artifacts/9faf2c94-e637-4f43-a4a1-eff36b585799" />
+      <file path="$PROJECT_DIR$/.artifacts/a14465b4-cdab-4c46-a9a6-872dbf7e0221" />
+      <file path="$PROJECT_DIR$/.artifacts/ab861fd5-0187-421b-a1b6-539273955dcc" />
+      <file path="$PROJECT_DIR$/.artifacts/bab1a127-bf3e-4f38-8209-fb0b4948db41" />
+      <file path="$PROJECT_DIR$/.artifacts/c9cb2fed-e360-44ab-ae54-4c682eb095b1" />
+      <file path="$PROJECT_DIR$/.artifacts/cc277c02-3906-42ea-9175-3ef9d7b9929b" />
+      <file path="$PROJECT_DIR$/.artifacts/d97fb1a5-72d4-4160-81f6-74d6817a097c" />
+      <file path="$PROJECT_DIR$/.artifacts/e6941dce-ddae-48b5-865e-92153c5502aa" />
+      <file path="$PROJECT_DIR$/.artifacts/f189bd2e-9b51-47d0-a264-c46ff2fa0935" />
+      <file path="$PROJECT_DIR$/.artifacts/f79d3101-ddf6-4358-bed9-0af5af392034" />
+      <file path="$PROJECT_DIR$/.idea" />
+      <file path="$PROJECT_DIR$/.kotlin" />
+      <file path="$PROJECT_DIR$/app/src/main/assets" />
+    </excludeRoots>
+  </component>
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_21" default="true" project-jdk-name="jbr-21" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build/classes" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="Android" />
+  </component>
+</project>
