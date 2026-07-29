@@ -83,7 +83,8 @@ class LocationService : Service(), LocationUpdatesCallBack, SensorEventListener,
         gpsLocationClient = GPSLocationClient()
         gpsLocationClient.setLocationUpdatesCallBack(this)
         val preferences = PreferenceManager.getDefaultSharedPreferences(this)
-        altitudeCorrection = preferences.getInt(getString(R.string.pref_gps_altitude_correction_key),0)
+        altitudeCorrection = preferences.getInt(getString(R.string.pref_gps_altitude_correction_key), Const.ALTITUDE_CORRECTION)
+        Timber.d("altitudeCorrection: $altitudeCorrection")
         //val activityIntent = Intent(this, MainActivity::class.java)
         goIntent = Intent(this, MainActivity::class.java)
         goIntent?.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP // 09Apr2026
