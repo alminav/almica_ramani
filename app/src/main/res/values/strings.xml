@@ -147,7 +147,7 @@
     <string name="stop_marker_set">Stop marker has been set</string>
     <string name="stop_marker_set_">Stop marker has been set %1$s</string>
     <string name="stop_marker">Stop marker</string>
-    <string name="remove_stop_marker">Remove stop marker</string>
+    <string name="remove_stop_marker">Remove stop</string>
     <string name="start_marker">Start marker</string>
     <string name="no_locations">No Locations</string>
     <string name="elevation_with_unit">Elevation with unit</string>
