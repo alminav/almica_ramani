@@ -137,7 +137,7 @@ class GmsMapViewModel(application: Application) : AndroidViewModel(application) 
                         )
                     }
 
-                    GpsViewModel.loadSpeed(location.speed)
+                    GpsViewModel.loadSpeed(location.speed * 3.6f) // Convert to km/h
                     GpsViewModel.loadTime(location.time)
                     GpsViewModel.loadLatitude(userLatLng.latitude)
                     GpsViewModel.loadLongitude(userLatLng.longitude)
