@@ -133,7 +133,7 @@ class GmsMapViewModel(application: Application) : AndroidViewModel(application) 
                             userLocation = userLatLng,
                             userBearing = location.bearing,
                             userAltitude = location.altitude,
-                            userSpeed = location.speed
+                            userSpeed = location.speed * 3.6f // Convert to km/h
                         )
                     }
 
