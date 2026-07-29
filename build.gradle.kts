@@ -5,4 +5,14 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.android.library) apply false
     id("com.google.devtools.ksp") version "2.2.20-2.0.3"
+    id("idea") // Ensure the IDEA plugin is applied
+}
+idea {
+    module {
+        excludeDirs.add(file("app/src/main/assets"))
+        excludeDirs.add(file(".artifacts"))
+        excludeDirs.add(file(".kotlin"))
+        excludeDirs.add(file(".idea"))
+        excludeDirs.add(file(".gradle"))
+    }
 }
