@@ -215,7 +215,7 @@ private fun GmsTileOverlayContent(
     val altitudeCorrection = remember { 
         preferences.getInt(resources.getString(R.string.pref_gps_altitude_correction_key), Const.ALTITUDE_CORRECTION)
     }
-
+    Timber.d("altitudeCorrection: $altitudeCorrection")
     LaunchedEffect(Unit) {
         gmsMapViewModel.initializeTileProvider(context, initialLatLng)
         gmsMapViewModel.updateState { state -> state.copy(
