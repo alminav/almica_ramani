@@ -154,6 +154,7 @@ class LauncherActivity : ComponentActivity() {
 
     private fun handleCoordinatesResult(data: Intent) {
         val latLng = data.getDoubleArrayExtra(EXTRA_LATLNG)
+        Timber.i("latLng: ${latLng.contentToString()}")
         val placesLat = data.getDoubleExtra(Const.PLACE_LATITUDE, -1.0)
         val placesLon = data.getDoubleExtra(Const.PLACE_LONGITUDE, -1.0)
         viewModel.refreshAll() // logCount update 25jul2026
