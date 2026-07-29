@@ -40,7 +40,7 @@ class PrefFragment : PreferenceFragmentCompat(), OnSharedPreferenceChangeListene
 
         findPreference<Preference>(getString(R.string.pref_gps_altitude_correction_reset_key))?.apply {
             onPreferenceClickListener = Preference.OnPreferenceClickListener {
-                findPreference<SeekBarPreference>(getString(R.string.pref_gps_altitude_correction_key))?.value = 0
+                findPreference<SeekBarPreference>(getString(R.string.pref_gps_altitude_correction_key))?.value = Const.ALTITUDE_CORRECTION
                 false
             }
         }
