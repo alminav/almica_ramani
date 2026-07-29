@@ -147,7 +147,7 @@ class LauncherActivity : ComponentActivity() {
     private fun handleActivityResult(result: ActivityResult) {
         val data = result.data ?: return
         data.getStringExtra(EXTRA_ACTIVITY)?.let { Timber.i("$EXTRA_ACTIVITY: $it") }
-
+        Timber.i("data: $data")
         handleCoordinatesResult(data)
         handleImportResults(data)
     }
