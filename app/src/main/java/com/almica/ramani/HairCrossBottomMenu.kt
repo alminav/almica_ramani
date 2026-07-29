@@ -148,94 +148,94 @@ fun HairCrossBottomMenu(
                 .weight(0.5f)
                 .height(48.dp)
 
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.routing_vehicle),
-                    iconPainter = currentId?.takeIf { it != -1 }?.let { painterResource(it) },
-                    onClick = { callback(HairCrossAction.RoutingVehicle) }
-                )
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.route_calculation),
-                    onClick = { callback(HairCrossAction.Calc) },
-                    enabled = stopPosition.isNotNull()
-                )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.stop_marker),
-                    iconPainter = painterResource(R.drawable.circle_filled_red_24px),
-                    iconTint = Color.Unspecified,
-                    onClick = { callback(HairCrossAction.AddStop) }
-                )
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.remove_stop_marker),
-                    iconPainter = painterResource(R.drawable.remove_stop_marker_24),
-                    iconTint = Color.Unspecified,
-                    onClick = { callback(HairCrossAction.RemoveStop) },
-                    enabled = stopPosition.isNotNull()
-                )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.placemark),
-                    iconVector = Icons.Outlined.Add,
-                    onClick = { callback(HairCrossAction.AddPoi) }
-                )
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.geocoder),
-                    iconVector = Icons.Outlined.LocationSearching,
-                    onClick = { callback(HairCrossAction.GeoCoder) }
-                )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.ors_roundtrip),
-                    iconVector = Icons.Outlined.SpaceBar,
-                    onClick = { callback(HairCrossAction.OrsRoundtrip) }
-                )
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    iconVector = Icons.Outlined.SpaceBar,
-                    text = stringResource(R.string.ors_route_calculation),
-                    onClick = { callback(HairCrossAction.OrsCalc) }
-                )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.gh_folder),
-                    secondaryText = ghFolder,
-                    iconVector = Icons.Outlined.Navigation,
-                    onClick = { callback(HairCrossAction.GhFolder) }
-                )
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.map_features),
-                    iconVector = Icons.Outlined.Category,
-                    onClick = { callback(HairCrossAction.MapFeatures) }
-                )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                HairCrossMenuItem(
-                    modifier = buttonModifier,
-                    text = stringResource(R.string.nearest_poi),
-                    iconVector = Icons.Outlined.NearMe,
-                    onClick = { callback(HairCrossAction.NearestPoi) }
-                )
-                Box(modifier = Modifier.weight(0.5f))
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.routing_vehicle),
+                iconPainter = currentId?.takeIf { it != -1 }?.let { painterResource(it) },
+                onClick = { callback(HairCrossAction.RoutingVehicle) }
+            )
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.route_calculation),
+                iconVector = Icons.Outlined.Calculate,
+                onClick = { callback(HairCrossAction.Calc) },
+                enabled = stopPosition.isNotNull()
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.stop_marker),
+                iconPainter = painterResource(R.drawable.circle_filled_red_24px),
+                iconTint = Color.Unspecified,
+                onClick = { callback(HairCrossAction.AddStop) }
+            )
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.remove_stop_marker),
+                iconPainter = painterResource(R.drawable.remove_stop_marker_24),
+                iconTint = Color.Unspecified,
+                onClick = { callback(HairCrossAction.RemoveStop) },
+                enabled = stopPosition.isNotNull()
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.placemark),
+                iconVector = Icons.Outlined.Add,
+                onClick = { callback(HairCrossAction.AddPoi) }
+            )
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.geocoder),
+                iconVector = Icons.Outlined.LocationSearching,
+                onClick = { callback(HairCrossAction.GeoCoder) }
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.ors_roundtrip),
+                iconVector = Icons.Outlined.SpaceBar,
+                onClick = { callback(HairCrossAction.OrsRoundtrip) }
+            )
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                iconVector = Icons.Outlined.SpaceBar,
+                text = stringResource(R.string.ors_route_calculation),
+                onClick = { callback(HairCrossAction.OrsCalc) }
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.gh_folder),
+                secondaryText = ghFolder,
+                iconVector = Icons.Outlined.Navigation,
+                onClick = { callback(HairCrossAction.GhFolder) }
+            )
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.map_features),
+                iconVector = Icons.Outlined.Category,
+                onClick = { callback(HairCrossAction.MapFeatures) }
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.nearest_poi),
+                iconVector = Icons.Outlined.NearMe,
+                onClick = { callback(HairCrossAction.NearestPoi) }
+            )
+            Box(modifier = Modifier.weight(0.5f))
         }
     }
 }
