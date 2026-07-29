@@ -41,8 +41,7 @@ import java.util.UUID
 import kotlin.math.abs
 
 /**
- * Not used
- * template for google cloud style, not really working
+ *
  */
 class GoogleMapsActivity() : ComponentActivity() {
     val logtag = "GoogleMapsActivity"
@@ -175,7 +174,7 @@ fun RouteData.createRouteMarkers(context: Context, _hMax: Double): Double {
             iconGenerator.setContentView(contentView)
             val bitmap = iconGenerator.makeIcon()
             var icon : BitmapDescriptor? = null
-            bitmap?.let { image ->
+            bitmap.let { image ->
                 icon = BitmapDescriptorFactory.fromBitmap(image)
             }
 
