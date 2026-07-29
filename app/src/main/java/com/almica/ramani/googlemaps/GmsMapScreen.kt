@@ -63,6 +63,7 @@ import com.almica.ramani.utils.formatDistM
 import com.almica.ramani.utils.simpleStringTime
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.Dash
@@ -76,12 +77,13 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.delay
 import timber.log.Timber
 import java.time.ZonedDateTime
 import java.util.Date
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Not used
@@ -182,6 +184,16 @@ fun GmsMapScreenContent(
     //val selectedLocation by mapViewModel.selectedLocation
     var selectedLocation by remember { mutableStateOf<LatLng?>(latLng) }
 
+    // Animate camera when selectedLocation changes
+    LaunchedEffect(selectedLocation) {
+        selectedLocation?.let {
+            cameraPositionState.animate(
+                update = CameraUpdateFactory.newLatLngZoom(it, zoom),
+                durationMs = 1000
+            )
+        }
+    }
+
     // Handle permission requests for accessing fine location
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -197,7 +209,7 @@ fun GmsMapScreenContent(
 
     // Request the location permission when the composable is launched
     LaunchedEffect(Unit) {
-        delay(100)
+        delay(100.milliseconds)
         when (PackageManager.PERMISSION_GRANTED) {
             // Check if the location permission is already granted
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) -> {
@@ -267,7 +279,7 @@ fun GmsMapScreenContent(
                         avgSpeed
                     )
                     circleData.add(circleInfo)
-                    Timber.i("circleData size: ${circleData.size}")
+                    //Timber.i("circleData size: ${circleData.size}")
                     if (selectedCircle != null)
                         selectedCircle = circleInfo
 
@@ -276,35 +288,35 @@ fun GmsMapScreenContent(
                     //val cp = CameraPosition.builder().target(it).build()
                     if (locationEnabled)
                         cameraPositionState.position = CameraPosition.fromLatLngZoom(latLng, zoom)
-                    val routePoints = arrayListOf<LatLng>()
-                    val lllh = routeData.lllh
-                    if (lllh.isNotEmpty()) {
-                        Timber.i( "lllh: ${lllh.size}")
-                        lllh.forEach { llh ->
-                            routePoints.add(LatLng(llh.latitude, llh.longitude))
-                        }
+                    val routeCoordinates = routeData.lllh
+                    if (routeCoordinates.isNotEmpty()) {
+                        val routePoints = routeCoordinates.map { it.latLng }
+                        Timber.i("routeCoordinates size: ${routePoints.size}")
                         val routePattern = listOf(Dash(20f), Gap(20f), Dash(20f))
-                        routeData.let {
-                            com.google.maps.android.compose.Polyline(
-                                routePoints,
-                                tag = it,
-                                color = Color.Red,
-                                width = 6f,
-                                pattern = routePattern,
-                                clickable = true,
-                                onClick = { polyline ->
-                                    Timber.i("onclick ${routeData.name}")
-                                    selectedRoute = polyline.tag as? RouteData
-                                })
-                        }
+
+                        com.google.maps.android.compose.Polyline(
+                            points = routePoints,
+                            tag = routeData,
+                            color = Color.Red,
+                            width = 6f,
+                            pattern = routePattern,
+                            clickable = true,
+                            onClick = { polyline ->
+                                Timber.i("onclick ${routeData.name}")
+                                selectedRoute = polyline.tag as? RouteData
+                            }
+                        )
+
                         val textDist = routeData.distance.formatDistM(true)
                         Marker(
-                            state = MarkerState(position = LatLng(lllh[0].latitude, lllh[0].longitude)), // Place the marker at the user's location
-                            title = routeData.name, // Set the title for the marker
+                            state = rememberUpdatedMarkerState(
+                                position = routePoints.first()
+                            ),
+                            title = routeData.name,
                             snippet = textDist,
                         )
-                    } else
-                        Timber.i("lllh is empty")
+                    } //else
+                        //Timber.i("routeCoordinates is empty")
                 }
 
                 // Draw clickable circles for each location
@@ -326,12 +338,10 @@ fun GmsMapScreenContent(
                 // If a location was selected from the search bar, place a marker there
                 selectedLocation?.let {
                     Marker(
-                        state = MarkerState(position = it), // Place the marker at the selected location
-                        title = "Selected Location", // Set the title for the marker
-                        snippet = "This is the place you selected." // Set the snippet for the marker
+                        state = rememberUpdatedMarkerState(position = it),
+                        title = stringResource(R.string.selected_location),
+                        snippet = stringResource(R.string.selected_location_snippet)
                     )
-                    // Move the camera to the selected location with a zoom level of 15f
-                    cameraPositionState.position = CameraPosition.fromLatLngZoom(it, zoom)
                 }
             }
 
