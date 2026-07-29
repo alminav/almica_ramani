@@ -213,7 +213,7 @@ private fun GmsTileOverlayContent(
     val resources = LocalResources.current
     val preferences = remember { getDefaultSharedPreferences(context) }
     val altitudeCorrection = remember { 
-        preferences.getInt(resources.getString(R.string.pref_gps_altitude_correction_key), 0) 
+        preferences.getInt(resources.getString(R.string.pref_gps_altitude_correction_key), Const.ALTITUDE_CORRECTION)
     }
 
     LaunchedEffect(Unit) {
