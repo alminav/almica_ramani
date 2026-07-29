@@ -184,7 +184,14 @@ class GmsTileOverlayActivity : ComponentActivity() {
                     initialRegionFilter = routesRegionFilter,
                     onBackPressed = { fusedLocationClient ->
                         gmsMapViewModel.stopUserLocation(fusedLocationClient)
-                        setResult(RESULT_OK)
+                        val resultIntent = Intent().apply {
+                            putExtra(EXTRA_ACTIVITY, this@GmsTileOverlayActivity::class.java.simpleName)
+                            gmsMapViewModel.lastRoomLocation?.let {
+                                putExtra(EXTRA_LATLNG, doubleArrayOf(it.latitude, it.longitude))
+                            }
+                        }
+                        setResult(RESULT_OK, resultIntent)
+                        //setResult(RESULT_OK)
                         finish()
                     }
                 )
