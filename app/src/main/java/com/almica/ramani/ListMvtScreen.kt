@@ -120,7 +120,9 @@ fun ListMvtScreen(
         onImportClick = { viewModel.setShowDriveEntries(true) },
         onMvtSelected = { viewModel.onMvtSelected(it, newMvtMap) },
         onDeleteMvt = { viewModel.deleteMvtFile(it) },
-        onShareMvt = { viewModel.shareMvtFile(it) },
+        onShareMvt = {
+            viewModel.shareMvtFile(it)
+            Timber.i("onShareMvt: ${it.name}") },
         onInfoMvt = { viewModel.takeSnapshotAndShowInfo(it) },
         onDriveDismiss = { viewModel.setShowDriveEntries(false) },
         onDriveImport = { _ ->
@@ -161,6 +163,7 @@ fun ListMvtScreen(
         onMapDismiss = { viewModel.setShowGoogleMap(null) },
         onSnackAction = { action ->
             if (action == MvtSnackbarAction.Share) {
+                Timber.i("onSnackAction: Share ${uiState.snackbarData?.actionData}")
                 (uiState.snackbarData?.actionData as? File)?.let { file ->
                     shareFile(context, file)
                 }

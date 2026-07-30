@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.io.File
 import java.io.FileFilter
 import kotlin.time.Duration.Companion.seconds
@@ -195,7 +196,9 @@ class ListMvtViewModel(application: Application) : AndroidViewModel(application)
                 )
             )
         } else {
-            showSnackbar(MvtSnackbarData(null, MvtSnackbarAction.Share, null, file, null))
+            Timber.i("shareMvtFile: ${file.name}")
+            showSnackbar(MvtSnackbarData(file.name,
+                MvtSnackbarAction.Share, context.getString(R.string.share), file, null))
         }
     }
 

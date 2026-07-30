@@ -231,12 +231,14 @@ private fun exportMaps(context: Context, mbTilesPrefSet: Set<String>?) {
     val shareIntent = Intent()
     val uris = arrayListOf<Uri>()
     mbTilesPrefSet?.forEach {
+        val fileToExport = File(it)
         val uri = FileProvider.getUriForFile(
             context,
             BuildConfig.APPLICATION_ID + ".provider",
-            File(it)
+            fileToExport
         )
         uris.add(uri)
+        Timber.i("exportMaps ${fileToExport.name}")
     }
     shareIntent.action = Intent.ACTION_SEND_MULTIPLE
     shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
