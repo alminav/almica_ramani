@@ -53,10 +53,9 @@ To build the debug APK:
 
 ```bash
 ./gradlew assembleDebug
-<img width="720" height="1612" alt="Screenshot_20260730-143821" src="https://github.com/user-attachments/assets/380e453d-d530-45de-b3b7-eb1264d5b728" />
-
 ```
 
 ## 📄 License
-
 This project is proprietary. All rights reserved.
+
+<img width="360" height="806" alt="Screenshot_20260730-143821" src="https://github.com/user-attachments/assets/380e453d-d530-45de-b3b7-eb1264d5b728" />
