@@ -91,7 +91,8 @@ data class GmsMapUiState(
         isMyLocationEnabled = true
     ),
     val tileOverlayVisibility: Boolean = true,
-    val coordinatesOverlayVisibility: Boolean = false
+    val coordinatesOverlayVisibility: Boolean = false,
+    val northUp: Boolean = true
 )
 
 class GmsMapViewModel(application: Application) : AndroidViewModel(application) {
@@ -118,6 +119,23 @@ class GmsMapViewModel(application: Application) : AndroidViewModel(application) 
             application.getString(R.string.pref_gps_altitude_correction_key),
             Const.ALTITUDE_CORRECTION
         )
+    }
+
+    private val preferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        if (key == Const.PREF_GMS_NORTH_UP) {
+            _uiState.update { it.copy(northUp = prefs.getBoolean(key, true)) }
+        }
+    }
+
+    init {
+        preferences?.let { prefs ->
+            prefs.registerOnSharedPreferenceChangeListener(preferenceListener)
+            _uiState.update { it.copy(northUp = prefs.getBoolean(Const.PREF_GMS_NORTH_UP, true)) }
+        }
+    }
+
+    override fun onCleared() {
+        preferences?.unregisterOnSharedPreferenceChangeListener(preferenceListener)
     }
 
     val locationCallback: LocationCallback = object : LocationCallback() {
@@ -227,6 +245,22 @@ class GmsMapViewModel(application: Application) : AndroidViewModel(application) 
             locationEnabled = state,
             userLocation = if (!state) latLng else it.userLocation
         ) }
+    }
+
+    fun setShowDropDownMenu(show: Boolean) {
+        _uiState.update { it.copy(showDropDownMenu = show) }
+    }
+
+    fun setShowHairCrossMenu(latLng: LatLng?) {
+        _uiState.update { it.copy(showHairCrossDropDownMenu = latLng) }
+    }
+
+    fun setShowRouteSavingScreen(show: Boolean) {
+        _uiState.update { it.copy(showRouteSavingScreen = show) }
+    }
+
+    fun setSnackMsg(msg: String?) {
+        _uiState.update { it.copy(snackMsg = msg) }
     }
 
     fun updateState(transform: (GmsMapUiState) -> GmsMapUiState) {

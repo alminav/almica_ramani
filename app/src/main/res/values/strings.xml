@@ -504,4 +504,6 @@
     <string name="info">Info</string>
     <string name="selected_location">Selected Location</string>
     <string name="selected_location_snippet">This is the place you selected.</string>
+    <string name="menu">Menu</string>
+    <string name="navigation">Navigation</string>
 </resources>

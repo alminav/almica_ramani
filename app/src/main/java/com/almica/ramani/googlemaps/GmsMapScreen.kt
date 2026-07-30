@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.preference.PreferenceManager
+import com.almica.ramani.Const
 import com.almica.ramani.LatLngH
 import com.almica.ramani.R
 import com.almica.ramani.charts.theme.White
@@ -138,6 +140,7 @@ fun GmsMapScreenContent(
     val cameraPositionState = rememberCameraPositionState()
     // Obtain the current context
     val context = LocalContext.current
+    val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
     // Observe the user's location (Passed as parameter)
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var zoom by remember { mutableFloatStateOf((zoomLevel+1).toFloat()) }
@@ -188,8 +191,10 @@ fun GmsMapScreenContent(
     LaunchedEffect(selectedLocation) {
         selectedLocation?.let {
             cameraPositionState.animate(
-                update = CameraUpdateFactory.newLatLngZoom(it, zoom),
-                durationMs = 1000
+                update = CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.fromLatLngZoom(it, zoom)
+                ),
+                durationMs = 200
             )
         }
     }

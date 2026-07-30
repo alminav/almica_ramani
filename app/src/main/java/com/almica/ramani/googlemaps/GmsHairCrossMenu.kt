@@ -30,6 +30,7 @@ import com.almica.ramani.charts.theme.Black
 import com.almica.ramani.utils.GhHelper
 import androidx.compose.ui.tooling.preview.Preview
 import com.almica.ramani.ui.theme.RamaniTheme
+import timber.log.Timber
 
 @Composable
 internal fun GmsHairCrossMenu(context: Context, northUp: (Boolean) -> Unit, routingVehicle: () -> Unit,
@@ -63,6 +64,7 @@ private fun DropdownMenu(context: Context, northUp: (Boolean) -> Unit, routingVe
             northup = isChecked
             prefs.edit { putBoolean(Const.PREF_GMS_NORTH_UP, northup) }
             northUp(isChecked)
+            Timber.i("northup = $northup")
         },
         onRoutingVehicle = routingVehicle,
         onGhFolder = ghFolder,

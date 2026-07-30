@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -18,11 +17,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.outlined.LocationDisabled
@@ -235,6 +239,7 @@ private fun GmsContent(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     val cameraPositionState = rememberCameraPositionState()
 
@@ -265,7 +270,8 @@ private fun GmsContent(
         uiState.animatedLatLng?.let {
             cameraPositionState.animate(
                 update = CameraUpdateFactory.newCameraPosition(
-                    CameraPosition(it, cameraPositionState.position.zoom, 0f, 0f)
+                    CameraPosition(it, cameraPositionState.position.zoom, 0f,
+                        if (uiState.northUp) 0F else cameraPositionState.position.bearing)
                 ),
                 durationMs = 200
             )
@@ -307,8 +313,6 @@ private fun GmsContent(
         }
     }
 
-    val prefs = remember { getDefaultSharedPreferences(context) }
-    var northup by remember { mutableStateOf(prefs.getBoolean(Const.PREF_GMS_NORTH_UP, true)) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         GoogleMap(
@@ -352,8 +356,7 @@ private fun GmsContent(
                 routeEntities = routeEntities,
                 viewModel = viewModel,
                 uiSettings = uiSettings,
-                onUiSettingsChange = { uiSettings = it },
-                northup = northup
+                onUiSettingsChange = { uiSettings = it }
             )
         }
 
@@ -384,8 +387,7 @@ private fun MapOverlayContent(
     routeEntities: List<RouteEntity>,
     viewModel: GmsMapViewModel,
     uiSettings: MapUiSettings,
-    onUiSettingsChange: (MapUiSettings) -> Unit,
-    northup: Boolean
+    onUiSettingsChange: (MapUiSettings) -> Unit
 ) {
     val context = LocalContext.current
     
@@ -398,13 +400,15 @@ private fun MapOverlayContent(
     }
 
     LaunchedEffect(uiState.locationEnabled, uiState.userLocation) {
+        Timber.d("locationEnabled: ${uiState.locationEnabled}, northup: ${uiState.northUp}, userLocation:" +
+                " ${uiState.userLocation?.latitude} ${uiState.userLocation?.longitude}")
         if (uiState.locationEnabled) {
             uiState.userLocation?.let { latLng ->
                 val cameraPositionBuilder = CameraPosition.builder()
-                if (!northup) {
-                    uiState.userBearing?.let { cameraPositionBuilder.bearing(it) }
-                }
-                cameraPositionBuilder.target(latLng).zoom(uiState.zoom)
+//                if (!uiState.northUp) {
+//                    uiState.userBearing?.let { cameraPositionBuilder.bearing(it) }
+//                }
+                cameraPositionBuilder.target(latLng).zoom(uiState.zoom).bearing(if (uiState.northUp) 0F else uiState.userBearing ?: 0F)
                 cameraPositionState.position = cameraPositionBuilder.build()
                 viewModel.updateState { state -> state.copy(startLatLng = null) }
             }
@@ -542,23 +546,33 @@ private fun MapControls(
     }
 
     // Bottom Start Menu Button
-    Box(modifier = Modifier.fillMaxSize().padding(bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 52.dp else 4.dp), contentAlignment = Alignment.BottomStart) {
-        IconButton(
-            onClick = { viewModel.updateState { state -> state.copy(showDropDownMenu = true) } },
-            modifier = Modifier.width(32.dp).height(32.dp).border(1.dp, Teal200, RectangleShape).background(colorResource(R.color.teal_200_trans))
-        ) {
-            Icon(Icons.Outlined.Menu, null, tint = Color.White)
-        }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(bottom = 4.dp, start = 4.dp),
+        contentAlignment = Alignment.BottomStart
+    ) {
+        MapControlButton(
+            imageVector = Icons.Outlined.Menu,
+            contentDescription = stringResource(R.string.menu),
+            onClick = { viewModel.setShowDropDownMenu(true) }
+        )
     }
 
     // Bottom End Navigation Button
-    Box(modifier = Modifier.fillMaxSize().padding(bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) 52.dp else 4.dp), contentAlignment = Alignment.BottomEnd) {
-        IconButton(
-            onClick = { viewModel.updateState { state -> state.copy(showHairCrossDropDownMenu = cameraPositionState.position.target) } },
-            modifier = Modifier.width(32.dp).height(32.dp).border(1.dp, Teal200, RectangleShape).background(colorResource(R.color.teal_200_trans))
-        ) {
-            Icon(Icons.Outlined.Navigation, null, tint = Color.White)
-        }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(bottom = 4.dp, end = 4.dp),
+        contentAlignment = Alignment.BottomEnd
+    ) {
+        MapControlButton(
+            imageVector = Icons.Outlined.Navigation,
+            contentDescription = stringResource(R.string.navigation),
+            onClick = { viewModel.setShowHairCrossMenu(cameraPositionState.position.target) }
+        )
     }
 
     // Map Refresh Button
@@ -582,7 +596,7 @@ private fun MapControls(
                 simulationLatLngList = uiState.simulationLatLngList,
                 gradientRouteData = { data -> viewModel.updateState { state -> state.copy(gradientRouteData = data) } },
                 elevationRouteData = { data -> viewModel.updateState { state -> state.copy(elevationRouteData = data) } },
-                showRouteSavingScreen = { _ -> viewModel.updateState { state -> state.copy(showRouteSavingScreen = true) } },
+                showRouteSavingScreen = { _ -> viewModel.setShowRouteSavingScreen(true) },
                 simulation = { lll ->
                     viewModel.updateState { state -> state.copy(simulationLatLngList = if (state.simulationLatLngList == null) lll else null) }
                 }
@@ -598,8 +612,8 @@ private fun MapControls(
                 CameraPosition(
                     cameraPositionState.position.target,
                     newZoom,
-                    cameraPositionState.position.bearing,
-                    cameraPositionState.position.tilt
+                    cameraPositionState.position.tilt,
+                    if (uiState.northUp) 0F else cameraPositionState.position.bearing
                 )
             )
         )
@@ -670,7 +684,7 @@ private fun MapDialogs(
                     val file = File(File(context.filesDir, Const.ROUTEFOLDER), folder.first + "/" + name.replace(Regex(Const.JPG_EXT + "|" + Const.GPX_EXT + "|" + Const.KML_EXT), "") + Const.KML_EXT)
                     val success = Helpers.writeLllh2KmlFile(route.lllh, file.path)
                     val msg = "${file.name} $routeSaveResultText: ${if (success) okText else errorText}"
-                    viewModel.updateState { state -> state.copy(snackMsg = msg) }
+                    viewModel.setSnackMsg(msg)
                 }
             }
         }
@@ -679,7 +693,7 @@ private fun MapDialogs(
     uiState.selectedCircle?.let { GmsCircleInfo(it) { viewModel.updateState { state -> state.copy(showLocationStatistic = it) } } }
 
     uiState.showHairCrossDropDownMenu?.let { pos ->
-        GmsHairCrossMenu(context, northUp = { }, routingVehicle = { viewModel.updateState { state -> state.copy(showVehicleMenu = true, showHairCrossDropDownMenu = null) } }, ghFolder = { viewModel.updateState { state -> state.copy(showGhFolders = true, showHairCrossDropDownMenu = null) } }) { action ->
+        GmsHairCrossMenu(context, northUp = { _ -> }, routingVehicle = { viewModel.updateState { state -> state.copy(showVehicleMenu = true, showHairCrossDropDownMenu = null) } }, ghFolder = { viewModel.updateState { state -> state.copy(showGhFolders = true, showHairCrossDropDownMenu = null) } }) { action ->
             when (action) {
                 GmsHairCrossMenuAction.SetStopMarker -> {
                     viewModel.updateState { state -> state.copy(stopMarkerData = PoiMarkerData(pos, stopMarkerText, stopMarkerText), showHairCrossDropDownMenu = null) }
