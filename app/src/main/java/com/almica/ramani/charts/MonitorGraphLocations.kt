@@ -156,8 +156,8 @@ internal fun MonitorGraphLocations(
     val longitudeModel = GpsViewModel.longitude.collectAsState()
     val speedModel = GpsViewModel.speed.collectAsState()
     //Timber.i("speedModel.value: ${speedModel.value} ${GpsViewModel.time}")
-    locationSpeed = speedModel.value.times(3.6f)
-    //Timber.i("locationSpeed: $locationSpeed")
+    locationSpeed = speedModel.value //.times(3.6f)
+    Timber.i("locationSpeed: $locationSpeed")
     val timeModel = GpsViewModel.time.collectAsState()
     locationTime = timeModel.value
     val bearingModel = GpsViewModel.bearing.collectAsState()
@@ -492,7 +492,7 @@ internal fun MonitorGraphLocations(
                             stringResource(R.string.setting_locomotion),
                             Const.DEFAULT_LOCOMOTION
                         )
-                        Box(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             SpeedView(
                                 maxSpeed = when (s1s2) {
                                     "0.0" -> 10f
@@ -516,7 +516,7 @@ internal fun MonitorGraphLocations(
                                     else -> 9
                                 },
                                 modifier = Modifier.padding(top = 4.dp)
-                                    .size(150.dp).align(alignment = Alignment.CenterEnd),
+                                    .size(150.dp).align(alignment = Alignment.Center),
                                 unitUnderSpeed = true,
                                 sections = sections,
                                 speed = currentSpeed
