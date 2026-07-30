@@ -502,4 +502,6 @@
     <string name="share_files_to">Share files to..</string>
     <string name="selected">Selected</string>
     <string name="info">Info</string>
+    <string name="selected_location">Selected Location</string>
+    <string name="selected_location_snippet">This is the place you selected.</string>
 </resources>
