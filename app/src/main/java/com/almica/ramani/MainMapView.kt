@@ -130,14 +130,26 @@ fun MainMapView(
                 opacity = 0.5f, borderWidth = if (index % 20 == 0) 1f else 0F)
         }
 
+        Timber.i("poiEntities: ${poiEntities.size}")
         poiEntities.forEach { poi ->
             val dynamicRadius = (cameraPosition.value.zoom?.toFloat() ?: 10f) * 1.0f
             //Timber.i("dynamicRadius: $dynamicRadius")
-            Circle(center = LatLng(poi.latitude, poi.longitude), color = "#70ff00", radius = dynamicRadius, opacity = if (poi.category.startsWith("city")) 0.0f else 0.4f, borderWidth = 1f,
+            Circle(
+                center = LatLng(poi.latitude, poi.longitude),
+                color = "#70ff00",
+                radius = dynamicRadius,
+                opacity = if (poi.category.startsWith("city")) 0.0f else 0.4f,
+                borderWidth = 1f,
                 onClick = {
+                    Timber.i("poi: ${poi.name} ${poi.category}")
                     onPoiClick(poi)
                 })
-            SymbolVector(context, size = 1f, center = LatLng(poi.latitude, poi.longitude), imageId = poiCategoryMap[poi.category]?.first)
+            SymbolVector(
+                context,
+                size = 1f,
+                center = LatLng(poi.latitude, poi.longitude),
+                imageId = poiCategoryMap[poi.category]?.first
+            )
         }
     }
 

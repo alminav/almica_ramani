@@ -1842,7 +1842,7 @@ fun addPoiDao(
     latLng: com.google.android.gms.maps.model.LatLng?,
     h: Double,
     category: String,
-    finished: (String, String, com.google.android.gms.maps.model.LatLng?) -> Unit
+    finished: (PoiEntity?) -> Unit
 ) {
     Timber.i( "$name $category latLng: $latLng")
     val hgtReader = HgtReader(context, null)
@@ -1869,7 +1869,7 @@ fun addPoiDao(
     val poiRepository =
         PoiRepository.getInstance(context, Executors.newSingleThreadExecutor())
     poiEntity?.let { poiRepository.addPoi(it) {
-        finished(name, category, latLng)
+        finished(it)
     } }
     //val cat = PoiEntity.categoryAttributes(poiEntity.category)
 }

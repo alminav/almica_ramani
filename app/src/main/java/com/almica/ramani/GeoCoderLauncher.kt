@@ -156,7 +156,7 @@ fun GeoCoderLauncher(latLng: com.google.android.gms.maps.model.LatLng?, showInMa
                                         showPoiCatMoBoSheet!!.latLng!!.longitude),
                                     h,
                                     category
-                                ) { _, _, _ ->
+                                ) { _ ->
                                     snackbarData = GeoCoderLauncherSnackbarData(
                                         context.getString(
                                             R.string.added_to_database,

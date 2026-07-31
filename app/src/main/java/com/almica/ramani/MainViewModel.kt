@@ -112,11 +112,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         loadPoiData()
     }
 
-    private fun loadPoiData() {
+    fun loadPoiData() {
         viewModelScope.launch {
             val categories = Helpers.getPoiDrawableMap(getApplication())
             _uiState.update { it.copy(poiCategoryMap = categories) }
             poiRepository.getAllSimple(true) { pois ->
+                Timber.i("loadPoiData pois.size: ${pois.size}")
                 _uiState.update { it.copy(poiEntities = pois) }
             }
         }
@@ -127,6 +128,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val mapType = preferences.getInt(Const.PREF_MAPTYPE_KEY, 0)
         _uiState.update { it.copy(prefMaptypeKey = mapType) }
+    }
+
+    fun addPoiEntity(poi: PoiEntity?) {
+        poi?.let { newPoi ->
+            Timber.i("addPoiEntity: ${newPoi.name} ${newPoi.category}")
+            _uiState.update { state ->
+                state.copy(poiEntities = state.poiEntities + newPoi)
+            }
+        }
     }
 
     fun setMvtPath(path: String?) {

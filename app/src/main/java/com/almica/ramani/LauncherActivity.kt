@@ -183,7 +183,7 @@ class LauncherActivity : ComponentActivity() {
                 val locationsParm = "${latLng.latitude},${latLng.longitude}"
                 gmsElevationService(context, locationsParm) { lllh0 ->
                     val h = lllh0[0].altitude
-                    addPoiDao(context, name, com.google.android.gms.maps.model.LatLng(latLng.latitude, latLng.longitude), h, category) { _, _, _ ->
+                    addPoiDao(context, name, com.google.android.gms.maps.model.LatLng(latLng.latitude, latLng.longitude), h, category) { _ ->
                         onResult(name)
                     }
                 }

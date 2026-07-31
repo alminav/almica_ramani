@@ -140,6 +140,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.tooling.preview.Preview
+import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.google.android.gms.maps.model.LatLng as GmsLatLng
 
@@ -196,10 +197,10 @@ fun BoxScope.MapOverlayManager(
         setDimmer = { viewModel?.setDimmer(it) },
         setGradientRoute = { viewModel?.setGradientRoute(it) },
         setChartRoute = { viewModel?.setChartRoute(it) },
+        addPoiEntity = { viewModel?.addPoiEntity(it) },
         setRouteMonitorState = { viewModel?.setRouteMonitorState(it) },
         setRoutesRegionFilter = { viewModel?.setRoutesRegionFilter(it) },
-        setRouteInfo = { viewModel?.setRouteInfo(it) }
-    )
+    ) { viewModel?.setRouteInfo(it) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -238,9 +239,10 @@ fun BoxScope.MapOverlayManagerContent(
     setDimmer: (Boolean) -> Unit,
     setGradientRoute: (RouteEntity?) -> Unit,
     setChartRoute: (RouteEntity?) -> Unit,
+    addPoiEntity: (PoiEntity?) -> Unit,
     setRouteMonitorState: (Int) -> Unit,
     setRoutesRegionFilter: (String) -> Unit,
-    setRouteInfo: (File?) -> Unit
+    setRouteInfo: (File?) -> Unit,
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -536,7 +538,11 @@ fun BoxScope.MapOverlayManagerContent(
         } else {
             PoiCatMoBoSheet(selectedFeatureItem.name.toString()) { name, category ->
                 if (category != null) {
-                    addPoiDao(context, name, com.google.android.gms.maps.model.LatLng(selectedFeatureItem.lat, selectedFeatureItem.lon), -1.0, category) { _, _, _ -> }
+                    addPoiDao(context, name, com.google.android.gms.maps.model.LatLng(selectedFeatureItem.lat,
+                        selectedFeatureItem.lon), -1.0, category) { poi ->
+                        //loadPoiData()
+                        addPoiEntity(poi)
+                    }
                 }
                 setSelectedFeature(null)
             }
@@ -1110,10 +1116,10 @@ fun MapOverlayManagerPreview() {
                 setDimmer = {},
                 setGradientRoute = {},
                 setChartRoute = {},
+                addPoiEntity = {},
                 setRouteMonitorState = {},
                 setRoutesRegionFilter = {},
-                setRouteInfo = {}
-            )
+            ) {}
         }
     }
 }
