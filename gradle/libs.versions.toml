@@ -1,0 +1,135 @@
+[versions]
+accompanistDrawablepainter = "0.37.3"
+agp = "9.3.1"
+coilCompose = "2.7.0"
+kotlin = "2.4.10"
+coreKtx = "1.19.0"
+junit = "4.13.2"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+kotlinxCollectionsImmutable = "0.5.1"
+lifecycleExtensions = "2.2.0"
+lifecycleRuntimeKtx = "2.11.0"
+activityCompose = "1.13.0"
+composeBom = "2026.06.01"
+appcompat = "1.7.1"
+material = "1.14.0"
+robolectric = "4.16.1"
+rxandroid = "2.1.1"
+rxjava = "2.2.21"
+maplibre-sdk-version = "13.4.1"
+maplibre-annotation-plugin-version = "3.0.2"
+maplibre-scalebar-plugin-version = "3.0.2"
+ramaniMaplibre = "0.12.0"
+accompanist = "0.37.3"
+playServicesLocation = "21.4.0"
+lifecycleService = "2.10.0"
+livedata-version="2.11.0"
+slf4jApi = "2.0.18"
+textRecognition = "16.0.1"
+webkit = "1.16.0"
+workRuntime="2.11.2"
+coroutines = "1.11.0"
+preferenceKtxVersion = "1.2.1"
+googleMapsUtilsVersion = "5.0.0"
+playServicesMaps = "20.0.0"
+composeIconsVersion = "1.7.8"
+roomCommon = "2.8.4"
+roomCompilerVersion = "2.8.4"
+roomKtx = "2.8.4"
+navigationCompose = "2.9.8"
+exifinterface = "1.4.2"
+jetbrains-material3 = "1.9.0"
+materialAndroid = "1.11.4"
+animationCoreAndroid = "1.11.4"
+foundationAndroid = "1.11.4"
+foundationLayoutAndroid = "1.11.4"
+fragmentKtx = "1.8.9"
+fragmentCompose = "1.8.9"
+lifecycleProcess = "2.11.0"
+lifecycleServiceVersion = "2.11.0"
+places = "5.3.0"
+timber = "5.0.1"
+mapsCompose = "8.4.0"
+playServicesAuth = "21.6.0"
+foundationVersion = "1.11.4"
+animation = "1.11.4"
+animationCore = "1.11.4"
+pdfCompose = "1.0.0-alpha19"
+pdfViewerFragment = "1.0.0-alpha19"
+[libraries]
+
+accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanistDrawablepainter" }
+androidx-jetbrains-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "jetbrains-material3" }
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+androidx-lifecycle-extensions = { module = "androidx.lifecycle:lifecycle-extensions", version.ref = "lifecycleExtensions" }
+androidx-webkit = { module = "androidx.webkit:webkit", version.ref = "webkit" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
+kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinxCollectionsImmutable" }
+maplibre-sdk-vulkan = {module = "org.maplibre.gl:android-sdk", version.ref = "maplibre-sdk-version"}
+# maplibre-sdk without vulkan (Nokia 1 compatibility)
+maplibre-sdk = {module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre-sdk-version"}
+maplibre-scalebar-plugin = {module = "org.maplibre.gl:android-plugin-scalebar-v9", version.ref="maplibre-scalebar-plugin-version"}
+maplibre-annotations-plugin = {module = "org.maplibre.gl:android-plugin-annotation-v9", version.ref="maplibre-annotation-plugin-version"}
+ramani-maplibre = { module = "org.ramani-maps:ramani-maplibre", version.ref = "ramaniMaplibre" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "preferenceKtxVersion" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-foundation-layout-android = { group = "androidx.compose.foundation", name = "foundation-layout-android", version.ref = "foundationLayoutAndroid" }
+accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
+livedata = { group="androidx.lifecycle", name="lifecycle-livedata-ktx", version.ref="livedata-version"}
+androidx-work-runtime-ktx = {group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntime"}
+androidx-compose-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata" }
+kotlin-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlin-coroutines-play = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "coroutines" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+rxandroid = { module = "io.reactivex.rxjava2:rxandroid", version.ref = "rxandroid" }
+rxjava = { module = "io.reactivex.rxjava2:rxjava", version.ref = "rxjava" }
+googleMapsUtils = { module = "com.google.maps.android:android-maps-utils", version.ref = "googleMapsUtilsVersion" }
+places = { module = "com.google.android.libraries.places:places", version.ref = "places" }
+maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
+text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "textRecognition" }
+timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "composeIconsVersion" }
+compose-material-icons = { group = "androidx.compose.material", name = "material-icons-core" }
+
+androidx-room-compiler-v250 = { module = "androidx.room:room-compiler", version.ref = "roomCompilerVersion" }
+androidx-room-common = { group = "androidx.room", name = "room-common", version.ref = "roomCommon" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
+androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
+androidx-material-android = { group = "androidx.compose.material", name = "material-android", version.ref = "materialAndroid" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4jApi" }
+ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+androidx-animation-core-android = { group = "androidx.compose.animation", name = "animation-core-android", version.ref = "animationCoreAndroid" }
+androidx-foundation-android = { group = "androidx.compose.foundation", name = "foundation-android", version.ref = "foundationAndroid" }
+androidx-fragment-compose = { module = "androidx.fragment:fragment-ktx", version.ref = "fragmentKtx" }
+fragment-compose = { group = "androidx.fragment", name = "fragment-compose", version.ref = "fragmentCompose" }
+androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
+lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycleServiceVersion" }
+play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundationVersion" }
+androidx-compose-animation = { group = "androidx.compose.animation", name = "animation", version.ref = "animation" }
+androidx-compose-animation-core = { group = "androidx.compose.animation", name = "animation-core", version.ref = "animationCore" }
+androidx-pdf-compose = { group = "androidx.pdf", name = "pdf-compose", version.ref = "pdfCompose" }
+androidx-pdf-viewer-fragment = { group = "androidx.pdf", name = "pdf-viewer-fragment", version.ref = "pdfViewerFragment" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+#kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+android-library = { id = "com.android.library", version.ref = "agp" }
