@@ -11,6 +11,7 @@ import timber.log.Timber
 
 /**
  * Project linked to GitHub: https://github.com/almica/ramani 28jul2026
+ * New github repo: https://github.com/alminav/almica_ramani 01aug2026, reoson google api key may not be public
  */
 class App : Application() {
     override fun onCreate() {
