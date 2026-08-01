@@ -99,7 +99,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -1118,7 +1118,7 @@ fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteFilesGroupedListPreview() {
     val sampleRouteEntities = listOf(
@@ -2648,7 +2648,7 @@ private fun MoboSnack(snackRoutesData: SnackRoutesData, finished: (action: Snack
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteFileMoBoSheetPreview() {
     RamaniTheme {
@@ -2662,7 +2662,7 @@ fun RouteFileMoBoSheetPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteFileSaveMoBoSheetPreview() {
     RamaniTheme {
@@ -2673,7 +2673,7 @@ fun RouteFileSaveMoBoSheetPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteFilesItemPreview() {
     RamaniTheme {
@@ -2687,7 +2687,7 @@ fun RouteFilesItemPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteFilesContentPreview() {
     RamaniTheme {
@@ -2699,7 +2699,7 @@ fun RouteFilesContentPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteFilesScreenPreview() {
     RamaniTheme {
@@ -2707,7 +2707,7 @@ fun RouteFilesScreenPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteFilesMoboSnackPreview() {
     RamaniTheme {
@@ -2724,7 +2724,7 @@ fun RouteFilesMoboSnackPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteFilesAskForRouteNameFilterPreview() {
     val sampleRouteEntities = listOf(
@@ -2739,7 +2739,7 @@ fun RouteFilesAskForRouteNameFilterPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteFilesRegionListPreview() {
     val sampleRouteEntities = listOf(

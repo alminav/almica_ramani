@@ -19,6 +19,10 @@ class LiveSharedPreferences(private val _preferences: SharedPreferences) {
         _preferences.registerOnSharedPreferenceChangeListener(listener)
     }
 
+    fun unregister() {
+        _preferences.unregisterOnSharedPreferenceChangeListener(listener)
+    }
+
     fun getString(key: String, defaultValue: String?) =
         LivePreference(updates, _preferences, key, defaultValue)
 

@@ -25,6 +25,7 @@ import android.os.Looper
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -40,6 +41,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.almica.ramani.Const
 import com.almica.ramani.GpsViewModel
+import com.almica.ramani.LocalLiveSharedPreferences
 import com.almica.ramani.R
 import com.almica.ramani.locations.LocationRepository
 import com.almica.room.data.location.LocationDatabase
@@ -52,6 +54,7 @@ import com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.SphericalUtil
 import me.ibrahimsn.library.LiveSharedPreferences
+import androidx.compose.runtime.livedata.observeAsState
 import timber.log.Timber
 import com.almica.ramani.ui.theme.RamaniTheme
 import java.util.Date
@@ -68,7 +71,7 @@ import java.util.concurrent.TimeUnit
 @RequiresApi(Build.VERSION_CODES.S)
 @SuppressLint("MissingPermission")
 @Composable
-fun LocationUpdatesScreen(liveSharedPreferences: LiveSharedPreferences) {
+fun LocationUpdatesScreen() {
     //resetLocations(LocalContext.current)
     val permissions = listOf(
         Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -79,9 +82,7 @@ fun LocationUpdatesScreen(liveSharedPreferences: LiveSharedPreferences) {
         permissions = permissions,
         requiredPermissions = listOf(permissions.first()),
     ) {
-        LocationUpdatesContent(
-            liveSharedPreferences,
-        )
+        LocationUpdatesContent()
     }
 }
 
@@ -91,9 +92,8 @@ fun LocationUpdatesScreen(liveSharedPreferences: LiveSharedPreferences) {
     anyOf = [Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION],
 )
 @Composable
-fun LocationUpdatesContent(
-    liveSharedPreferences: LiveSharedPreferences
-) {
+fun LocationUpdatesContent() {
+    val liveSharedPreferences = LocalLiveSharedPreferences.current
     val context = LocalContext.current
     val locationRepository =
         LocationRepository.getInstance(context, Executors.newSingleThreadExecutor())
@@ -113,9 +113,10 @@ fun LocationUpdatesContent(
             .setMinUpdateDistanceMeters(5f)
             .build()
 
-    val altitudeCorrection =
-        liveSharedPreferences.preferences.getInt(context.getString(R.string.pref_gps_altitude_correction_key),
-            Const.ALTITUDE_CORRECTION)
+    val altitudeCorrection by liveSharedPreferences
+        .getInt(context.getString(R.string.pref_gps_altitude_correction_key), Const.ALTITUDE_CORRECTION)
+        .observeAsState(Const.ALTITUDE_CORRECTION)
+    
     //Timber.i( "${Thread.currentThread().getStackTrace()[2].lineNumber}: altitudeCorrection:$altitudeCorrection")
     var lastRoomLocation by remember { mutableStateOf<Location?>(null) }
     // Only register the location updates effect when we have a request
@@ -274,6 +275,8 @@ fun LocationUpdatesContentPreview() {
     val prefs = context.getSharedPreferences("preview_prefs", Context.MODE_PRIVATE)
     val liveSharedPreferences = LiveSharedPreferences(prefs)
     RamaniTheme {
-        LocationUpdatesContent(liveSharedPreferences = liveSharedPreferences)
+        CompositionLocalProvider(LocalLiveSharedPreferences provides liveSharedPreferences) {
+            LocationUpdatesContent()
+        }
     }
 }

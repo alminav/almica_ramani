@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,14 +19,9 @@ import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import android.content.Context
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +40,7 @@ import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani_lib.CameraPosition
 import me.ibrahimsn.library.LiveSharedPreferences
 import org.maplibre.android.location.modes.CameraMode
+import androidx.compose.runtime.livedata.observeAsState
 import timber.log.Timber
 
 /**
@@ -56,25 +53,31 @@ fun MainCameraModeSwitchButton(
     renderMode: String?,
     setSatStatus: (Boolean) -> Unit,
     setButtonsBottomBar: (Boolean) -> Unit,
-    setRenderMode: (String) -> Unit,
-    liveSharedPreferences: LiveSharedPreferences
+    setRenderMode: (String) -> Unit
 ) {
+    val liveSharedPreferences = LocalLiveSharedPreferences.current
     //Timber.i("toggleButtonsBottomBar: $toggleButtonsBottomBar")
     val resources = LocalResources.current
-    var renderModeMap by remember { mutableStateOf(renderMode) }
+    val renderModeKey = resources.getString(R.string.pref_render_mode)
+    
+    val renderModeMapPref by liveSharedPreferences
+        .getString(renderModeKey, Const.RENDER_MODE_COMPASS)
+        .observeAsState(renderMode ?: Const.RENDER_MODE_COMPASS)
+    
+    var renderModeMap by remember(renderModeMapPref) { mutableStateOf(renderModeMapPref) }
+    
     //Timber.i("renderModeValue: $renderModeMap")
-    var cameraMode by remember { mutableIntStateOf(CameraMode.TRACKING_GPS) }
-    when (renderModeMap) {
-        Const.RENDER_MODE_COMPASS -> {cameraMode = CameraMode.TRACKING_GPS}
-        Const.RENDER_MODE_TRACKING -> {cameraMode = CameraMode.TRACKING_GPS}
-        Const.RENDER_MODE_FREE -> {cameraMode = CameraMode.NONE}
+    var cameraMode by remember(renderModeMap) {
+        mutableIntStateOf(
+            when (renderModeMap) {
+                Const.RENDER_MODE_COMPASS -> CameraMode.TRACKING_GPS
+                Const.RENDER_MODE_TRACKING -> CameraMode.TRACKING_GPS
+                Const.RENDER_MODE_FREE -> CameraMode.NONE
+                else -> CameraMode.TRACKING_GPS
+            }
+        )
     }
-    liveSharedPreferences.getString(resources.getString(R.string.pref_render_mode), Const.RENDER_MODE_COMPASS).observe(LocalLifecycleOwner.current) { value ->
-        if (value != null) {
-            //Timber.i("renderModeValue $value")
-            renderModeMap = value
-        }
-    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.align(alignment = Alignment.BottomCenter)) {
             AnimatedVisibility(
@@ -187,14 +190,15 @@ fun MainCameraModeSwitchButtonPreview() {
     val renderMode: String? = null
 
     RamaniTheme {
-        MainCameraModeSwitchButton(
-            toggleButtonsBottomBar = false,
-            cameraPosition = cameraPosition,
-            renderMode = renderMode,
-            setSatStatus = {},
-            setButtonsBottomBar = {},
-            setRenderMode = {},
-            liveSharedPreferences = liveSharedPreferences
-        )
+        CompositionLocalProvider(LocalLiveSharedPreferences provides liveSharedPreferences) {
+            MainCameraModeSwitchButton(
+                toggleButtonsBottomBar = false,
+                cameraPosition = cameraPosition,
+                renderMode = renderMode,
+                setSatStatus = {},
+                setButtonsBottomBar = {},
+                setRenderMode = {}
+            )
+        }
     }
 }

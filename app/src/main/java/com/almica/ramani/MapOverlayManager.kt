@@ -21,12 +21,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -137,9 +133,6 @@ import java.util.UUID
 import java.util.concurrent.Executors
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.tooling.preview.Preview
 import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.google.android.gms.maps.model.LatLng as GmsLatLng
@@ -154,7 +147,6 @@ fun BoxScope.MapOverlayManager(
     cameraMode: MutableState<Int>,
     userLocation: MutableState<Location>,
     prefMaptypeKey: Int,
-    liveSharedPreferences: LiveSharedPreferences,
     onPopupSnackMsg: (String?) -> Unit,
     onRoutesGeoJsonStringChange: (String?) -> Unit,
     onRenderModeMapChange: (String) -> Unit,
@@ -170,7 +162,6 @@ fun BoxScope.MapOverlayManager(
         cameraMode = cameraMode,
         userLocation = userLocation,
         prefMaptypeKey = prefMaptypeKey,
-        liveSharedPreferences = liveSharedPreferences,
         onPopupSnackMsg = onPopupSnackMsg,
         onRoutesGeoJsonStringChange = onRoutesGeoJsonStringChange,
         onRenderModeMapChange = onRenderModeMapChange,
@@ -212,7 +203,6 @@ fun BoxScope.MapOverlayManagerContent(
     cameraMode: MutableState<Int>,
     userLocation: MutableState<Location>,
     prefMaptypeKey: Int,
-    liveSharedPreferences: LiveSharedPreferences,
     onPopupSnackMsg: (String?) -> Unit,
     onRoutesGeoJsonStringChange: (String?) -> Unit,
     onRenderModeMapChange: (String) -> Unit,
@@ -244,6 +234,7 @@ fun BoxScope.MapOverlayManagerContent(
     setRoutesRegionFilter: (String) -> Unit,
     setRouteInfo: (File?) -> Unit,
 ) {
+    val liveSharedPreferences = LocalLiveSharedPreferences.current
     val context = LocalContext.current
     val resources = LocalResources.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -1070,7 +1061,7 @@ fun BoxScope.MapOverlayManagerContent(
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun MapOverlayManagerPreview() {
     val context = LocalContext.current
@@ -1081,45 +1072,46 @@ fun MapOverlayManagerPreview() {
     val locationCircles = remember { mutableListOf<LatLng>() }
 
     RamaniTheme {
-        Box(modifier = Modifier.fillMaxSize()) {
-            MapOverlayManagerContent(
-                uiState = MainUiState(progressMsg = "Loading maps..."),
-                map = null,
-                cameraPosition = cameraPosition,
-                cameraMode = cameraMode,
-                userLocation = userLocation,
-                prefMaptypeKey = 0,
-                liveSharedPreferences = liveSharedPreferences,
-                onPopupSnackMsg = {},
-                onRoutesGeoJsonStringChange = {},
-                onRenderModeMapChange = {},
-                onUseCyclewayOverlaysChange = {},
-                onToggleButtonsBottomBarChange = {},
-                startTime = 0L,
-                locationCircles = locationCircles,
-                setToggleGeojsonMapVisibility = {},
-                closeOverlay = {},
-                setSelectedFeature = {},
-                setStopPosition = {},
-                setProgress = {},
-                updatePolygon = {},
-                setLoadedRoute = {},
-                setHighlightRoutePoint = {},
-                setRecalcRequired = {},
-                setStopDragged = {},
-                setSnackbar = {},
-                setMapFeatures = {},
-                setOverlay = {},
-                setLogCount = {},
-                setMapManagerPosition = {},
-                setAppRestartRequired = {},
-                setDimmer = {},
-                setGradientRoute = {},
-                setChartRoute = {},
-                addPoiEntity = {},
-                setRouteMonitorState = {},
-                setRoutesRegionFilter = {},
-            ) {}
+        CompositionLocalProvider(LocalLiveSharedPreferences provides liveSharedPreferences) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                MapOverlayManagerContent(
+                    uiState = MainUiState(progressMsg = "Loading maps..."),
+                    map = null,
+                    cameraPosition = cameraPosition,
+                    cameraMode = cameraMode,
+                    userLocation = userLocation,
+                    prefMaptypeKey = 0,
+                    onPopupSnackMsg = {},
+                    onRoutesGeoJsonStringChange = {},
+                    onRenderModeMapChange = {},
+                    onUseCyclewayOverlaysChange = {},
+                    onToggleButtonsBottomBarChange = {},
+                    startTime = 0L,
+                    locationCircles = locationCircles,
+                    setToggleGeojsonMapVisibility = {},
+                    closeOverlay = {},
+                    setSelectedFeature = {},
+                    setStopPosition = {},
+                    setProgress = {},
+                    updatePolygon = {},
+                    setLoadedRoute = {},
+                    setHighlightRoutePoint = {},
+                    setRecalcRequired = {},
+                    setStopDragged = {},
+                    setSnackbar = {},
+                    setMapFeatures = {},
+                    setOverlay = {},
+                    setLogCount = {},
+                    setMapManagerPosition = {},
+                    setAppRestartRequired = {},
+                    setDimmer = {},
+                    setGradientRoute = {},
+                    setChartRoute = {},
+                    addPoiEntity = {},
+                    setRouteMonitorState = {},
+                    setRoutesRegionFilter = {},
+                ) {}
+            }
         }
     }
 }

@@ -42,6 +42,7 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
+import me.ibrahimsn.library.LiveSharedPreferences
 import timber.log.Timber
 import java.io.File
 import java.util.UUID
@@ -99,6 +100,7 @@ data class MainUiState(
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+    val liveSharedPreferences = LiveSharedPreferences(PreferenceManager.getDefaultSharedPreferences(application))
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
@@ -469,6 +471,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         setAppRestartRequired(true)
         setSnackbar(null)
         setToggleButtonsBottomBar(true)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        liveSharedPreferences.unregister()
     }
 
     fun calculateStyleUri(latitude: Double, longitude: Double) {

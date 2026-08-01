@@ -98,7 +98,7 @@ import com.almica.ramani.utils.HgtReader
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
 import com.google.maps.android.SphericalUtil
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.formatDistM
 import com.almica.ramani.utils.getDistanceFromLllh
@@ -1160,7 +1160,7 @@ private fun MoboSnack(snackDbRoutesData: SnackDbRoutesData, finished: (action: S
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteDatabaseItemPreview() {
     val sampleRoute = RouteEntity(
@@ -1179,7 +1179,7 @@ fun RouteDatabaseItemPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteDatabaseGroupedListPreview() {
     val sampleRouteEntities = listOf(
@@ -1197,7 +1197,7 @@ fun RouteDatabaseGroupedListPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteDatabaseMoBoSheetPreview() {
     RamaniTheme {
@@ -1211,7 +1211,7 @@ fun RouteDatabaseMoBoSheetPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun AskForRouteNameFilterPreview() {
     val sampleRouteEntities = listOf(
@@ -1227,7 +1227,7 @@ fun AskForRouteNameFilterPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun MoboSnackPreview() {
     RamaniTheme {
@@ -1243,7 +1243,7 @@ fun MoboSnackPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteDatabaseRegionListPreview() {
     val sampleRouteEntities = listOf(
@@ -1260,7 +1260,7 @@ fun RouteDatabaseRegionListPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteDatabaseContentPreview() {
     RamaniTheme {
@@ -1270,7 +1270,7 @@ fun RouteDatabaseContentPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun RouteDatabaseScreenPreview() {
     RamaniTheme {
@@ -1281,7 +1281,7 @@ fun RouteDatabaseScreenPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@ComposePreview(showBackground = true)
 @Composable
 fun DropdownSrtmFilesPreview() {
     RamaniTheme {

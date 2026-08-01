@@ -64,7 +64,7 @@ fun MainContent(
     val context = LocalContext.current
     val resources = LocalResources.current
     val preferences = remember { getDefaultSharedPreferences(context) }
-    val liveSharedPreferences = remember { LiveSharedPreferences(preferences) }
+    val liveSharedPreferences = viewModel?.liveSharedPreferences ?: remember { LiveSharedPreferences(preferences) }
 
     ClipboardManagerEffect(viewModel)
 
@@ -75,18 +75,19 @@ fun MainContent(
 
     Scaffold { innerPadding ->
         RamaniTheme {
-            Box(modifier = Modifier.padding(innerPadding)) {
-                MainScaffoldContent(
-                    viewModel = viewModel,
-                    uiState = uiState,
-                    localStyleUri = localStyleUri,
-                    startLatLng = startLatLng,
-                    reComposition = reComposition,
-                    mapViewReady = mapViewReady,
-                    preferences = preferences,
-                    liveSharedPreferences = liveSharedPreferences,
-                    resources = resources
-                )
+            CompositionLocalProvider(LocalLiveSharedPreferences provides liveSharedPreferences) {
+                Box(modifier = Modifier.padding(innerPadding)) {
+                    MainScaffoldContent(
+                        viewModel = viewModel,
+                        uiState = uiState,
+                        localStyleUri = localStyleUri,
+                        startLatLng = startLatLng,
+                        reComposition = reComposition,
+                        mapViewReady = mapViewReady,
+                        preferences = preferences,
+                        resources = resources
+                    )
+                }
             }
         }
     }
@@ -119,7 +120,6 @@ fun MainScaffoldContent(
     reComposition: (Boolean, String?, LatLng?) -> Unit,
     mapViewReady: (MapView) -> Unit,
     preferences: android.content.SharedPreferences,
-    liveSharedPreferences: LiveSharedPreferences,
     resources: android.content.res.Resources
 ) {
     val context = LocalContext.current
@@ -262,7 +262,6 @@ fun MainScaffoldContent(
             cameraMode = cameraMode,
             userLocation = userLocation,
             prefMaptypeKey = uiState.prefMaptypeKey,
-            liveSharedPreferences = liveSharedPreferences,
             onPopupSnackMsg = { viewModel?.setPopupSnackMsg(it) },
             onRoutesGeoJsonStringChange = { viewModel?.setRoutesGeoJsonString(it) },
             onRenderModeMapChange = { renderModeMap = it },
@@ -284,7 +283,7 @@ fun MainScaffoldContent(
         }
 
         ChartOverlays(uiState, viewModel, cameraPosition, startTime)
-        LocationUpdatesScreen(liveSharedPreferences)
+        LocationUpdatesScreen()
         if (uiState.activeOverlay != OverlayType.ROUTE_FOLDERS
             && uiState.activeOverlay != OverlayType.POI_DATABASE
             && uiState.activeOverlay != OverlayType.ROUTE_FILES
@@ -303,7 +302,6 @@ fun MainScaffoldContent(
                 onToggleButtonsBottomBarChange = { viewModel?.setToggleButtonsBottomBar(it) },
                 renderModeMap = renderModeMap ?: Const.RENDER_MODE_COMPASS,
                 onRenderModeMapChange = { renderModeMap = it },
-                liveSharedPreferences = liveSharedPreferences,
                 onRecalc = {
                     val llStop = if (uiState.stopDragged && uiState.stopPosition != null)
                         com.google.android.gms.maps.model.LatLng(

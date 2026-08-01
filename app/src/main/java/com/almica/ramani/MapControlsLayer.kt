@@ -14,10 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,7 +46,6 @@ fun BoxScope.MapControlsLayer(
     onToggleButtonsBottomBarChange: (Boolean) -> Unit,
     renderModeMap: String,
     onRenderModeMapChange: (String) -> Unit,
-    liveSharedPreferences: LiveSharedPreferences,
     onRecalc: () -> Unit,
     onRestart: () -> Unit
 ) {
@@ -73,7 +69,6 @@ fun BoxScope.MapControlsLayer(
         mapPositionZoom = mapPositionZoom,
         toggleButtonsBottomBar = toggleButtonsBottomBar,
         renderModeMap = renderModeMap,
-        liveSharedPreferences = liveSharedPreferences,
         setOverlay = { viewModel?.setOverlay(it); Timber.i("setOverlay: ${it.name}") },
         setGpsValueState = { viewModel?.setGpsValueState(it) },
         setSnackbar = { viewModel?.setSnackbar(it) },
@@ -105,7 +100,6 @@ fun BoxScope.MapControlsLayerContent(
     mapPositionZoom: MutableState<Double?>,
     toggleButtonsBottomBar: Boolean,
     renderModeMap: String,
-    liveSharedPreferences: LiveSharedPreferences,
     setOverlay: (OverlayType) -> Unit,
     setGpsValueState: (GpsValue) -> Unit,
     setSnackbar: (MainSnackbarData?) -> Unit,
@@ -233,8 +227,7 @@ fun BoxScope.MapControlsLayerContent(
         renderModeMap,
         setSatStatus = { setOverlay(if (it) OverlayType.SAT_STATUS else OverlayType.NONE) },
         setButtonsBottomBar = onToggleButtonsBottomBarChange,
-        setRenderMode = onRenderModeMapChange,
-        liveSharedPreferences = liveSharedPreferences
+        setRenderMode = onRenderModeMapChange
     )
     //Timber.i("logCount: $logCount")
     MainBottomButtonBar(
@@ -267,36 +260,37 @@ fun MapControlsLayerPreview() {
     val mapPositionZoom = remember { mutableStateOf<Double?>(13.0) }
 
     RamaniTheme {
-        Box(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
-            MapControlsLayerContent(
-                activeOverlay = OverlayType.NONE,
-                gpsValueState = GpsValue.Velocity,
-                logCount = 5,
-                recalcRequired = false,
-                stopDragged = false,
-                mapSwitchOption = null,
-                loadedRouteEntity = null,
-                gradientRouteEntity = null,
-                chartRouteEntity = null,
-                appRestartRequired = false,
-                prefMaptypeKey = 0,
-                map = null, // Can't easily mock MapLibreMap for preview
-                cameraPosition = cameraPosition,
-                mapPositionLatitude = 48.0,
-                mapPositionLongitude = 11.0,
-                mapPositionZoom = mapPositionZoom,
-                toggleButtonsBottomBar = true,
-                renderModeMap = "normal",
-                liveSharedPreferences = liveSharedPreferences,
-                setOverlay = {},
-                setGpsValueState = {},
-                setSnackbar = {},
-                setDimmer = {},
-                onToggleButtonsBottomBarChange = {},
-                onRenderModeMapChange = {},
-                onRecalc = {},
-                onRestart = {}
-            )
+        CompositionLocalProvider(LocalLiveSharedPreferences provides liveSharedPreferences) {
+            Box(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+                MapControlsLayerContent(
+                    activeOverlay = OverlayType.NONE,
+                    gpsValueState = GpsValue.Velocity,
+                    logCount = 5,
+                    recalcRequired = false,
+                    stopDragged = false,
+                    mapSwitchOption = null,
+                    loadedRouteEntity = null,
+                    gradientRouteEntity = null,
+                    chartRouteEntity = null,
+                    appRestartRequired = false,
+                    prefMaptypeKey = 0,
+                    map = null, // Can't easily mock MapLibreMap for preview
+                    cameraPosition = cameraPosition,
+                    mapPositionLatitude = 48.0,
+                    mapPositionLongitude = 11.0,
+                    mapPositionZoom = mapPositionZoom,
+                    toggleButtonsBottomBar = true,
+                    renderModeMap = "normal",
+                    setOverlay = {},
+                    setGpsValueState = {},
+                    setSnackbar = {},
+                    setDimmer = {},
+                    onToggleButtonsBottomBarChange = {},
+                    onRenderModeMapChange = {},
+                    onRecalc = {},
+                    onRestart = {}
+                )
+            }
         }
     }
 }
