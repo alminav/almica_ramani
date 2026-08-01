@@ -39,14 +39,25 @@ The project is organized into several modular components to ensure separation of
 
 - Android Studio Koala (2024.1.1) or newer.
 - Android SDK 28+ (Min SDK 28).
-- A valid Google Maps API Key (configured in `AndroidManifest.xml`).
+- A valid Google Maps API Key.
 
 ### Build Configuration
 
-The project supports configurable rendering backends. By default, it uses OpenGL. You can configure this in `gradle.properties`:
+#### API Key Security
+This project uses a `secrets.xml` file to store sensitive keys. This file is excluded from Git.
+1. Create `app/src/main/res/values/secrets.xml` if it doesn't exist.
+2. Add your key:
+   ```xml
+   <resources>
+       <string name="google_maps_key" translatable="false">YOUR_API_KEY_HERE</string>
+   </resources>
+   ```
+
+#### Rendering Backend
+The project supports configurable rendering backends for MapLibre (critical for older devices like Nokia 1). Configure this in `gradle.properties`:
 
 ```properties
-ramani.render.useOpenGL=true
+ramani.render.useOpenGL=false # Set to true for OpenGL, false for Vulkan
 ```
 
 To build the debug APK:
