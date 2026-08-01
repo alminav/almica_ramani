@@ -89,7 +89,7 @@
             android:process=":androidx.pdf.service.PdfDocumentServiceImpl" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyD3i7HcguIVj2fWH9H_syOc2zjQM6n2zLc"/>
+            android:value="@string/google_maps_key"/>
         <uses-library
             android:name="org.apache.http.legacy"
             android:required="false" />
