@@ -70,7 +70,7 @@ To build the debug APK:
 This project is proprietary. All rights reserved.
 
 <p align="center">
-      <img width="360" height="806" alt="Screenshot_20260730-143821" src="https://github.com/user-attachments/assets/380e453d-d530-45de-b3b7-eb1264d5b728" />
+      <img width="25%" alt="Screenshot_20260730-143821" src="https://github.com/user-attachments/assets/380e453d-d530-45de-b3b7-eb1264d5b728" />
 &nbsp; &nbsp; &nbsp; &nbsp;
-      <img width="360" height="806" alt="Screenshot_20260801-181922" src="https://github.com/alminav/almica_ramani/blob/master/pictures/Screenshot_20260801-181922.png" />  
+      <img width="25%" alt="Screenshot_20260801-181922" src="https://github.com/alminav/almica_ramani/blob/master/pictures/Screenshot_20260801-181922.png" />  
 </p>
