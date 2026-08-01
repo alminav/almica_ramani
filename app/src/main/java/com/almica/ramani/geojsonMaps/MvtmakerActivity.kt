@@ -75,13 +75,13 @@ import com.almica.ramani.ListMvtDriveEntries
 import com.almica.ramani.R
 import com.almica.ramani.filepicker.FileImportActivity
 import com.almica.ramani.filepicker.FileType
-import com.almica.ramani.formatLatLngShort
 import com.almica.ramani.googlemaps.NewMapAction
 import com.almica.ramani.googlemaps.UpdateCoordinateOverlay
 import com.almica.ramani.utils.BackPressHandler
 import com.almica.ramani.utils.DriveSharedLinks
 import com.almica.ramani.utils.GeoJsonUtils
 import com.almica.ramani.utils.MoboConfirmation
+import com.almica.ramani.utils.formatLatLngShort
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker

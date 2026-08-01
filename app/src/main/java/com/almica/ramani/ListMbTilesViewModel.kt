@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import com.almica.ramani.tilemaker.MbtilesDatabase
+import com.almica.ramani.utils.getBitmapForRegion
 import com.almica.ramani.utils.simpleStringWithTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

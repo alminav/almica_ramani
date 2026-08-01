@@ -93,8 +93,6 @@ import com.almica.ramani.R
 import com.almica.ramani.StyleExpressionsJson
 import com.almica.ramani.geojsonMaps.GeojsonMapEntity
 import com.almica.ramani.geojsonMaps.GeojsonMapRepository
-import com.almica.ramani.getRasterRegionNames
-import com.almica.ramani.getRegionName
 import com.almica.ramani.readToString
 import com.almica.ramani.routes.RouteEntity
 import com.almica.ramani.routes.RouteRepository

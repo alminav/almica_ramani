@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -75,16 +76,15 @@ import com.almica.ramani.ListRasterDriveEntries
 import com.almica.ramani.R
 import com.almica.ramani.filepicker.FileImportActivity
 import com.almica.ramani.filepicker.FileType
-import com.almica.ramani.formatLatLngShort
 import com.almica.ramani.googlemaps.CreateMbTileRegion
 import com.almica.ramani.googlemaps.MaptypeMenu
 import com.almica.ramani.googlemaps.NewMapAction
 import com.almica.ramani.googlemaps.UpdateCoordinateOverlay
 import com.almica.ramani.ui.theme.RamaniTheme
-import com.almica.ramani.utils.BackPressHandler
 import com.almica.ramani.utils.DriveSharedLinks
 import com.almica.ramani.utils.GeoJsonUtils
 import com.almica.ramani.utils.MoboConfirmation
+import com.almica.ramani.utils.formatLatLngShort
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
@@ -103,15 +103,9 @@ import java.io.File
 class TilemakerActivity : ComponentActivity() {
     private val viewModel: TilemakerViewModel by viewModels()
 
-    @SuppressLint("LocalContextGetResourceValueCall")
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        val startLat = intent.getDoubleExtra(Const.EXTRA_LATITUDE, -1.0)
-        val startLon = intent.getDoubleExtra(Const.EXTRA_LONGITUDE, -1.0)
-        viewModel.setInitialLocation(startLat, startLon)
 
         setContent {
             TilemakerScreen(viewModel = viewModel, onFinish = {
@@ -122,7 +116,6 @@ class TilemakerActivity : ComponentActivity() {
     }
 }
 
-@SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TilemakerScreen(
@@ -134,6 +127,8 @@ fun TilemakerScreen(
     val clipboardManager = LocalClipboard.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
+    val importTitle = stringResource(R.string.import_title)
+    val deleteConfirmation = stringResource(R.string.confirmation_question)
 
     LaunchedEffect(uiState.clipText) {
         uiState.clipText?.let { text ->
@@ -152,8 +147,8 @@ fun TilemakerScreen(
         }
     }
 
-    BackPressHandler {
-        Timber.i("Back Press intercepted")
+    BackHandler {
+        Timber.i("Back Handler intercepted")
         onFinish()
     }
 
@@ -173,13 +168,13 @@ fun TilemakerScreen(
                     viewModel.setClipText(uiState.regionName)
                     context.startActivity(
                         Intent(context, FileImportActivity::class.java)
-                            .setAction(context.getString(R.string.import_title))
+                            .setAction(importTitle)
                             .putExtra(Const.EXTRA_FILETYPE, FileType.MbTiles.name)
                     )
                 },
                 onActivate = { viewModel.toggleTileActivation(uiState.regionName, true) },
                 onDeactivate = { viewModel.toggleTileActivation(uiState.regionName, false) },
-                onDelete = { viewModel.setMoboDeleteConfirmation(context.getString(R.string.confirmation_question)) }
+                onDelete = { viewModel.setMoboDeleteConfirmation(deleteConfirmation) }
             )
         }
     ) { innerPadding ->
@@ -221,7 +216,6 @@ fun TilemakerTopBar(
     )
 }
 
-@SuppressLint("LocalContextGetResourceValueCall")
 @Composable
 fun TilemakerBottomBar(
     uiState: TilemakerUiState,
@@ -231,12 +225,6 @@ fun TilemakerBottomBar(
     onDeactivate: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val context = LocalContext.current
-    val driveMap = DriveSharedLinks.Companion.RasterMaps().list
-    val rootFolder = context.filesDir
-    val mbTilesRootFolder = File(rootFolder, Const.MBTILES_FOLDER)
-    val checkRegionPath = "${mbTilesRootFolder.path}/${uiState.regionName}${Const.MBTILES_EXT}"
-
     BottomAppBar(
         actions = {
             AnimatedVisibility(visible = !uiState.fileNames.contains(uiState.regionName)) {
@@ -244,28 +232,23 @@ fun TilemakerBottomBar(
                     Text(text = stringResource(R.string.create))
                 }
             }
-            AnimatedVisibility(
-                visible = driveMap.keys.contains(uiState.regionName + Const.MBTILES_EXT) && 
-                        !uiState.fileNames.contains(uiState.regionName)
-            ) {
+            AnimatedVisibility(visible = uiState.canImportFromDrive) {
                 TextButton(onClick = onImport) {
                     Text(text = stringResource(R.string.import_from_drive))
                 }
             }
-            AnimatedVisibility(visible = uiState.tilesPrefSet.contains(checkRegionPath)) {
-                Text(text = context.getString(R.string._is_active, uiState.regionName.replace(Const.MBTILES_EXT, "")))
+            AnimatedVisibility(visible = uiState.isTileActive) {
+                Text(text = stringResource(R.string._is_active, uiState.regionName.replace(Const.MBTILES_EXT, "")))
             }
             AnimatedVisibility(
-                visible = uiState.fileNames.contains(uiState.regionName) && 
-                        !uiState.tilesPrefSet.contains(checkRegionPath)
+                visible = uiState.fileNames.contains(uiState.regionName) && !uiState.isTileActive
             ) {
                 TextButton(onClick = onActivate) {
                     Text(text = stringResource(R.string.activate))
                 }
             }
             AnimatedVisibility(
-                visible = uiState.fileNames.contains(uiState.regionName) && 
-                        uiState.tilesPrefSet.contains(checkRegionPath)
+                visible = uiState.fileNames.contains(uiState.regionName) && uiState.isTileActive
             ) {
                 TextButton(onClick = onDeactivate) {
                     Text(text = stringResource(R.string.deactivate))
@@ -280,7 +263,6 @@ fun TilemakerBottomBar(
     )
 }
 
-@SuppressLint("LocalContextGetResourceValueCall")
 @Composable
 fun TilemakerContent(
     innerPadding: PaddingValues,
@@ -288,6 +270,7 @@ fun TilemakerContent(
     viewModel: TilemakerViewModel
 ) {
     val context = LocalContext.current
+    val importTitle = stringResource(R.string.import_title)
     val cameraPositionState = rememberCameraPositionState {
         uiState.startLocation?.let {
             position = CameraPosition.fromLatLngZoom(it, uiState.zoom.toFloat())
@@ -336,7 +319,7 @@ fun TilemakerContent(
                 import = {
                     context.startActivity(
                         Intent(context, FileImportActivity::class.java)
-                            .setAction(context.getString(R.string.import_title))
+                            .setAction(importTitle)
                             .putExtra(Const.EXTRA_FILETYPE, FileType.MbTiles.name)
                     )
                 }

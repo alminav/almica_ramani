@@ -3,6 +3,7 @@ package com.almica.ramani.geojsonMaps
 import android.app.Application
 import android.content.ClipData
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import com.almica.ramani.Const
@@ -40,10 +41,16 @@ data class TilemakerUiState(
     val progressCreateTilename: String? = null,
     val progressCreateValue: Int = 0,
     val clipText: String? = null,
-    val startLocation: LatLng? = null
+    val startLocation: LatLng? = null,
+    val isTileActive: Boolean = false,
+    val canImportFromDrive: Boolean = false,
+    val checkRegionPath: String = ""
 )
 
-class TilemakerViewModel(application: Application) : AndroidViewModel(application) {
+class TilemakerViewModel(
+    application: Application,
+    private val savedStateHandle: SavedStateHandle
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(TilemakerUiState())
     val uiState: StateFlow<TilemakerUiState> = _uiState.asStateFlow()
@@ -54,22 +61,20 @@ class TilemakerViewModel(application: Application) : AndroidViewModel(applicatio
     private val driveMap = DriveSharedLinks.Companion.RasterMaps().list
 
     init {
-        updateRegionNameAndBounds()
-        refreshFileData()
-    }
-
-    fun setInitialLocation(lat: Double, lon: Double) {
+        val lat = savedStateHandle.get<Double>(Const.EXTRA_LATITUDE) ?: -1.0
+        val lon = savedStateHandle.get<Double>(Const.EXTRA_LONGITUDE) ?: -1.0
         if (lat >= 0 && lon >= 0) {
             val tile = GeoJsonUtils.pointToTile(lon, lat, _uiState.value.zoom.toDouble())
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
-                    x = tile.x, 
+                    x = tile.x,
                     y = tile.y,
                     startLocation = LatLng(lat, lon)
-                ) 
+                )
             }
-            updateRegionNameAndBounds()
         }
+        updateRegionNameAndBounds()
+        refreshFileData()
     }
 
     fun refreshFileData() {
@@ -94,6 +99,23 @@ class TilemakerViewModel(application: Application) : AndroidViewModel(applicatio
                     tilesPrefSet = tilesPrefSet as Set<String>
                 )
             }
+            updateComputedState()
+        }
+    }
+
+    private fun updateComputedState() {
+        val state = _uiState.value
+        val checkRegionPath = "${mbTilesRootFolder.path}/${state.regionName}${Const.MBTILES_EXT}"
+        val isTileActive = state.tilesPrefSet.contains(checkRegionPath)
+        val canImportFromDrive = driveMap.keys.contains(state.regionName + Const.MBTILES_EXT) &&
+                !state.fileNames.contains(state.regionName)
+
+        _uiState.update {
+            it.copy(
+                checkRegionPath = checkRegionPath,
+                isTileActive = isTileActive,
+                canImportFromDrive = canImportFromDrive
+            )
         }
     }
 
@@ -113,6 +135,7 @@ class TilemakerViewModel(application: Application) : AndroidViewModel(applicatio
         val regionName = "tile_${state.x}_${state.y}_${state.zoom}_${state.mapType}"
         val bounds = GeoJsonUtils.tileToBounds(tile)
         _uiState.update { it.copy(regionName = regionName, bounds = bounds) }
+        updateComputedState()
     }
 
     fun setMapLoaded(loaded: Boolean) {

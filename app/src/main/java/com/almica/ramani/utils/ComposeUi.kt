@@ -61,7 +61,6 @@ import com.almica.ramani.R
 import com.almica.ramani.RasterMapsItems
 import com.almica.ramani.geojsonMaps.GeojsonMapEntity
 import com.almica.ramani.geojsonMaps.GeojsonMapRepository
-import com.almica.ramani.getOfflineRegions
 import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.pois.PoiRepository

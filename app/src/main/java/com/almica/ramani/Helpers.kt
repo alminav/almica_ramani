@@ -28,6 +28,7 @@ import com.almica.ramani.routes.AlminavInstruction
 import com.almica.ramani.routes.RouteNearestPointResult
 import com.almica.ramani.utils.GeoJsonUtils
 import com.almica.ramani.utils.OrsRouting
+import com.almica.ramani.utils.getRasterRegionNames
 import com.almica.ramani.utils.createFeatureString
 import com.almica.ramani.utils.formatDistM
 import com.almica.ramani.utils.getDistanceFromLllh
