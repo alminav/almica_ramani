@@ -191,7 +191,7 @@ object MapUtils {
             }
     }
 
-    //maps.googleapis.com/maps/api/elevation/json?locations=enc:gfo}EtohhUxD@bAxJmGF&key=AIzaSyD3i7HcguIVj2fWH9H_syOc2zjQM6n2zLc
+    //maps.googleapis.com/maps/api/elevation/json?locations=enc:gfo}EtohhUxD@bAxJmGF&key=...
     // locations=40.714728,-73.998672
     fun gmsElevationService(context: Context, locations: String,
                             finished: (lllh: ArrayList<LatLngH>) -> Unit) {
@@ -257,7 +257,7 @@ object MapUtils {
         }
     }
     /*
-        https://maps.googleapis.com/maps/api/directions/json?origin=52.32531,10.37146&destination=52.33621,10.32585&mode=bicycling&key=AIzaSyD3i7HcguIVj2fWH9H_syOc2zjQM6n2zLc
+        https://maps.googleapis.com/maps/api/directions/json?origin=52.32531,10.37146&destination=52.33621,10.32585&mode=bicycling&key=...
         driving (default) indicates standard driving directions or distance using the road network.
         walking requests walking directions or distance via pedestrian paths & sidewalks (where available).
         bicycling requests bicycling directions or distance via bicycle paths & preferred streets (where available).
