@@ -1,4 +1,4 @@
-# Ramani
+# Almica-Ramani
 
 Ramani is a powerful mapping and navigation application for Android, designed to provide comprehensive geospatial features with a focus on flexibility, offline capabilities, and data visualization.
 
