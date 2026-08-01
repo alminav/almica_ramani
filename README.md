@@ -69,6 +69,8 @@ To build the debug APK:
 ## 📄 License
 This project is proprietary. All rights reserved.
 
+## 📸 Screenshots
+
 <p align="center">
       <img width="25%" alt="Screenshot_20260730-143821" src="https://github.com/user-attachments/assets/380e453d-d530-45de-b3b7-eb1264d5b728" />
 &nbsp; &nbsp; &nbsp; &nbsp;
