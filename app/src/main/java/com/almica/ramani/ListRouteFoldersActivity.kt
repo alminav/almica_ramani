@@ -303,8 +303,8 @@ class ListRouteFoldersActivity : ComponentActivity() {
                     Timber.i("finish routeFile = null")
                 }, alert = { msg ->
                     Timber.i("alert: ${selectedFile.name}")
-                    if (selectedFile.extension != Const.GEOJSON_EXT.replace(".", ""))
-                        alertExifMsgPair = Pair(msg, selectedFile)
+                    //if (selectedFile.extension != Const.GEOJSON_EXT.replace(".", ""))
+                    alertExifMsgPair = Pair(msg, selectedFile)
                     routeFile = null
                 }, share = {
                     shareRouteSnapshot(context, selectedFile)
@@ -393,6 +393,7 @@ class ListRouteFoldersActivity : ComponentActivity() {
 }
 
 private suspend fun takeGeojsonSnapshot(context: Context, geojsonFile: File, override: Boolean = false): Boolean {
+    Timber.i("takeGeojsonSnapshot: ${geojsonFile.path}")
     val thumbnailsFolder = File(context.filesDir, Const.THUMBNAILS)
     val snapshotFile = File(thumbnailsFolder, geojsonFile.name.replace(Const.GEOJSON_EXT, Const.JPG_EXT))
     if (snapshotFile.exists() && !override) return true

@@ -396,6 +396,7 @@ internal suspend fun createOverviewSnapshot(
                     .withLogo(false) // no effect
 
             )
+            Timber.i("mapSnapshotter.start")
             mapSnapshotter.start({ snapshot ->
                 CoroutineScope(Dispatchers.IO).launch {
                     // We call writeSnapshotToFile to ensure the thumbnail exists for other app features
