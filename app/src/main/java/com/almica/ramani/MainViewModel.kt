@@ -315,7 +315,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun setLogCount(count: Int) {
-        Timber.i("setLogCount: $count")
+        //Timber.i("setLogCount: $count")
         _uiState.update { it.copy(logCount = count) }
     }
 

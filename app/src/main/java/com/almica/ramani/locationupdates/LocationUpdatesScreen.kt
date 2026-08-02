@@ -57,6 +57,7 @@ import me.ibrahimsn.library.LiveSharedPreferences
 import androidx.compose.runtime.livedata.observeAsState
 import timber.log.Timber
 import com.almica.ramani.ui.theme.RamaniTheme
+import com.almica.room.data.location.format
 import java.util.Date
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -183,7 +184,7 @@ fun LocationUpdatesContent() {
                         recordedAt = Date(currentLocation.time)
                     )
                     locationRepository.addLocation(locationEntity)
-                    Timber.i( "addLocation: ${Date(currentLocation.time)}")
+                    Timber.i( "addLocation: ${Date(currentLocation.time)} ${currentLocation.speed.format(1)}m/s")
                 }
             }
         }

@@ -118,7 +118,7 @@ fun MainMapView(
             Polyline(points = linePoints, color = "CYAN", lineWidth = 3f)
         }
 
-        Timber.i("locationCircles: ${locationCircles.size}")
+        //Timber.i("locationCircles: ${locationCircles.size}")
         LaunchedEffect(locationCircles.size) {
             onLogCountChange(locationCircles.size)
         }
@@ -130,7 +130,7 @@ fun MainMapView(
                 opacity = 0.5f, borderWidth = if (index % 20 == 0) 1f else 0F)
         }
 
-        Timber.i("poiEntities: ${poiEntities.size}")
+        //Timber.i("poiEntities: ${poiEntities.size}")
         poiEntities.forEach { poi ->
             val dynamicRadius = (cameraPosition.value.zoom?.toFloat() ?: 10f) * 1.0f
             //Timber.i("dynamicRadius: $dynamicRadius")
