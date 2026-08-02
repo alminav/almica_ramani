@@ -302,7 +302,9 @@ class ListRouteFoldersActivity : ComponentActivity() {
                     routeFile = null
                     Timber.i("finish routeFile = null")
                 }, alert = { msg ->
-                    alertExifMsgPair = Pair(msg, selectedFile)
+                    Timber.i("alert: ${selectedFile.name}")
+                    if (selectedFile.extension != Const.GEOJSON_EXT.replace(".", ""))
+                        alertExifMsgPair = Pair(msg, selectedFile)
                     routeFile = null
                 }, share = {
                     shareRouteSnapshot(context, selectedFile)
@@ -357,7 +359,7 @@ class ListRouteFoldersActivity : ComponentActivity() {
                     finish()
                 },
                 onRouteSelected = { file ->
-                    Timber.i("routeFile: ${file.path}")
+                    Timber.i("onRouteSelected routeFile: ${file.path}")
                     file.let {
                         if (file.exists())
                             routeFile = file
