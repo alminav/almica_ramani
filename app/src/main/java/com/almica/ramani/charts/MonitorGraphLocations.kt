@@ -156,8 +156,8 @@ internal fun MonitorGraphLocations(
     val longitudeModel = GpsViewModel.longitude.collectAsState()
     val speedModel = GpsViewModel.speed.collectAsState()
     //Timber.i("speedModel.value: ${speedModel.value} ${GpsViewModel.time}")
-    locationSpeed = speedModel.value //.times(3.6f)
-    Timber.i("locationSpeed: $locationSpeed")
+    locationSpeed = speedModel.value.times(3.6f)
+    //Timber.i("locationSpeed: $locationSpeed")
     val timeModel = GpsViewModel.time.collectAsState()
     locationTime = timeModel.value
     val bearingModel = GpsViewModel.bearing.collectAsState()
