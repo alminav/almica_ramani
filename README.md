@@ -69,6 +69,9 @@ To build the debug APK:
 ## 📄 License
 This project is proprietary. All rights reserved.
 
+<p align="center">
+ <a href="https://github.com/alminav/almica_ramani/releases"><img alt="GitHub" src="https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png" height="40"/></a>
+</p>>
 ## 📸 Screenshots
 
 <p align="center">
