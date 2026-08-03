@@ -73,7 +73,11 @@ This project is proprietary. All rights reserved.
 
 <p align="left">
  <a href="https://github.com/alminav/almica_ramani/releases"><img alt="GitHub" src="https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png" height="80"/></a>
-</p>>
+</p>
+# ✉️ Contact
+
+For any questions or feedback, feel free to open an issue on GitHub or contact
+alt.micha@gmail.com
 ## 📸 Screenshots
 
 <p align="center">
