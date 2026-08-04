@@ -70,10 +70,10 @@ To build the debug APK:
 This project is proprietary. All rights reserved.
 
 ## 📥 Download Apk
+<div style="text-align: center;">
 
-<p align="left">
- <a href="https://github.com/alminav/almica_ramani/releases"><img alt="GitHub" src="https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png" height="80"/></a>
-</p>
+![GitHub](https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png "GitHub")
+</div>
 
 ## ✉️ Contact
 
