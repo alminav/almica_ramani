@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +36,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Share
@@ -79,9 +83,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.lifecycleScope
 import com.almica.ramani.BuildConfig
 import com.almica.ramani.Const
 import com.almica.ramani.R
@@ -101,12 +102,21 @@ import java.io.InputStream
 import java.util.Objects
 import java.util.concurrent.Executors
 import androidx.compose.ui.tooling.preview.Preview
+import com.almica.ramani.RouteGeojsonList
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.formatDistM
 import com.almica.ramani.utils.getDistanceFromLllh
 import com.almica.ramani.utils.kmlString2Lllh
+import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 //private const val logtag = "RoutesGeojsonScreen"
+sealed class RouteGeojsonOverlay {
+    data class MoBo(val entity: RouteEntity) : RouteGeojsonOverlay()
+    data class Chart(val entity: RouteEntity) : RouteGeojsonOverlay()
+    data class Gradient(val entity: RouteEntity) : RouteGeojsonOverlay()
+}
+
 @SuppressLint("UnrememberedMutableState", "UnusedMaterial3ScaffoldPaddingParameter",
     "LocalContextGetResourceValueCall", "BinaryOperationInTimber", "MutableCollectionMutableState"
 )
@@ -127,78 +137,80 @@ fun RoutesGeojsonScreen(
         }
     )
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    //var routeEntity by remember { mutableStateOf<RouteEntity?>(null) }
-    var showRouteMoBo by remember { mutableStateOf<RouteEntity?>(null) }
-    var showRouteChart by remember { mutableStateOf<RouteEntity?>(null) }
-    var showRouteGradient by remember { mutableStateOf<RouteEntity?>(null) }
+
+    var activeOverlay by remember { mutableStateOf<RouteGeojsonOverlay?>(null) }
+    var showGeojsonList by remember { mutableStateOf(false) }
     var askForNameFilter by remember { mutableStateOf(false) }
-    var routeEntities by remember { mutableStateOf< MutableList<RouteEntity>>(mutableListOf())}
-    var routeEntitiesSorted by remember { mutableStateOf<MutableList<RouteEntity>> (arrayListOf()) }
+    var routeEntities by remember { mutableStateOf<List<RouteEntity>>(emptyList()) }
+    var routeEntitiesSorted by remember { mutableStateOf<List<RouteEntity>>(emptyList()) }
     var notifyDataChanged by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
-    //var minimalDialogText by remember { mutableStateOf<String?>(null) }
     var snackGeojsonRoutesData by remember { mutableStateOf<SnackGeojsonRoutesData?>(null) }
     var moboMessage: String? by remember { mutableStateOf(null) }
-    val rootRouteFolder = File(LocalContext.current.filesDir, Const.ROUTEFOLDER)
+    val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
     val fileGeojson = File(rootRouteFolder, "routes${Const.GEOJSON_EXT}")
     var fileGeojsonExits by remember { mutableStateOf(fileGeojson.exists()) }
-    LaunchedEffect(key1 = snackGeojsonRoutesData) {
-        Timber.i( "LaunchedEffect snackGeojsonRoutesData")
-        delay(5000)
-        snackGeojsonRoutesData = null
-    }
-    if (importedFileUri != Uri.EMPTY) {
-        Timber.i("selectedFileUri $importedFileUri")
-        val takeFlags: Int =
-            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 
-        // Check if the URI can be granted persistable permissions
-        val takeFlagsSupported =
-            DocumentsContract.isDocumentUri(context, importedFileUri)
-        if (takeFlagsSupported) {
-                LocalContext.current.contentResolver.takePersistableUriPermission(
-                    importedFileUri, takeFlags
-                )
-                var contentSchemeNameAndSize: Pair<String, Int>? =
-                    LocalContext.current.contentResolver.query(importedFileUri, null, null, null, null)
-                        ?.use { cursor ->
-                            if (!cursor.moveToFirst()) return@use null
-                            val name =
-                                cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                            val size = cursor.getColumnIndex(OpenableColumns.SIZE)
-                            cursor.getString(name) to cursor.getInt(size)
-                        }
-                if (contentSchemeNameAndSize != null) {
-                    val filename = contentSchemeNameAndSize.first
-                    Timber.i( "import: $filename")
-                    saveFile(context, importedFileUri, filename)
-                    //minimalDialogText = context.getString(R.string.import_ready_, filename)
-                    snackGeojsonRoutesData = SnackGeojsonRoutesData(context.getString(R.string.import_ready_, filename),
-                        SnackGeojsonRoutesAction.Nothing, null, null)
-                    notifyDataChanged = true
-                    fileGeojsonExits = fileGeojson.exists()
-                    importedFileUri = Uri.EMPTY
-                    contentSchemeNameAndSize = null
-                    //selectRoute(null, RouteMenu.Home)
-                }
+    LaunchedEffect(snackGeojsonRoutesData) {
+        if (snackGeojsonRoutesData != null) {
+            Timber.i("LaunchedEffect snackGeojsonRoutesData")
+            delay(5000.milliseconds)
+            snackGeojsonRoutesData = null
         }
     }
+
+    LaunchedEffect(importedFileUri) {
+        if (importedFileUri != Uri.EMPTY) {
+            Timber.i("selectedFileUri $importedFileUri")
+            val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+
+            if (DocumentsContract.isDocumentUri(context, importedFileUri)) {
+                context.contentResolver.takePersistableUriPermission(importedFileUri, takeFlags)
+                val contentSchemeName = withContext(Dispatchers.IO) {
+                    context.contentResolver.query(importedFileUri, null, null, null, null)?.use { cursor ->
+                        if (!cursor.moveToFirst()) return@use null
+                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        cursor.getString(nameIndex)
+                    }
+                }
+
+                if (contentSchemeName != null) {
+                    Timber.i("import: $contentSchemeName")
+                    withContext(Dispatchers.IO) {
+                        saveFile(context, importedFileUri, contentSchemeName)
+                    }
+                    snackGeojsonRoutesData = SnackGeojsonRoutesData(
+                        context.getString(R.string.import_ready_, contentSchemeName),
+                        SnackGeojsonRoutesAction.Nothing, null, null
+                    )
+                    notifyDataChanged = true
+                    fileGeojsonExits = fileGeojson.exists()
+                }
+                importedFileUri = Uri.EMPTY
+            }
+        }
+    }
+
+    LaunchedEffect(notifyDataChanged, fileGeojsonExits) {
+        if (notifyDataChanged && fileGeojsonExits) {
+            val routes = withContext(Dispatchers.IO) {
+                GeoJsonUtils.getRouteEntitiesFromGeojson(context, null)
+                    .sortedBy { it.region + it.name }
+            }
+            routeEntities = routes
+            routeEntitiesSorted = routes
+            notifyDataChanged = false
+            Timber.i("routeEntities ${routes.size}")
+        }
+    }
+
     BackHandler {
-        scope.launch {
-            Timber.i("")
-            if (snackGeojsonRoutesData != null)
-                snackGeojsonRoutesData = null
-//            if (minimalDialogText != null)
-//                minimalDialogText = null
-            Timber.i("")
-            //(context as Activity).finish()
-            if (showRouteGradient.isNotNull())
-                showRouteGradient = null
-            else if (showRouteChart.isNotNull())
-                showRouteChart = null
-            else
-                selectRoute(null, RouteMenu.Home)
+        if (snackGeojsonRoutesData != null) {
+            snackGeojsonRoutesData = null
+        } else if (activeOverlay != null) {
+            activeOverlay = null
+        } else {
+            selectRoute(null, RouteMenu.Home)
         }
     }
     Scaffold(
@@ -206,261 +218,185 @@ fun RoutesGeojsonScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(
-                        onClick = {
-                            selectRoute(null, RouteMenu.Home)
-                            //ScreenRouter.navigateHome()
-                            Timber.i("navigateHome")
-                        }
+                        onClick = { selectRoute(null, RouteMenu.Home) }
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Go back home"
                         )
                     }
-                }, title = {
+                },
+                title = {
                     Text(text = stringResource(R.string.geojson), fontSize = 18.sp)
-                }, actions = {
+                },
+                actions = {
                     if (fileGeojsonExits) {
-                        IconButton(onClick = { askForNameFilter = true })
-                        {
+                        IconButton(onClick = { askForNameFilter = true }) {
                             Icon(
                                 painterResource(R.drawable.outline_filter_alt_24),
                                 "filter",
                                 modifier = Modifier
-                                    .padding(end = 10.dp, start = 10.dp)
-                                    .width(60.dp)
-                                    .height(60.dp)
+                                    .padding(horizontal = 10.dp)
+                                    .size(60.dp)
                             )
                         }
-                        IconButton(onClick = {
-                            shareFile(context, fileGeojson)
-                        })
-                        {
+                        IconButton(onClick = { shareFile(context, fileGeojson) }) {
                             Icon(
                                 Icons.Outlined.Share,
                                 "share",
                                 modifier = Modifier
-                                    .padding(end = 10.dp, start = 10.dp)
-                                    .width(60.dp)
-                                    .height(60.dp)
+                                    .padding(horizontal = 10.dp)
+                                    .size(60.dp)
                             )
                         }
                         IconButton(onClick = {
                             fileGeojson.delete()
                             fileGeojsonExits = fileGeojson.exists()
-                        })
-                        {
+                            notifyDataChanged = true
+                        }) {
                             Icon(
                                 Icons.Outlined.Refresh,
                                 "notifyDataChanged",
                                 modifier = Modifier
-                                    .padding(end = 10.dp, start = 10.dp)
-                                    .width(60.dp)
-                                    .height(60.dp)
+                                    .padding(horizontal = 10.dp)
+                                    .size(60.dp)
                             )
                         }
-                    }
-                })
-
-        }) { _ ->
-        snackGeojsonRoutesData?.let {
-            //MinimalDialog(it) { minimalDialogText = null }
-            MoboSnack(snackGeojsonRoutesData!!) {action ->
-                when(action) {
-                    SnackGeojsonRoutesAction.Nothing -> {}
-                    SnackGeojsonRoutesAction.RemoveRegion -> {}
-                }
-            }
-        }
-        if (notifyDataChanged) {
-            if (fileGeojsonExits) {
-                RouteGeojsonContent(
-                    context, lifecycleOwner,
-                    initialize = { routes ->
-                        if (!routes.isNullOrEmpty()) {
-                            routeEntities = routes.toMutableList()
-                            //routeEntitiesSorted = routes.toMutableList()
-                            routeEntitiesSorted =
-                                routeEntities.sortedBy { entity -> entity.region.plus(entity.name) }
-                                    .toMutableList()
-                            notifyDataChanged = false
-                            Timber.i("routeEntities ${routeEntities.size}")
-                        } else
-                            Timber.e("routes isNullOrEmpty")
-                    }
-                )
-            }
-        }
-        if (fileGeojsonExits) {
-            RouteGeojsonGroupedList(
-                routeEntitiesSorted,
-                selectRoute = { route, action ->
-                    if (route != null) {
-                        Timber.i(
-                            "action:${action.name} " + "${route.name} ${route.region}"
-                        )
-                        when (action) {
-                            RouteEntityItemAction.Select -> {
-                                //routeEntity = route
-                                showRouteMoBo = route
-                                Timber.i(
-                                    "${route.name}  ${route.kmlString.length}"
-                                )
-                                showRouteChart = null
-                            }
-
-                            RouteEntityItemAction.Map -> {
-                                Timber.i("$action ${route.name}")
-                                selectRoute(route, RouteMenu.Map)
-                            }
-
-                            RouteEntityItemAction.Hide -> {}
-                            RouteEntityItemAction.Delete -> {}
-                            RouteEntityItemAction.Database -> {}
+                    } else {
+                        IconButton(onClick = { showGeojsonList = true }) {
+                            Icon(Icons.AutoMirrored.Outlined.List, null)
                         }
-                    } //else Timber.i("route = null")
+                    }
                 }
             )
-        } else {
-            notifyDataChanged = false
-            RouteGeojsonActionScreen(fileGeojson) {action ->
-                when(action) {
-                    RouteGeojsonAction.Import -> {
-                        launcher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
-                    }
-                    RouteGeojsonAction.CreateFromFiles -> {
-                        moboMessage = context.getString(R.string.create_geojson_from_files_)
-                        val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
-                        val fileGeojson = File(rootRouteFolder, "routes${Const.GEOJSON_EXT}")
-
-                        lifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                            GeoJsonUtils.createGeojsonFromRoutes(rootRouteFolder, fileGeojson)
-                            //delay(5000)
-                        }.invokeOnCompletion {
-                            Timber.i("invokeOnCompletion")
-                            moboMessage = null
-                            notifyDataChanged = true
-                            fileGeojsonExits = fileGeojson.exists()
-                        }
-                    }
-                    RouteGeojsonAction.CreateFromDatabase -> {
-                        moboMessage = context.getString(R.string.create_geojson_from_database_)
-                        GeoJsonUtils.createGeojsonFromRoutesDatabase(context) {
-                            moboMessage = null
-                            notifyDataChanged = true
-                            fileGeojsonExits = fileGeojson.exists()
-                        }
-                    }
-                    RouteGeojsonAction.Nothing -> {}
-                }
-            }
         }
-        moboMessage?.let {
-            MoboMessage(moboMessage!!) {
-                moboMessage = null
-            }
-        }
-        showRouteMoBo?.let {
-            RouteGeojsonMoBoSheet(context,it) { action ->
-                Timber.i(
-                    "${Thread.currentThread().stackTrace[2].lineNumber}:´${it.name} ${it.region} action $action")
-                when (action) {
-                    RouteGeojsonMenu.Home -> showRouteMoBo = null
-                    RouteGeojsonMenu.Chart -> {
-                        showRouteChart = showRouteMoBo
-                        showRouteMoBo = null
-                    }
-                    RouteGeojsonMenu.Gradient -> {
-                        showRouteGradient = showRouteMoBo
-                        showRouteMoBo = null
-                    }
-
-                    RouteGeojsonMenu.Snapshot -> {
-                        takeSnapshot(
-                            context,
-                            it.kmlString.kmlString2Lllh(),
-                            it.region,
-                            it.name,
-                            null
-                        ) {
-                            Timber.i(
-                                "" +
-                                        context.getString(
-                                            R.string.refresh_route_preview_ready,
-                                            it.name
-                                        )
-                            )
-                            showRouteMoBo = null
-                            //minimalDialogText = context.getString(R.string.refresh_route_preview_ready, it.name)
-                            snackGeojsonRoutesData = SnackGeojsonRoutesData(
-                                context.getString(R.string.refresh_route_preview_ready, it.name),
-                                SnackGeojsonRoutesAction.Nothing, null, null
-                            )
-                        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding)) {
+            snackGeojsonRoutesData?.let { data ->
+                MoboSnack(data) { action ->
+                    when (action) {
+                        SnackGeojsonRoutesAction.Nothing -> snackGeojsonRoutesData = null
+                        SnackGeojsonRoutesAction.RemoveRegion -> {}
                     }
                 }
             }
-        }
-        showRouteChart?.let {
-            Timber.i("LineGraphLllh ${it.name}")
-            val lllh = showRouteChart!!.kmlString.kmlString2Lllh()
-            ModalBottomSheet(onDismissRequest = { showRouteChart = null }) {
-                LineYGraphLllh(lllh, it.name, 0f, { _ ->
-                    Timber.i("")
-                    showRouteChart = null
-                }, {}, Icons.AutoMirrored.Filled.ArrowBack)
-            }
-        }
-        showRouteGradient?.let {
-            val lllh = it.kmlString.kmlString2Lllh()
-            val distRoute = lllh.getDistanceFromLllh()
-            Timber.i("GradientChartMonitor ${it.name}")
-            ModalBottomSheet(modifier = Modifier.padding(bottom = 96.dp), onDismissRequest = { showRouteGradient = null }) {
-                GradientChartMonitor(
-                    it,
-                    Location(null), 0.0f, Icons.AutoMirrored.Filled.ArrowBack,
-                    result = {
-                        showRouteGradient = null
-                    }, true)
-                Text(
-                    text = distRoute.formatDistM(true),
-                    Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
+
+            if (fileGeojsonExits) {
+                RouteGeojsonGroupedList(
+                    routeEntitiesSorted,
+                    selectRoute = { route, action ->
+                        if (route != null) {
+                            when (action) {
+                                RouteEntityItemAction.Select -> {
+                                    activeOverlay = RouteGeojsonOverlay.MoBo(route)
+                                }
+                                RouteEntityItemAction.Map -> {
+                                    selectRoute(route, RouteMenu.Map)
+                                }
+                                else -> {}
+                            }
+                        }
+                    }
                 )
-                //Spacer(modifier = Modifier.height(96.dp))
-            }
-        }
-        if (askForNameFilter) {
-            AskForRouteNameFilter(routeEntities, filter = { filter, region ->
-                Timber.i("filter $filter")
-                askForNameFilter = false
-                routeEntitiesSorted = when (region) {
-                    null if filter == null -> routeEntities.sortedBy { entity ->
-                        entity.region.plus(entity.name)
-                    }.toMutableList()
-                    null -> filterByName(filter, routeEntities).toMutableList()
-                    else -> filterByRegion(region, routeEntities).toMutableList()
+            } else {
+                if (showGeojsonList) {
+                    RouteGeojsonList(context) { file ->
+                        showGeojsonList = false
+                        file?.copyTo(fileGeojson, overwrite = true)
+                        fileGeojsonExits = fileGeojson.exists()
+                    }
                 }
-                //notifyDataChanged = true
-            })
-        }
-    }
-}
+                RouteGeojsonActionScreen(fileGeojson) { action ->
+                    when (action) {
+                        RouteGeojsonAction.Import -> {
+                            launcher.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
+                        }
+                        RouteGeojsonAction.CreateFromFiles -> {
+                            moboMessage = context.getString(R.string.create_geojson_from_files_)
+                            scope.launch(Dispatchers.IO) {
+                                GeoJsonUtils.createGeojsonFromRoutes(rootRouteFolder, fileGeojson)
+                            }.invokeOnCompletion {
+                                moboMessage = null
+                                notifyDataChanged = true
+                                fileGeojsonExits = fileGeojson.exists()
+                            }
+                        }
+                        RouteGeojsonAction.CreateFromDatabase -> {
+                            moboMessage = context.getString(R.string.create_geojson_from_database_)
+                            GeoJsonUtils.createGeojsonFromRoutesDatabase(context) {
+                                moboMessage = null
+                                notifyDataChanged = true
+                                fileGeojsonExits = fileGeojson.exists()
+                            }
+                        }
+                        RouteGeojsonAction.Nothing -> {}
+                    }
+                }
+            }
 
-@Composable
-private fun RouteGeojsonContent(
-    context: Context,
-    lifecycleOwner: LifecycleOwner,
-    initialize: (List<RouteEntity>?) -> Unit
-) {
-    var routeEntities : List<RouteEntity> = emptyList()
-    LaunchedEffect(Unit) {
-        Timber.i("LaunchedEffect")
-        lifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            routeEntities = GeoJsonUtils.getRouteEntitiesFromGeojson(context, null)
-        }.invokeOnCompletion {
-            Timber.i("")
-            initialize(routeEntities.sortedBy {entity -> entity.region.plus(entity.name) })
+            moboMessage?.let { message ->
+                MoboMessage(message) { moboMessage = null }
+            }
+
+            activeOverlay?.let { overlay ->
+                when (overlay) {
+                    is RouteGeojsonOverlay.MoBo -> {
+                        RouteGeojsonMoBoSheet(context, overlay.entity) { action ->
+                            when (action) {
+                                RouteGeojsonMenu.Home -> activeOverlay = null
+                                RouteGeojsonMenu.Chart -> activeOverlay = RouteGeojsonOverlay.Chart(overlay.entity)
+                                RouteGeojsonMenu.Gradient -> activeOverlay = RouteGeojsonOverlay.Gradient(overlay.entity)
+                                RouteGeojsonMenu.Snapshot -> {
+                                    takeSnapshot(context, overlay.entity.kmlString.kmlString2Lllh(), overlay.entity.region, overlay.entity.name, null) {
+                                        activeOverlay = null
+                                        snackGeojsonRoutesData = SnackGeojsonRoutesData(
+                                            context.getString(R.string.refresh_route_preview_ready, overlay.entity.name),
+                                            SnackGeojsonRoutesAction.Nothing, null, null
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    is RouteGeojsonOverlay.Chart -> {
+                        val lllh = remember(overlay.entity) { overlay.entity.kmlString.kmlString2Lllh() }
+                        ModalBottomSheet(onDismissRequest = { activeOverlay = null }) {
+                            LineYGraphLllh(lllh, overlay.entity.name, 0f, { activeOverlay = null }, {}, Icons.AutoMirrored.Filled.ArrowBack)
+                        }
+                    }
+                    is RouteGeojsonOverlay.Gradient -> {
+                        val lllh = remember(overlay.entity) { overlay.entity.kmlString.kmlString2Lllh() }
+                        val distRoute = remember(lllh) { lllh.getDistanceFromLllh() }
+                        ModalBottomSheet(
+                            modifier = Modifier.padding(bottom = 96.dp),
+                            onDismissRequest = { activeOverlay = null }
+                        ) {
+                            GradientChartMonitor(
+                                overlay.entity,
+                                Location(null), 0.0f, Icons.AutoMirrored.Filled.ArrowBack,
+                                result = { activeOverlay = null },
+                                true
+                            )
+                            Text(
+                                text = distRoute.formatDistM(true),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (askForNameFilter) {
+                AskForRouteNameFilter(routeEntities, filter = { filter, region ->
+                    askForNameFilter = false
+                    routeEntitiesSorted = when (region) {
+                        null if filter == null -> routeEntities.sortedBy { it.region + it.name }
+                        null -> filterByName(filter!!, routeEntities)
+                        else -> filterByRegion(region, routeEntities)
+                    }
+                })
+            }
         }
     }
 }
@@ -471,123 +407,116 @@ enum class RouteGeojsonAction {
     CreateFromDatabase,
     Nothing
 }
-//@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-private fun RouteGeojsonActionScreen(fileGeojson: File, action: (RouteGeojsonAction) -> Unit) {
+private fun RouteGeojsonActionScreen(
+    fileGeojson: File,
+    modifier: Modifier = Modifier,
+    action: (RouteGeojsonAction) -> Unit
+) {
     Timber.i("${fileGeojson.name}")
-    val marginTopDp = TopAppBarDefaults.TopAppBarExpandedHeight.value
-    Surface (modifier = Modifier.padding(top = (2 * marginTopDp).dp, bottom = (marginTopDp * 1.4).dp))
-    { Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(30.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-                Column(modifier = Modifier.padding(top = 10.dp, bottom = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = stringResource(R.string.file_not_found, fileGeojson.name),
-                        modifier = Modifier.fillMaxWidth(),
-                        fontSize = 20.sp,
-                        textAlign = TextAlign.Center
-                    )
-                    OutlinedButton(onClick = {
-                        action(RouteGeojsonAction.Import)
-                    }, border = BorderStroke(2.dp, Color.DarkGray)) {
-                        Text(text = stringResource(R.string.import_title),
-                        Modifier.fillMaxWidth(0.8f), textAlign = TextAlign.Center, fontSize = 16.sp,)
-                    }
-
-                    OutlinedButton(onClick = {
-                        action(RouteGeojsonAction.CreateFromFiles)
-                    }, border = BorderStroke(2.dp, Color.DarkGray)) {
-                        Text(text = stringResource(R.string.create_geojson_from_files),
-                            Modifier.fillMaxWidth(0.8f), textAlign = TextAlign.Center, fontSize = 16.sp,)
-                    }
-                    OutlinedButton(onClick = {
-                        action(RouteGeojsonAction.CreateFromDatabase)
-                    }, border = BorderStroke(2.dp, Color.DarkGray)) {
-                        Text(text = stringResource(R.string.create_geojson_from_database),
-                            Modifier.fillMaxWidth(0.8f), textAlign = TextAlign.Center, fontSize = 16.sp,)
-                    }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(30.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.file_not_found, fileGeojson.name),
+                    modifier = Modifier.fillMaxWidth(),
+                    fontSize = 20.sp,
+                    textAlign = TextAlign.Center
+                )
+                OutlinedButton(
+                    onClick = { action(RouteGeojsonAction.Import) },
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                    border = BorderStroke(2.dp, Color.DarkGray)
+                ) {
+                    Text(text = stringResource(R.string.import_title), fontSize = 16.sp)
                 }
+
+                OutlinedButton(
+                    onClick = { action(RouteGeojsonAction.CreateFromFiles) },
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                    border = BorderStroke(2.dp, Color.DarkGray)
+                ) {
+                    Text(text = stringResource(R.string.create_geojson_from_files), fontSize = 16.sp)
+                }
+                OutlinedButton(
+                    onClick = { action(RouteGeojsonAction.CreateFromDatabase) },
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                    border = BorderStroke(2.dp, Color.DarkGray)
+                ) {
+                    Text(text = stringResource(R.string.create_geojson_from_database), fontSize = 16.sp)
+                }
+            }
         }
-        Timber.i("not found: ${fileGeojson.path}")
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RouteGeojsonGroupedList(
     routeEntities: List<RouteEntity>,
-    selectRoute: (RouteEntity?, RouteEntityItemAction) -> Unit) {
+    modifier: Modifier = Modifier,
+    selectRoute: (RouteEntity?, RouteEntityItemAction) -> Unit
+) {
     Timber.i("routeEntities ${routeEntities.size}")
-    val marginTopDp = TopAppBarDefaults.TopAppBarExpandedHeight.value
     val routesGrouped = routeEntities.groupBy { it.region }
     var groupExpanded by remember { mutableStateOf<String?>(null) }
-    Scaffold(modifier = Modifier.padding(top = marginTopDp.dp, bottom = (marginTopDp * 1.4).dp))
-    { paddingValues ->
-        LazyColumn(
-            contentPadding = paddingValues,
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            routesGrouped.forEach { (initial, routeEntities) ->
-                stickyHeader {
-                    Column(
-                        Modifier
-                            .fillMaxSize()
-                            .background(color = Color.LightGray),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        BadgedBox(badge = { Badge { Text("${routeEntities.size}") } }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                TextButton(onClick = {
-                                    groupExpanded = if (groupExpanded != null && groupExpanded == initial)
-                                        null else initial
-                                }) {
-                                    Text(
-                                        text = initial,
-                                        modifier = Modifier.fillMaxWidth(0.5f),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                                TextButton(onClick = {
-                                    groupExpanded = if (groupExpanded != null && groupExpanded == initial)
-                                        null else initial
-                                }) {
-                                    Text(
-                                        text =
-                                            if (groupExpanded != null && initial == groupExpanded) Const.UC_DROPUP_ARROW else Const.UC_DROPDOWN_ARROW,
-                                        textAlign = TextAlign.Center, fontSize = 20.sp
-                                    )
-                                }
-                            }
 
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        routesGrouped.forEach { (initial, routeEntities) ->
+            stickyHeader {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(color = Color.LightGray)
+                        .clickable {
+                            groupExpanded = if (groupExpanded == initial) null else initial
+                        }
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    BadgedBox(badge = { Badge { Text("${routeEntities.size}") } }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = initial,
+                                modifier = Modifier.weight(1f, fill = false),
+                                style = MaterialTheme.typography.titleMedium,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = if (groupExpanded == initial) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = Color.Black
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
                         }
                     }
                 }
+            }
 
+            if (groupExpanded == initial) {
                 items(routeEntities) { routeItem ->
-                    if(groupExpanded != null && routeItem.region == groupExpanded) {
-                        RouteGeojsonItem(routeItem, onItemClick = { routeItem, action ->
-                            Timber.i(
-                                "routeItem ${routeItem.name} action ${action.name}"
-                            )
-                            when (action) {
-                                RouteEntityItemAction.Select -> selectRoute(routeItem, action)
-                                RouteEntityItemAction.Map -> {
-                                    selectRoute(routeItem, action)
-                                }
-
-                                RouteEntityItemAction.Hide -> {}
-                                RouteEntityItemAction.Delete -> {}
-                                RouteEntityItemAction.Database -> selectRoute(routeItem, action)
-                            }
-                        })
-                    }
+                    RouteGeojsonItem(routeItem, onItemClick = { item, action ->
+                        selectRoute(item, action)
+                    })
                 }
-                selectRoute(null, RouteEntityItemAction.Select)
             }
         }
     }
@@ -834,37 +763,6 @@ private fun transferTo(ins: InputStream, out: FileOutputStream): Long {
         transferred += read.toLong()
     }
     return transferred
-}
-
-/**
- * replaced by MoBoSnack 30dez2025
- */
-@Composable
-fun MinimalDialog(text: String, onDismissRequest: () -> Unit) {
-    Dialog(onDismissRequest = { onDismissRequest() },
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(2.0f)
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            TextButton(onClick = {
-                onDismissRequest()
-            }) {
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
 }
 
 @Preview(showBackground = true)

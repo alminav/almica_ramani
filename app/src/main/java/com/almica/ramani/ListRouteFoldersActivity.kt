@@ -395,6 +395,10 @@ class ListRouteFoldersActivity : ComponentActivity() {
 private suspend fun takeGeojsonSnapshot(context: Context, geojsonFile: File, override: Boolean = false): Boolean {
     Timber.i("takeGeojsonSnapshot: ${geojsonFile.path}")
     val thumbnailsFolder = File(context.filesDir, Const.THUMBNAILS)
+    if (!thumbnailsFolder.exists()) {
+        val b = thumbnailsFolder.mkdirs()
+        Timber.i("${thumbnailsFolder.path} mkdirs: $b")
+    }
     val snapshotFile = File(thumbnailsFolder, geojsonFile.name.replace(Const.GEOJSON_EXT, Const.JPG_EXT))
     if (snapshotFile.exists() && !override) return true
     val geojsonString = geojsonFile.inputStream().bufferedReader().use { it.readText() }

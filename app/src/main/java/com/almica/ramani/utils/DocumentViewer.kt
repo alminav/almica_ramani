@@ -418,6 +418,10 @@ fun DocumentViewer(finish: () -> Unit,
                         }
                         // put geojson data in same sort order as pdf pages
                         val thumbnailsFolder = File(context.filesDir, Const.THUMBNAILS)
+                        if (!thumbnailsFolder.exists()) {
+                            val b = thumbnailsFolder.mkdirs()
+                            Timber.i("${thumbnailsFolder.path} mkdirs: $b")
+                        }
                         routeMap.keys.sorted().forEachIndexed { index, name ->
                             val lllh = routeMap[name]!!
                             val snapshotFile = File(thumbnailsFolder, "$name.jpg")
