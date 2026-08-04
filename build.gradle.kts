@@ -14,5 +14,8 @@ idea {
         excludeDirs.add(file(".kotlin"))
         excludeDirs.add(file(".idea"))
         excludeDirs.add(file(".gradle"))
+        excludeDirs.add(file("backups"))
+        excludeDirs.add(file("pictures"))
+        excludeDirs.add(file("app/release"))
     }
 }
