@@ -72,7 +72,7 @@ This project is proprietary. All rights reserved.
 ## 📥 Download Apk
 <div style="text-align: center;">
 
-![GitHub](https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png "GitHub")
+<img src="https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png" alt="GitHub" width="50%" />
 </div>
 
 ## ✉️ Contact
@@ -82,8 +82,8 @@ alt.micha@gmail.com
 
 ## 📸 Screenshots
 
-<p align="center">
-      <img width="25%" alt="Screenshot_20260730-143821" src="https://github.com/user-attachments/assets/380e453d-d530-45de-b3b7-eb1264d5b728" />
-&nbsp; &nbsp; &nbsp; &nbsp;
-      <img width="25%" alt="Screenshot_20260801-181922" src="https://github.com/alminav/almica_ramani/blob/master/pictures/Screenshot_20260801-181922.png" />  
-</p>
+<div style="text-align: center;">
+
+  <img src="https://github.com/user-attachments/assets/380e453d-d530-45de-b3b7-eb1264d5b728" width="28%" alt="Main map and navigation interface" />
+  <img src="https://github.com/alminav/almica_ramani/blob/master/pictures/Screenshot_20260801-181922.png?raw=true" width="28%" alt="Route elevation and speed charts" />
+</div>
