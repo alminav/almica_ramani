@@ -72,7 +72,10 @@ This project is proprietary. All rights reserved.
 ## 📥 Download Apk
 <div style="text-align: center;">
 
-<img src="https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png" alt="GitHub" width="30%" />
+<a href="https://github.com/alminav/almica_ramani/releases">
+
+  <img src="https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png" alt="GitHub" width="30%" />
+</a>
 </div>
 
 ## ✉️ Contact
