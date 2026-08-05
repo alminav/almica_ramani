@@ -353,13 +353,14 @@ fun BoxScope.MapOverlayManagerContent(
                     }
                     closeOverlay()
                 }
-                HairCrossAction.Calc -> {
+                HairCrossAction.Calc, HairCrossAction.Roundtrip -> {
                     val startLat = cameraPosition.value.target?.latitude
                     val startLon = cameraPosition.value.target?.longitude
                     if (startLat != null && startLon != null && stopPosition.isNotNull()) {
                         setProgress("${resources.getString(R.string.graphhopper_route_calculation)} ${GhHelper.getGhFilename(context)}")
                         stopPosition?.let { stop ->
-                            ghCalc(context, startLat, startLon, stop.latitude, stop.longitude) { lllh, name, success, _ ->
+                            ghCalc(context, startLat, startLon, stop.latitude, stop.longitude,
+                                roundTrip = action == HairCrossAction.Roundtrip) { lllh, name, success, _ ->
                                 setProgress(null)
                                 val dist = lllh.getDistanceFromLllh()
                                 val center = lllh.getCenter()
@@ -444,6 +445,8 @@ fun BoxScope.MapOverlayManagerContent(
                         }
                     }
                 }
+
+                HairCrossAction.Roundtrip -> TODO()
             }
         }
     }

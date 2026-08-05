@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.LocationSearching
 import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.SpaceBar
+import androidx.compose.material.icons.outlined.TripOrigin
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,6 +74,7 @@ enum class HairCrossAction {
     MapFeatures,
     GhFolder,
     GeoCoder,
+    Roundtrip,
     NearestPoi
 }
 
@@ -209,15 +211,15 @@ fun HairCrossBottomMenuContent(
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             HairCrossMenuItem(
                 modifier = buttonModifier,
-                text = stringResource(R.string.placemark),
-                iconVector = Icons.Outlined.Add,
-                onClick = { callback(HairCrossAction.AddPoi) }
+                text = stringResource(R.string.roundtrip_gh),
+                iconVector = Icons.Outlined.TripOrigin,
+                onClick = { callback(HairCrossAction.Roundtrip) }
             )
             HairCrossMenuItem(
                 modifier = buttonModifier,
-                text = stringResource(R.string.geocoder),
-                iconVector = Icons.Outlined.LocationSearching,
-                onClick = { callback(HairCrossAction.GeoCoder) }
+                text = stringResource(R.string.placemark),
+                iconVector = Icons.Outlined.Add,
+                onClick = { callback(HairCrossAction.AddPoi) }
             )
         }
         Spacer(modifier = Modifier.height(2.dp))
@@ -259,7 +261,13 @@ fun HairCrossBottomMenuContent(
                 iconVector = Icons.Outlined.NearMe,
                 onClick = { callback(HairCrossAction.NearestPoi) }
             )
-            Box(modifier = Modifier.weight(0.5f))
+            //Box(modifier = Modifier.weight(0.5f))
+            HairCrossMenuItem(
+                modifier = buttonModifier,
+                text = stringResource(R.string.geocoder),
+                iconVector = Icons.Outlined.LocationSearching,
+                onClick = { callback(HairCrossAction.GeoCoder) }
+            )
         }
     }
 }

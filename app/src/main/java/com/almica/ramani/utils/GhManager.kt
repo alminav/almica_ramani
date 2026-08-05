@@ -135,6 +135,67 @@ class GhManager internal constructor(context: Context, private var mInitListener
             return getBeeLine(context, startY, startX, stopY, stopX)
     }
 
+    /**
+     * AI 05aug2025
+     * I have created the startRoundTripRequest function in GhManager.kt.
+     * This function calculates a route starting from a specified point,
+     * going through points perpendicular to the center of the connecting line and the "stop" point,
+     * and returning to the start point.
+     * ToDo make factor 0.2 in offsetPoints variable
+     */
+    fun startRoundTripRequest(
+        context: Context,
+        startY: Double,
+        startX: Double,
+        stopY: Double,
+        stopX: Double
+    ): GHResponse {
+        Timber.i("round trip: start $startY $startX stop $stopY $stopX")
+
+        val vehicle_weighting = getVehicle(context)
+        if (mGhFolderPath != null && vehicle_weighting != null && vehicle_weighting[0] != EncodingManager.AIRPLANE) {
+            val startLatLng = LatLng(startY, startX)
+            val stopLatLng = LatLng(stopY, stopX)
+            val distanceStopStart = SphericalUtil.computeDistanceBetween(startLatLng, stopLatLng)
+            // Calculate a point perpendicular to the center of the line
+            val heading = SphericalUtil.computeHeading(startLatLng, stopLatLng)
+            val midPoint = SphericalUtil.interpolate(startLatLng, stopLatLng, 0.5)
+            val offsetPoint1 = SphericalUtil.computeOffset(midPoint, 0.2 * distanceStopStart, heading + 90.0)
+            val offsetPoint2 = SphericalUtil.computeOffset(midPoint, 0.2 * distanceStopStart, heading - 90.0)
+
+            val ghRequest = GHRequest(5)
+                .addPoint(GHPoint(startY, startX))
+                .addPoint(GHPoint(offsetPoint1.latitude, offsetPoint1.longitude))
+                .addPoint(GHPoint(stopY, stopX))
+                .addPoint(GHPoint(offsetPoint2.latitude, offsetPoint2.longitude))
+                .addPoint(GHPoint(startY, startX))
+                .setAlgorithm("dijkstrabi")
+                .putHint("douglas.minprecision", 1)
+                .putHint("instructions", true)
+                .setLocale(Locale.getDefault())
+                .setWeighting(vehicle_weighting[1])
+                .setVehicle(vehicle_weighting[0])
+            return mGh.route(ghRequest)
+        } else {
+            val res1 = getBeeLine(context, startY, startX, stopY, stopX)
+            val res2 = getBeeLine(context, stopY, stopX, startY, startX)
+
+            val combinedPoints = PointList(res1.points.size() + res2.points.size(), mbGh3d)
+            combinedPoints.add(res1.points)
+            for (i in 1 until res2.points.size()) {
+                if (mbGh3d)
+                    combinedPoints.add(res2.points.getLatitude(i), res2.points.getLongitude(i), res2.points.getElevation(i))
+                else
+                    combinedPoints.add(res2.points.getLatitude(i), res2.points.getLongitude(i))
+            }
+
+            val ghResponse = GHResponse()
+            ghResponse.setPoints(combinedPoints)
+            ghResponse.setDistance(res1.distance + res2.distance)
+            ghResponse.setFound(true)
+            return ghResponse
+        }
+    }
     fun getBeeLine(context: Context,
         startY: Double,
         startX: Double,
