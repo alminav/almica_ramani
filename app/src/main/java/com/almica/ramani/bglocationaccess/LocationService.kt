@@ -251,7 +251,10 @@ class LocationService : Service(), LocationUpdatesCallBack, SensorEventListener,
                 Timber.i( "stepCounter: $stepCounter")
                 stepCounter += 1
                 GpsRepository.getInstance().updateStepCounter(stepCounter)
-                lastRoomLocation?.let { updateNotification(it) }
+                lastRoomLocation?.let {
+                    timeLong = System.currentTimeMillis() - startTime
+                    updateNotification(it)
+                }
             }
         }
     }
