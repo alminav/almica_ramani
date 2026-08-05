@@ -219,62 +219,25 @@ class LocationService : Service(), LocationUpdatesCallBack, SensorEventListener,
             lastRoomLocation = Location(location)
         }
 
-        val timeOffset = ZonedDateTime.now().offset.totalSeconds
-        val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         if (appState == State.BACKGROUND) {
-            val locationEntity = LocationEntity(
-                latitude = location.latitude,
-                longitude = location.longitude,
-                altitude = if (location.altitude > 0) location.altitude + altitudeCorrection
-                else location.altitude,
-                speed = location.speed * 3.6f,
-                bearing = location.bearing,
-                hasBearing = location.hasBearing(),
-                time = location.time,
-                recordedAt = Date(location.time)
-            )
-            
             if (deltaDistRoom > DISTANCE_THRESHOLD) {
+                val locationEntity = LocationEntity(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    altitude = if (location.altitude > 0) location.altitude + altitudeCorrection
+                    else location.altitude,
+                    speed = location.speed * 3.6f,
+                    bearing = location.bearing,
+                    hasBearing = location.hasBearing(),
+                    time = location.time,
+                    recordedAt = Date(location.time)
+                )
                 locationRepository.addLocation(locationEntity)
                 Timber.i("addLocation: ${Date(location.time).simpleStringWithTime()}")
             }
-
-            // format: hour:minute:second
-            //Timber.i( "distanceM: ${distanceM.format(1)}m")
-            val textTime: String? = sdf.format(timeLong - timeOffset * 1000) // 01:30:00
-            val textDist = "distance: ${distanceM.formatDistM(true)}"
-            val notificationText = "$textTime ${textDist}\n" +
-                    "lat:${location.latitude.format(4)}° lon:${location.longitude.format(4)}° " +
-                    "h:${(location.altitude + altitudeCorrection).format(1)}m"
-
-            val textTitle = if (useStepCounter)
-                textStepCounter
-            else
-                "Background Tracking"
-            val updatedNotification = notificationBuilder?.setContentTitle(textTitle)
-                ?.setContentText(notificationText)?.setSilent(stepCounter < stepGoal)
-            if (stepCounter > stepGoal) {
-                stepGoal += 500
-            }
-            //Timber.i(notificationText)
-            notificationManager?.notify(NOTIFICATION_ID, updatedNotification?.build())
-        } else {
-            //Timber.i( "Foreground Tracking")
-            var notificationTitle = "Foreground Tracking"
-            notificationTitle = if (useStepCounter)
-                notificationTitle.plus(textStepCounter)
-            else
-                notificationTitle.plus("\nStepcounter is inactive")
-            val textTime: String? = sdf.format(timeLong - timeOffset * 1000) // 01:30:00
-            val textDist = "distance: ${distanceM.formatDistM(true)}"
-            val notificationText = "$textTime $textDist"
-            val updatedNotification = notificationBuilder?.setContentText(notificationText)
-                ?.setContentTitle(notificationTitle)?.setSilent(stepCounter < stepGoal)
-            if (stepCounter > stepGoal) {
-                stepGoal += 500
-            }
-            notificationManager?.notify(NOTIFICATION_ID, updatedNotification?.build())
         }
+
+        updateNotification(location)
     }
 
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
@@ -287,7 +250,52 @@ class LocationService : Service(), LocationUpdatesCallBack, SensorEventListener,
                 Timber.i( "stepCounter: $stepCounter")
                 stepCounter += 1
                 GpsRepository.getInstance().updateStepCounter(stepCounter)
+                lastRoomLocation?.let { updateNotification(it) }
             }
+        }
+    }
+
+    private fun updateNotification(location: Location) {
+        val timeOffset = ZonedDateTime.now().offset.totalSeconds
+        val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        val textStepCounter = "\nSteps: $stepCounter"
+        val textTime: String? = sdf.format(timeLong - timeOffset * 1000)
+        val textDist = "distance: ${distanceM.formatDistM(true)}"
+
+        if (appState == State.BACKGROUND) {
+            val notificationText = "$textTime ${textDist}\n" +
+                    "lat:${location.latitude.format(4)}° lon:${location.longitude.format(4)}° " +
+                    "h:${(location.altitude + altitudeCorrection).format(1)}m"
+
+            val textTitle = if (useStepCounter)
+                textStepCounter
+            else
+                "Background Tracking"
+
+            val updatedNotification = notificationBuilder?.setContentTitle(textTitle)
+                ?.setContentText(notificationText)?.setSilent(stepCounter < stepGoal)
+
+            checkStepGoal()
+            notificationManager?.notify(NOTIFICATION_ID, updatedNotification?.build())
+        } else {
+            var notificationTitle = "Foreground Tracking"
+            notificationTitle = if (useStepCounter)
+                notificationTitle.plus(textStepCounter)
+            else
+                notificationTitle.plus("\nStepcounter is inactive")
+
+            val notificationText = "$textTime $textDist"
+            val updatedNotification = notificationBuilder?.setContentText(notificationText)
+                ?.setContentTitle(notificationTitle)?.setSilent(stepCounter < stepGoal)
+
+            checkStepGoal()
+            notificationManager?.notify(NOTIFICATION_ID, updatedNotification?.build())
+        }
+    }
+
+    private fun checkStepGoal() {
+        if (stepCounter >= stepGoal) {
+            stepGoal += 500
         }
     }
 
