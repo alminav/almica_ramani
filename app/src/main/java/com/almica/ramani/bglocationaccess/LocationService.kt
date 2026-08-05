@@ -10,11 +10,12 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.icu.text.SimpleDateFormat
+import java.text.SimpleDateFormat
 import android.location.Location
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.Lifecycle
+import java.util.TimeZone
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.preference.PreferenceManager
@@ -258,8 +259,9 @@ class LocationService : Service(), LocationUpdatesCallBack, SensorEventListener,
     private fun updateNotification(location: Location) {
         val timeOffset = ZonedDateTime.now().offset.totalSeconds
         val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
         val textStepCounter = "\nSteps: $stepCounter"
-        val textTime: String? = sdf.format(timeLong - timeOffset * 1000)
+        val textTime: String? = sdf.format(timeLong) // - timeOffset * 1000)
         val textDist = "distance: ${distanceM.formatDistM(true)}"
 
         if (appState == State.BACKGROUND) {
