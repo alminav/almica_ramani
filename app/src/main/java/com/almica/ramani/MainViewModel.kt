@@ -174,7 +174,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val region = tappedFeature.getProperty("region").asString
                         val routeEntity = RouteEntity(UUID.randomUUID(), name, region, lllh[0].latitude, lllh[0].longitude, distance = lllh.getDistanceFromLllh(), kmlString = lllh.lllhToKmlString(name))
                         val dist = lllh.getDistanceFromLllh()
-                        val newState = PolygonState(lllh as ArrayList<LatLngH>, name, dist).apply {
+                        val newState = PolygonState(lllh, name, dist).apply {
                             polygonData = PolygonData(lllh, name, dist, false, null)
                             polygonData?.createPolygonMarkers(context, 0.0)
                         }
@@ -192,8 +192,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 setOverlay(OverlayType.RASTER_MAPS)
                 setMapManagerPosition(clickLatLng)
             } else if (geojsonGridVisibility) {
-                val tile13 = GeoJsonUtils.pointToTile(clickLatLng.longitude, clickLatLng.latitude, 13.0)
-                val tile12 = GeoJsonUtils.pointToTile(clickLatLng.longitude, clickLatLng.latitude, 12.0)
+                val tile13 = pointToTile(clickLatLng.longitude, clickLatLng.latitude, 13.0)
+                val tile12 = pointToTile(clickLatLng.longitude, clickLatLng.latitude, 12.0)
                 viewModelScope.launch {
                     val mapEntity12 = geojsonMapRepository.getGeojsonMapSimpleByName("geojsonTile_${tile12.x}_${tile12.y}_${tile12.z}")
                     val mapEntity13 = geojsonMapRepository.getGeojsonMapSimpleByName("geojsonTile_${tile13.x}_${tile13.y}_${tile13.z}")
@@ -202,7 +202,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     else setOverlay(OverlayType.BBBIKE_FUNCTIONS)
                 }
             } else if (regionsGridVisibility) {
-                val tile11 = GeoJsonUtils.pointToTile(clickLatLng.longitude, clickLatLng.latitude, 11.0)
+                val tile11 = pointToTile(clickLatLng.longitude, clickLatLng.latitude, 11.0)
                 setMapManagerPosition(clickLatLng)
                 setSnackbar(MainSnackbarData("Region: ${tile11.x}_${tile11.y}_${tile11.z}", context.getString(R.string.additional_maps), MapManager, null))
             }
@@ -536,6 +536,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(styleUriToUse = styleUri) }
         }
     }
+
 
     fun calculateRoute(context: Context, startLat: Double, startLon: Double, stopLat: Double, stopLon: Double) {
         setProgress("${context.getString(R.string.graphhopper_route_calculation)} ${GhHelper.getGhFilename(context)}")
