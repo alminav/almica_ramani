@@ -446,7 +446,6 @@ fun BoxScope.MapOverlayManagerContent(
                     }
                 }
 
-                HairCrossAction.Roundtrip -> TODO()
             }
         }
     }
