@@ -2,6 +2,16 @@
 
 All notable changes to the **Ramani** project will be documented in this file.
 
+## [Unreleased] - 2026-08-06
+
+### 🏗️ Refactoring & Architecture
+- **DocumentViewer Refactor**: Major architectural overhaul of the document viewing system.
+    - **ViewModel Implementation**: Extracted business logic, file I/O, and state management into `DocumentViewerViewModel`.
+    - **Type Safety**: Introduced `RouteInfo` data class to replace generic `Triple` types for route data handling.
+    - **Concurrency Optimization**: Migrated heavy parsing and file operations to background threads using Kotlin Coroutines (`Dispatchers.IO` and `Dispatchers.Default`).
+    - **Material 3 UI**: Updated `DocumentViewer` to use modern M3 components including `Scaffold`, `SnackbarHost`, and `CenterAlignedTopAppBar`.
+- **Navigation & Integration**: Updated `NavGraph`, `MapOverlayManager`, and `ListRouteFoldersActivity` to support the new `DocumentViewer` architecture and data models.
+
 ## [Unreleased] - 2026-08-04
 
 ### ✨ Features & Improvements
