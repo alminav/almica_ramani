@@ -130,6 +130,7 @@ fun DocumentViewer(finish: () -> Unit,
                 }
 
                 if (fileName != null && mimeType != null) {
+                    Timber.i("fileName: $fileName mimeType: $mimeType")
                     val targetUri = DocumentsContract.createDocument(
                         contentResolver,
                         DocumentsContract.buildDocumentUriUsingTree(rootUri, DocumentsContract.getTreeDocumentId(rootUri)),
@@ -141,6 +142,29 @@ fun DocumentViewer(finish: () -> Unit,
                             contentResolver.openOutputStream(dest)?.use { output ->
                                 input.copyTo(output)
                             }
+                        }
+                    }
+                    if (fileName.endsWith(Const.GEOJSON_EXT)) {
+                        val splitFileName = fileName.split(Const.UNDERLINE)
+                        val region = splitFileName.take((splitFileName.size - 2).coerceIn(1, 4))
+                            .joinToString(Const.UNDERLINE)
+                        // Example usage:
+                        Timber.i("Imported GeoJSON for region: $region")
+                        val routeFolder =
+                            File(File(context.filesDir, Const.ROUTEFOLDER), region)
+                        if (!routeFolder.exists()) {
+                            routeFolder.mkdirs()
+                        }
+                        val routeFile = File(routeFolder, fileName)
+                        try {
+                            contentResolver.openInputStream(sourceUri)?.use { input ->
+                                routeFile.outputStream().use { output ->
+                                    input.copyTo(output)
+                                    Timber.i("copy GeoJSON ${routeFile.name} to ${routeFile.path} successful")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Failed to copy GeoJSON to internal storage")
                         }
                     }
                 }
@@ -235,7 +259,7 @@ fun DocumentViewer(finish: () -> Unit,
                     onDismissRequest = { menuExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Import") },
+                        text = { Text(stringResource(R.string.import_pdf_geojson)) },
                         onClick = {
                             menuExpanded = false
                             importLauncher.launch("*/*")

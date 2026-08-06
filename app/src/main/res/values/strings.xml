@@ -338,6 +338,7 @@
     <string name="city_name">City name</string>
     <string name="go">Go</string>
     <string name="geocoder">GeoCoder</string>
+    <string name="roundtrip_gh">Roundtrip</string>
     <string name="nearest_poi">Nearest POI</string>
     <string name="map_thumbnail_ready">Map thumbnail is ready</string>
     <string name="maps_in_region_activated">Maps in region %1$s activated</string>
@@ -506,4 +507,5 @@
     <string name="selected_location_snippet">This is the place you selected.</string>
     <string name="menu">Menu</string>
     <string name="navigation">Navigation</string>
+    <string name="import_pdf_geojson">Import pdf + geojson</string>
 </resources>
