@@ -508,4 +508,5 @@
     <string name="menu">Menu</string>
     <string name="navigation">Navigation</string>
     <string name="import_pdf_geojson">Import pdf + geojson</string>
+    <string name="roundtrip_factor">Calculate roundtrip with factor</string>
 </resources>

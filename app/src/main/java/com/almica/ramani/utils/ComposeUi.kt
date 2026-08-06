@@ -534,6 +534,7 @@ fun ghCalc(
     stopY: Double,
     stopX: Double,
     roundTrip: Boolean = false,
+    roundTripFactor: Float = 0.2f,
     finished: (lllh: ArrayList<LatLngH>, name: String, success: Boolean, ghInitError: Boolean) -> Unit
 ) {
     /* 25dez2025
@@ -553,7 +554,7 @@ fun ghCalc(
     val timeFormat = SimpleDateFormat(Const.TIME_PATTERN_LONG, Locale.getDefault())
     val vehicle = ghManager.getVehicle(context)
     CoroutineScope(Dispatchers.IO).launch(Dispatchers.IO) {
-        val ghResponse = if (roundTrip) ghManager.startRoundTripRequest(context, startY, startX, stopY, stopX)
+        val ghResponse = if (roundTrip) ghManager.startRoundTripRequest(context, startY, startX, stopY, stopX, roundTripFactor)
             else ghManager.startRequest(context, startY, startX, stopY, stopX)
 
         val distM = ghResponse.distance

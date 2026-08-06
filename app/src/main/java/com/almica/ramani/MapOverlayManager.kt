@@ -108,6 +108,7 @@ import com.almica.ramani.utils.isNetworkAvailable
 import com.almica.ramani.utils.isNotNull
 import com.almica.ramani.utils.kmlString2Lllh
 import com.almica.ramani.utils.launchOrsRouting
+import com.almica.ramani.utils.ValuePickerDialog
 import com.almica.ramani.utils.lllhToKmlString
 import com.almica.ramani.utils.removeLayers
 import com.almica.ramani.utils.setPlanetVisibility
@@ -134,7 +135,6 @@ import java.util.concurrent.Executors
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import com.almica.ramani.pois.PoiEntity
-import com.almica.ramani.RouteInfo
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.google.android.gms.maps.model.LatLng as GmsLatLng
 
@@ -266,7 +266,8 @@ fun BoxScope.MapOverlayManagerContent(
     val showAdditionalMapsManager = uiState.activeOverlay == ADDITIONAL_MAPS
     val showLocationStatistic = uiState.activeOverlay == LOCATION_STATISTIC
     val showRouteSavingScreen = uiState.activeOverlay == ROUTE_SAVING
-
+    val showValuePicker = uiState.activeOverlay == OverlayType.VALUE_PICKER
+    var roundTripFactor by remember { mutableFloatStateOf(0.5f) }
     val stopPosition = uiState.stopPosition
     val polygonState = uiState.polygonState
     val loadedRouteEntity = uiState.loadedRouteEntity
@@ -354,31 +355,13 @@ fun BoxScope.MapOverlayManagerContent(
                     }
                     closeOverlay()
                 }
-                HairCrossAction.Calc, HairCrossAction.Roundtrip -> {
+                HairCrossAction.Roundtrip -> {
+                    setOverlay(OverlayType.VALUE_PICKER)
+                }
+                HairCrossAction.Calc -> {
                     val startLat = cameraPosition.value.target?.latitude
                     val startLon = cameraPosition.value.target?.longitude
-                    if (startLat != null && startLon != null && stopPosition.isNotNull()) {
-                        setProgress("${resources.getString(R.string.graphhopper_route_calculation)} ${GhHelper.getGhFilename(context)}")
-                        stopPosition?.let { stop ->
-                            ghCalc(context, startLat, startLon, stop.latitude, stop.longitude,
-                                roundTrip = action == HairCrossAction.Roundtrip) { lllh, name, success, _ ->
-                                setProgress(null)
-                                val dist = lllh.getDistanceFromLllh()
-                                val center = lllh.getCenter()
-                                val newState = PolygonState(lllh, name, dist).apply {
-                                    polygonData = PolygonData(lllh, name, dist, false, null)
-                                    polygonData?.createPolygonMarkers(context, 0.0)
-                                }
-                                updatePolygon(newState)
-                                setLoadedRoute(RouteEntity(UUID.randomUUID(), name, Const.GH_TAG, startLat, startLon, latitudeCenter = center.latitude, longitudeCenter = center.longitude, latitudeStop = lllh[lllh.lastIndex].latitude, longitudeStop = lllh[lllh.lastIndex].longitude, kmlString = lllh.lllhToKmlString(name)))
-                                setHighlightRoutePoint(-1)
-                                CompassViewModel.setRouteThumbnail(null)
-                                setRecalcRequired(false)
-                                setStopDragged(false)
-                            }
-                        }
-                    } else setSnackbar(MainSnackbarData(resources.getString(R.string.no_stop_marker), null, null, null))
-                    closeOverlay()
+                    calculateGhRoute(context, resources, startLat, startLon, stopPosition, false, roundTripFactor, setProgress, updatePolygon, setLoadedRoute, setHighlightRoutePoint, setRecalcRequired, setStopDragged, setSnackbar, closeOverlay)
                 }
                 HairCrossAction.MapFeatures -> {
                     closeOverlay()
@@ -449,6 +432,21 @@ fun BoxScope.MapOverlayManagerContent(
 
             }
         }
+    }
+
+    if (showValuePicker) {
+        ValuePickerDialog(
+            onDismissRequest = { closeOverlay() },
+            onValueSelected = { value ->
+                roundTripFactor = value
+                closeOverlay()
+                val startLat = cameraPosition.value.target?.latitude
+                val startLon = cameraPosition.value.target?.longitude
+                calculateGhRoute(context, resources, startLat, startLon, stopPosition, true, roundTripFactor, setProgress, updatePolygon, setLoadedRoute, setHighlightRoutePoint, setRecalcRequired, setStopDragged, setSnackbar, {})
+            },
+            initialValue = roundTripFactor,
+            title = resources.getString(R.string.roundtrip_factor),
+        )
     }
 
     if (showRouteSavingScreen) {
@@ -648,17 +646,44 @@ fun BoxScope.MapOverlayManagerContent(
         }, navigateToHome = { home ->
             closeOverlay()
             cameraPosition.value.target?.let { cp ->
-                ghCalc(context, cp.latitude, cp.longitude, home.latitude, home.longitude) { lllh, name, _, _ ->
+                ghCalc(
+                    context,
+                    cp.latitude,
+                    cp.longitude,
+                    home.latitude,
+                    home.longitude
+                ) { lllh, name, _, _ ->
                     setProgress(null)
                     val dist = lllh.getDistanceFromLllh()
-                    setSnackbar(MainSnackbarData(resources.getString(R.string.distance_, dist.formatDistM(true)), null, null, null))
+                    setSnackbar(
+                        MainSnackbarData(
+                            resources.getString(
+                                R.string.distance_,
+                                dist.formatDistM(true)
+                            ), null, null, null
+                        )
+                    )
                     val center = lllh.getCenter()
                     val newState = PolygonState(lllh, name, dist).apply {
                         polygonData = PolygonData(lllh, name, dist, false, null)
                         polygonData?.createPolygonMarkers(context, 0.0)
                     }
                     updatePolygon(newState)
-                    setLoadedRoute(RouteEntity(UUID.randomUUID(), name, Const.GH_TAG, lllh[0].latitude, lllh[0].longitude, latitudeCenter = center.latitude, longitudeCenter = center.longitude, latitudeStop = lllh[lllh.lastIndex].latitude, longitudeStop = lllh[lllh.lastIndex].longitude, distance = dist, kmlString = lllh.lllhToKmlString(name)))
+                    setLoadedRoute(
+                        RouteEntity(
+                            UUID.randomUUID(),
+                            name,
+                            Const.GH_TAG,
+                            lllh[0].latitude,
+                            lllh[0].longitude,
+                            latitudeCenter = center.latitude,
+                            longitudeCenter = center.longitude,
+                            latitudeStop = lllh[lllh.lastIndex].latitude,
+                            longitudeStop = lllh[lllh.lastIndex].longitude,
+                            distance = dist,
+                            kmlString = lllh.lllhToKmlString(name)
+                        )
+                    )
                     setHighlightRoutePoint(-1)
                     CompassViewModel.setRouteThumbnail(null)
                     setRecalcRequired(false)
@@ -1062,6 +1087,45 @@ fun BoxScope.MapOverlayManagerContent(
             CircularProgressIndicator(modifier = Modifier.size(50.dp), color = MaterialTheme.colorScheme.secondary, trackColor = MaterialTheme.colorScheme.surfaceVariant, strokeWidth = 6.dp)
         }
     }
+}
+
+private fun calculateGhRoute(
+    context: android.content.Context,
+    resources: android.content.res.Resources,
+    startLat: Double?,
+    startLon: Double?,
+    stopPosition: LatLng?,
+    isRoundTrip: Boolean,
+    roundTripFactor: Float,
+    setProgress: (String?) -> Unit,
+    updatePolygon: (PolygonState) -> Unit,
+    setLoadedRoute: (RouteEntity?) -> Unit,
+    setHighlightRoutePoint: (Int) -> Unit,
+    setRecalcRequired: (Boolean) -> Unit,
+    setStopDragged: (Boolean) -> Unit,
+    setSnackbar: (MainSnackbarData?) -> Unit,
+    closeOverlay: () -> Unit
+) {
+    if (startLat != null && startLon != null && stopPosition.isNotNull()) {
+        setProgress("${resources.getString(R.string.graphhopper_route_calculation)} ${GhHelper.getGhFilename(context)}")
+        ghCalc(context, startLat, startLon, stopPosition!!.latitude, stopPosition.longitude,
+            roundTrip = isRoundTrip, roundTripFactor) { lllh, name, _, _ ->
+            setProgress(null)
+            val dist = lllh.getDistanceFromLllh()
+            val center = lllh.getCenter()
+            val newState = PolygonState(lllh, name, dist).apply {
+                polygonData = PolygonData(lllh, name, dist, false, null)
+                polygonData?.createPolygonMarkers(context, 0.0)
+            }
+            updatePolygon(newState)
+            setLoadedRoute(RouteEntity(UUID.randomUUID(), name, Const.GH_TAG, startLat, startLon, latitudeCenter = center.latitude, longitudeCenter = center.longitude, latitudeStop = lllh[lllh.lastIndex].latitude, longitudeStop = lllh[lllh.lastIndex].longitude, kmlString = lllh.lllhToKmlString(name)))
+            setHighlightRoutePoint(-1)
+            CompassViewModel.setRouteThumbnail(null)
+            setRecalcRequired(false)
+            setStopDragged(false)
+        }
+    } else setSnackbar(MainSnackbarData(resources.getString(R.string.no_stop_marker), null, null, null))
+    closeOverlay()
 }
 
 @ComposePreview(showBackground = true)

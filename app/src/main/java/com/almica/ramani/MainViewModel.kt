@@ -53,7 +53,7 @@ enum class OverlayType {
     NONE, PREFERENCES, GH_FOLDERS, VEHICLE_MENU, GEO_CODER, ROUTE_MONITOR, MAP_LONG_CLICK,
     RASTER_MAPS, MAP_TYPE, SAT_STATUS, LAYERS_CONTROL, BBBIKE_FUNCTIONS, HAIRCROSS, MAP_MENU,
     POI_DATABASE, LOCATIONS, ROUTE_FILES, ROUTE_FILES_REGION, ROUTE_FOLDERS, MVT_LIST,
-    ADDITIONAL_MAPS, LOCATION_STATISTIC, ROUTE_SAVING, PDF_VIEWER, PDF_ROUTES
+    ADDITIONAL_MAPS, LOCATION_STATISTIC, ROUTE_SAVING, PDF_VIEWER, PDF_ROUTES, VALUE_PICKER
 }
 
 data class MainUiState(
@@ -540,7 +540,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun calculateRoute(context: Context, startLat: Double, startLon: Double, stopLat: Double, stopLon: Double) {
         setProgress("${context.getString(R.string.graphhopper_route_calculation)} ${GhHelper.getGhFilename(context)}")
-        ghCalc(context, startLat, startLon, stopLat, stopLon) { lllh, name, success, _ ->
+        ghCalc(
+            context,
+            startLat,
+            startLon,
+            stopLat,
+            stopLon
+        ) { lllh, name, success, _ ->
             setProgress(null)
             if (success) {
                 val dist = lllh.getDistanceFromLllh()
@@ -550,7 +556,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     polygonData?.createPolygonMarkers(context, 0.0)
                 }
                 updatePolygon(newState)
-                setLoadedRoute(RouteEntity(UUID.randomUUID(), name, Const.GH_TAG, startLat, startLon, latitudeCenter = center.latitude, longitudeCenter = center.longitude, latitudeStop = lllh[lllh.lastIndex].latitude, longitudeStop = lllh[lllh.lastIndex].longitude, distance = dist, kmlString = lllh.lllhToKmlString(name)))
+                setLoadedRoute(
+                    RouteEntity(
+                        UUID.randomUUID(),
+                        name,
+                        Const.GH_TAG,
+                        startLat,
+                        startLon,
+                        latitudeCenter = center.latitude,
+                        longitudeCenter = center.longitude,
+                        latitudeStop = lllh[lllh.lastIndex].latitude,
+                        longitudeStop = lllh[lllh.lastIndex].longitude,
+                        distance = dist,
+                        kmlString = lllh.lllhToKmlString(name)
+                    )
+                )
                 setHighlightRoutePoint(-1)
                 CompassViewModel.setRouteThumbnail(null)
                 setRecalcRequired(false)

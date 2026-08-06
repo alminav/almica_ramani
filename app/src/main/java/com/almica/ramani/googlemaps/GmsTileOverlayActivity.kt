@@ -14,18 +14,13 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
@@ -48,10 +43,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -76,7 +69,6 @@ import com.almica.ramani.RouteGeojsonList
 import com.almica.ramani.VehicleMenu
 import com.almica.ramani.charts.MbsElevationChart
 import com.almica.ramani.charts.MbsGradientChart
-import com.almica.ramani.charts.theme.Teal200
 import com.almica.ramani.charts.theme.White
 import com.almica.ramani.compass.CompassViewModel
 import com.almica.ramani.googlemaps.MapUtils.downloadPoiInfo
@@ -702,8 +694,24 @@ private fun MapDialogs(
                 GmsHairCrossMenuAction.CalculateRoute -> {
                     if (uiState.stopMarkerData != null) {
                         viewModel.updateState { state -> state.copy(snackMsg = "$ghRouteCalcText ${GhHelper.getGhFilename(context)}") }
-                        ghCalc(context, pos.latitude, pos.longitude, uiState.stopMarkerData.latLng.latitude, uiState.stopMarkerData.latLng.longitude) { lllh, name, _, _ ->
-                            viewModel.updateState { state -> state.copy(routeData = RouteData(lllh, name, lllh.getDistanceFromLllh(), false, null), showHairCrossDropDownMenu = null, snackMsg = null) }
+                        ghCalc(
+                            context,
+                            pos.latitude,
+                            pos.longitude,
+                            uiState.stopMarkerData.latLng.latitude,
+                            uiState.stopMarkerData.latLng.longitude
+                        ) { lllh, name, _, _ ->
+                            viewModel.updateState { state ->
+                                state.copy(
+                                    routeData = RouteData(
+                                        lllh,
+                                        name,
+                                        lllh.getDistanceFromLllh(),
+                                        false,
+                                        null
+                                    ), showHairCrossDropDownMenu = null, snackMsg = null
+                                )
+                            }
                         }
                     } else viewModel.updateState { state -> state.copy(snackMsg = noStopMarkerText) }
                 }

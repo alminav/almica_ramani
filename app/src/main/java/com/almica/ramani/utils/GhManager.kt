@@ -2,19 +2,16 @@ package com.almica.ramani.utils
 
 import android.app.Activity
 import android.content.Context
-import android.util.Log
 import androidx.preference.PreferenceManager
 import com.almica.ramani.Const
 import com.almica.ramani.Helpers
 import com.almica.ramani.Helpers.Companion.getTileName
 import com.almica.ramani.R
-import com.almica.ramani.utils.isNotNull
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.SphericalUtil
 import com.graphhopper.GHRequest
 import com.graphhopper.GHResponse
 import com.graphhopper.GraphHopper
-import com.graphhopper.routing.util.BikeFlagEncoder
 import com.graphhopper.routing.util.EdgeFilter
 import com.graphhopper.routing.util.EncodingManager
 import com.graphhopper.storage.DataAccess
@@ -148,7 +145,8 @@ class GhManager internal constructor(context: Context, private var mInitListener
         startY: Double,
         startX: Double,
         stopY: Double,
-        stopX: Double
+        stopX: Double,
+        roundTripFactor: Float
     ): GHResponse {
         Timber.i("round trip: start $startY $startX stop $stopY $stopX")
 
@@ -160,8 +158,8 @@ class GhManager internal constructor(context: Context, private var mInitListener
             // Calculate a point perpendicular to the center of the line
             val heading = SphericalUtil.computeHeading(startLatLng, stopLatLng)
             val midPoint = SphericalUtil.interpolate(startLatLng, stopLatLng, 0.5)
-            val offsetPoint1 = SphericalUtil.computeOffset(midPoint, 0.2 * distanceStopStart, heading + 90.0)
-            val offsetPoint2 = SphericalUtil.computeOffset(midPoint, 0.2 * distanceStopStart, heading - 90.0)
+            val offsetPoint1 = SphericalUtil.computeOffset(midPoint, roundTripFactor * distanceStopStart, heading + 90.0)
+            val offsetPoint2 = SphericalUtil.computeOffset(midPoint, roundTripFactor * distanceStopStart, heading - 90.0)
 
             val ghRequest = GHRequest(5)
                 .addPoint(GHPoint(startY, startX))
