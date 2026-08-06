@@ -49,6 +49,7 @@ import androidx.exifinterface.media.ExifInterface
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.Helpers.Companion.addLineToSnapshotWithGradient
 import com.almica.ramani.navigation.RamaniApp
+import com.almica.ramani.RouteInfo
 import com.almica.ramani.pdfcreator.createOverviewSnapshot
 import com.almica.ramani.routes.RouteDialogMode
 import com.almica.ramani.routes.RouteEntity
@@ -328,9 +329,9 @@ class ListRouteFoldersActivity : ComponentActivity() {
                     Timber.i("onDocumentViewerFinish")
                     finish()
                 },
-                onDocumentViewerResult = { resultRouteTriple ->
-                    Timber.i("onDocumentViewerResult: ${resultRouteTriple.first} ${resultRouteTriple.second} lllh:${resultRouteTriple.third.size}")
-                    resultRouteTriple.first?.let { name ->
+                onDocumentViewerResult = { resultRouteInfo ->
+                    Timber.i("onDocumentViewerResult: ${resultRouteInfo.name} ${resultRouteInfo.formattedDistance} lllh:${resultRouteInfo.points.size}")
+                    resultRouteInfo.name?.let { name ->
                         val prefs = getDefaultSharedPreferences(context)
                         val routeFolder = prefs.getString(Const.PREF_ROUTEFOLDER_FILEPATH, null)
                         Timber.i("routeFolder: $routeFolder")

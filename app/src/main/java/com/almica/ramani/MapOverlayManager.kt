@@ -134,6 +134,7 @@ import java.util.concurrent.Executors
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import com.almica.ramani.pois.PoiEntity
+import com.almica.ramani.RouteInfo
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.google.android.gms.maps.model.LatLng as GmsLatLng
 
@@ -717,15 +718,15 @@ fun BoxScope.MapOverlayManagerContent(
     }
 
     if (showPdfViewer) {
-        DocumentViewer(finish = { closeOverlay() }, routeDataTripleSelection = { triple ->
+        DocumentViewer(finish = { closeOverlay() }, routeDataSelection = { info ->
             closeOverlay()
-            triple.first?.let { name ->
-                loadRouteFromLllh(triple.third, name, context, cameraMode, cameraPosition, onLoaded = { entity, state ->
+            info.name?.let { name ->
+                loadRouteFromLllh(info.points, name, context, cameraMode, cameraPosition, onLoaded = { entity, state ->
                     setLoadedRoute(entity)
                     updatePolygon(state)
                     setHighlightRoutePoint(-1)
                     setRecalcRequired(false)
-                    onPopupSnackMsg(resources.getString(R.string.route_loaded_, triple.first))
+                    onPopupSnackMsg(resources.getString(R.string.route_loaded_, info.name))
                 })
             }
         })
@@ -967,15 +968,15 @@ fun BoxScope.MapOverlayManagerContent(
     }
 
     if (showRouteFolders) {
-        RamaniApp(onDocumentViewerFinish = { closeOverlay() }, onDocumentViewerResult = { resultRouteTriple ->
+        RamaniApp(onDocumentViewerFinish = { closeOverlay() }, onDocumentViewerResult = { resultRouteInfo ->
             closeOverlay()
-            resultRouteTriple.first?.let { name ->
-                loadRouteFromLllh(resultRouteTriple.third, name, context, cameraMode, cameraPosition, onLoaded = { entity, state ->
+            resultRouteInfo.name?.let { name ->
+                loadRouteFromLllh(resultRouteInfo.points, name, context, cameraMode, cameraPosition, onLoaded = { entity, state ->
                     setLoadedRoute(entity)
                     updatePolygon(state)
                     setHighlightRoutePoint(-1)
                     setRecalcRequired(false)
-                    onPopupSnackMsg(resources.getString(R.string.route_loaded_, resultRouteTriple.first))
+                    onPopupSnackMsg(resources.getString(R.string.route_loaded_, resultRouteInfo.name))
                 })
             }
         }, onRouteFolderSelected = {}, onRouteFolderFinished = { closeOverlay() }, onRouteSelected = { routeFile ->

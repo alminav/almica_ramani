@@ -32,7 +32,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.Const
-import com.almica.ramani.LatLngH
+import com.almica.ramani.RouteInfo
 import com.almica.ramani.routes.ListRouteFoldersScreen
 import com.almica.ramani.utils.DocumentViewer
 import androidx.compose.ui.tooling.preview.Preview
@@ -125,7 +125,7 @@ fun RamaniNavigationBarContent(
 @Composable
 fun RamaniApp(
     onDocumentViewerFinish: () -> Unit,
-    onDocumentViewerResult: (Triple<String?, String?, ArrayList<LatLngH>>) -> Unit,
+    onDocumentViewerResult: (RouteInfo) -> Unit,
     onRouteFolderSelected: (Triple<String, String, Int>) -> Unit,
     onRouteFolderFinished: (String?) -> Unit,
     onRouteSelected: (File) -> Unit,
@@ -159,7 +159,7 @@ fun RamaniNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
     onDocumentViewerFinish: () -> Unit,
-    onDocumentViewerResult: (Triple<String?, String?, ArrayList<LatLngH>>) -> Unit,
+    onDocumentViewerResult: (RouteInfo) -> Unit,
     onRouteFolderSelected: (Triple<String, String, Int>) -> Unit,
     onRouteFolderFinished: (String?) -> Unit,
     onRouteSelected: (File) -> Unit,
@@ -170,14 +170,14 @@ fun RamaniNavHost(
     // Set up the result listener for the ROUTE_FOLDERS activity or any other destination
     LaunchedEffect(navController) {
         navController.currentBackStackEntryFlow.collect { backStackEntry ->
-            Timber.i("backStackEntry: $backStackEntry.destination.route")
+            Timber.i("backStackEntry: ${backStackEntry.destination.route}")
             val savedStateHandle = backStackEntry.savedStateHandle
             // Check if the expected key "route_selection_result" exists in the SavedStateHandle
-            val result = savedStateHandle.get<Triple<String?, String?, ArrayList<LatLngH>>>("route_selection_result")
+            val result = savedStateHandle.get<RouteInfo>("route_selection_result")
             if (result != null) {
                 onDocumentViewerResult(result)
                 // Clear the result after consuming it to prevent re-triggering on configuration changes
-                savedStateHandle.remove<Triple<String?, String?, ArrayList<LatLngH>>>("route_selection_result")
+                savedStateHandle.remove<RouteInfo>("route_selection_result")
             }
         }
     }
@@ -201,7 +201,7 @@ fun RamaniNavHost(
         composable(NavRoutes.DOCUMENT_VIEW) {
             DocumentViewer(
                 finish = onDocumentViewerFinish,
-                routeDataTripleSelection = onDocumentViewerResult
+                routeDataSelection = onDocumentViewerResult
             )
         }
     }

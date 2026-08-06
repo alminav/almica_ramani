@@ -41,7 +41,7 @@ fun MainZoomButtons(
             (mapPositionZoom.value ?: cameraPosition.value.zoom)?.format(1) ?: ""
         }
     }
-    Timber.i("zoomText: $zoomText")
+    //Timber.i("zoomText: $zoomText")
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.align(alignment = Alignment.CenterEnd)) {
             AnimatedVisibility(
