@@ -233,8 +233,10 @@ class LocationService : Service(), LocationUpdatesCallBack, SensorEventListener,
                     time = location.time,
                     recordedAt = Date(location.time)
                 )
-                locationRepository.addLocation(locationEntity)
-                Timber.i("addLocation: ${Date(location.time).simpleStringWithTime()}")
+                if (GpsRepository.getInstance().isTrackingEnabled.value) {
+                    locationRepository.addLocation(locationEntity)
+                    Timber.i("addLocation: ${Date(location.time).simpleStringWithTime()}")
+                }
             }
         }
 

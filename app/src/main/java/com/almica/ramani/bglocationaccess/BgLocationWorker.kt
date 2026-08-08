@@ -30,12 +30,14 @@ import androidx.preference.PreferenceManager
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.almica.ramani.Const
+import com.almica.ramani.GpsRepository
 import com.almica.ramani.R
 import com.almica.ramani.locations.LocationRepository
 import com.almica.room.data.location.LocationEntity
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import timber.log.Timber
 import java.util.Date
 import java.util.concurrent.Executors
 
@@ -84,10 +86,11 @@ class BgLocationWorker(context: Context, param: WorkerParameters) :
                     time = it.time,
                     recordedAt = Date(it.time)
                 )
-                locationRepository.addLocation(locationEntity)
+                if (GpsRepository.getInstance().isTrackingEnabled.value) {
+                    locationRepository.addLocation(locationEntity)
+                }
                 val locationMsg = "Location = [lat : ${location.latitude}, lng : ${location.longitude}]"
-                Log.i(workName,
-                    "${Thread.currentThread().stackTrace[2].lineNumber}: $locationMsg")
+                Timber.i("$workName $locationMsg")
                 var temperature = 0.0
                 if (batteryStatus != null) {
                     temperature =

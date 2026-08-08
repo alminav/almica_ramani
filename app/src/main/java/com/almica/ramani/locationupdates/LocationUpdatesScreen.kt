@@ -55,6 +55,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.SphericalUtil
 import me.ibrahimsn.library.LiveSharedPreferences
 import androidx.compose.runtime.livedata.observeAsState
+import com.almica.ramani.GpsRepository
 import timber.log.Timber
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.room.data.location.format
@@ -183,8 +184,11 @@ fun LocationUpdatesContent() {
                         time = currentLocation.time,
                         recordedAt = Date(currentLocation.time)
                     )
-                    locationRepository.addLocation(locationEntity)
-                    Timber.i( "addLocation: ${Date(currentLocation.time)} ${currentLocation.speed.format(1)}m/s")
+                    if (GpsRepository.getInstance().isTrackingEnabled.value) {
+                        locationRepository.addLocation(locationEntity)
+                        Timber.i( "addLocation: ${Date(currentLocation.time)} ${currentLocation.speed.format(1)}m/s")
+                    }
+
                 }
             }
         }

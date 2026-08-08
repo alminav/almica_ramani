@@ -71,7 +71,8 @@ enum class MainSnackbarSelection {
     SelectMvt,
     ChangeMvt,
     RouteSideBar,
-    AppRestart
+    AppRestart,
+    ToggleTracking
 }
 enum class GpsValue {
     Elevation,

@@ -96,7 +96,8 @@ data class MainUiState(
     val poiCategoryMap: Map<String, Pair<Int, Int>> = emptyMap(),
     val poiEntities: List<PoiEntity> = emptyList(),
     val mvtPath: String? = null,
-    val styleUriToUse: String? = null
+    val styleUriToUse: String? = null,
+    val isTrackingEnabled: Boolean = true
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -108,6 +109,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val locationRepository = LocationRepository.getInstance(application, executor)
     private val poiRepository = PoiRepository.getInstance(application, executor)
     private val geojsonMapRepository = GeojsonMapRepository.getInstance(application, executor)
+    val isTrackingEnabled = GpsRepository.getInstance().isTrackingEnabled
 
     init {
         initializeMapType()
@@ -577,5 +579,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 setStopDragged(false)
             }
         }
+    }
+
+    fun setIsTrackingEnabled(bool: Boolean) {
+        _uiState.update { it.copy(isTrackingEnabled = bool) }
+        GpsRepository.getInstance().updateTrackingEnabled(bool)
     }
 }

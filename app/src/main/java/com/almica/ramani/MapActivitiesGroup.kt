@@ -2,7 +2,6 @@ package com.almica.ramani
 
 import androidx.activity.ComponentActivity
 import androidx.annotation.StringRes
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +12,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.ChangeHistory
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.ImportExport
@@ -25,6 +26,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +58,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.format
-import com.almica.ramani.utils.isNotNull
 import timber.log.Timber
 import java.util.ArrayList
 import kotlin.reflect.KClass
@@ -282,17 +284,19 @@ fun RamaniNavHost(
     ghDescription: String?,
     geojsonFolderDescription: String?,
     routeFolderDescription: String?,
-    resultLatLng: Pair<Double, Double>,
     firstLocationDate: String?,
     lastLocationDate: String?,
+    lastLocationCoords: String?,
     logCount: Int,
+    isTrackingEnabled: Boolean,
     onActivityClick: (
         KClass<out ComponentActivity>,
         kotlin.collections.ArrayList<Pair<String, String>>,
         kotlin.collections.ArrayList<Pair<String, Double>>,
         MaptypeKey
     ) -> Unit,
-    showLocationsMenu: () -> Unit
+    showLocationsMenu: () -> Unit,
+    onToggleTracking: (Boolean) -> Unit
 ) {
     val navController: NavHostController = rememberNavController()
     val items = listOf(
@@ -383,20 +387,35 @@ fun RamaniNavHost(
                         )
                     }
 
-                    AnimatedVisibility(
-                        modifier = Modifier.padding(top = 10.dp),
-                        visible = resultLatLng.isNotNull()
-                    ) {
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            resultLatLng.let {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                            lastLocationCoords?.let {
                                 Text(
-                                    text = "${stringResource(R.string.last_location)} lat: ${
-                                        it.first.format(4)}° lon: ${it.second.format(4)}°",
+                                    text = "${stringResource(R.string.last_location)} $it",
                                     modifier = Modifier
                                         .align(Alignment.CenterHorizontally)
                                         .padding(bottom = 3.dp)
                                 )
                             }
+
+                            OutlinedButton(
+                                onClick = { onToggleTracking(!isTrackingEnabled) },
+                                modifier = Modifier
+                                    .align(Alignment.CenterHorizontally)
+                                    .padding(bottom = 8.dp),
+                                colors = if (isTrackingEnabled) {
+                                    ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                } else {
+                                    ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                                }
+                            ) {
+                                Icon(
+                                    if (isTrackingEnabled) Icons.Default.Stop else Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                                Text(text = if (isTrackingEnabled) "Disable Logging" else "Enable Logging")
+                            }
+
                             BadgedBox(modifier = Modifier.align(Alignment.CenterHorizontally), badge = { Badge { Text("$logCount") } }) {
                                 Button(
                                     onClick = { showLocationsMenu() },
@@ -421,8 +440,9 @@ fun RamaniNavHost(
                                     modifier = Modifier.align(Alignment.CenterHorizontally)
                                 )
                             }
+
                         }
-                    }
+
                 }
             }
         }
@@ -580,12 +600,14 @@ fun RamaniListPreview() {
             ghDescription = "Sample GH Description",
             geojsonFolderDescription = "Sample GeoJSON Folder Description",
             routeFolderDescription = "home",
-            resultLatLng = Pair(52.3, 10.4),
-            "02/02/2026",
+            firstLocationDate = "02/02/2026",
             lastLocationDate = "03/02/2026",
+            lastLocationCoords = "lat: -1.2833° lon: 36.8167°",
             logCount = 999,
+            isTrackingEnabled = true,
             onActivityClick = { _, _, _, _ -> },
-             {  }
+            showLocationsMenu = {  },
+            onToggleTracking = { }
         )
     }
 }

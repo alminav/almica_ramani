@@ -34,13 +34,23 @@
             app:allowDividerAbove="true" /-->
         <androidx.preference.ListPreference
             android:defaultValue="2"
-            android:dialogIcon="@drawable/maplibre_compass_icon"
+            android:dialogIcon="@drawable/baseline_northup_24"
             android:entries="@array/map_render_entries"
             android:entryValues="@array/map_render_values"
-            android:icon="@drawable/maplibre_compass_icon"
+            android:icon="@drawable/baseline_northup_24"
             android:key="@string/pref_render_mode"
             android:title="@string/renderMode_title"
             android:summary="@string/renderMode_normal"
             app:allowDividerAbove="true"/>
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/account">
+        <EditTextPreference
+            android:defaultValue="@string/google_maps_key"
+            android:icon="@drawable/outline_map_24"
+            android:key="@string/pref_google_maps_key"
+            android:summary="@string/google_maps_key_summary"
+            android:title="@string/google_maps_key_title"
+            app:allowDividerAbove="true"
+            app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 </PreferenceScreen>

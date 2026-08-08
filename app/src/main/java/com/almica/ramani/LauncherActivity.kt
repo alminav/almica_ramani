@@ -191,7 +191,12 @@ class LauncherActivity : ComponentActivity() {
             onRefreshLogCount = { viewModel.refreshAll() },
             onDismissLocationStatistic = { viewModel.dismissLocationStatistic() },
             onDismissRouteSavingScreen = { viewModel.dismissRouteSavingScreen() },
-            mvtChange = { viewModel.refreshAll() }
+            mvtChange = { viewModel.refreshAll() },
+            onToggleTracking = {
+                GpsRepository.getInstance().updateTrackingEnabled(it)
+                viewModel.refreshAll()
+                Timber.i("onToggleTracking: $it")
+            }
         )
     }
     data class LauncherSnackbarData(
@@ -218,7 +223,8 @@ fun LauncherContentUI(
     onRefreshLogCount: () -> Unit,
     onDismissLocationStatistic: () -> Unit,
     onDismissRouteSavingScreen: () -> Unit,
-    mvtChange: () -> Unit
+    mvtChange: () -> Unit,
+    onToggleTracking: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val resources = context.resources
@@ -264,12 +270,14 @@ fun LauncherContentUI(
                 uiState.ghFileName,
                 uiState.geojsonFolderDescription,
                 uiState.resultRouteFolderName,
-                uiState.resultLatLng,
                 uiState.firstLocationDate,
                 uiState.lastLocationDate,
+                uiState.lastLocationCoords,
                 uiState.logCount,
+                isTrackingEnabled = uiState.isTrackingEnabled,
                 onActivityClick = onActivityClick,
-                showLocationsMenu = { showLocationsMenu = true }
+                showLocationsMenu = { showLocationsMenu = true },
+                onToggleTracking = onToggleTracking
             )
         }
 
@@ -298,6 +306,7 @@ fun LauncherContentUI(
             }
         }
 
+        //Timber.i("logCount: ${uiState.logCount}")
         if (showLocationsSnapshot) {
             MbsLocationsSnapshot(
                 finished = {
@@ -330,12 +339,14 @@ fun LauncherContentUI(
                     }
                     LocationsAction.SnapShot -> {
                         showLocationsMenu = false
-                        showLocationsSnapshot = true
-                        snackDelay = 0L
-                        snackbarData = LauncherActivity.LauncherSnackbarData(
-                            resources.getString(R.string.take_snapshot_started),
-                            null, null, null
-                        )
+                        if (uiState.logCount > 0) {
+                            showLocationsSnapshot = true
+                            snackDelay = 0L
+                            snackbarData = LauncherActivity.LauncherSnackbarData(
+                                resources.getString(R.string.take_snapshot_started),
+                                null, null, null
+                            )
+                        }
                     }
                     LocationsAction.Reset -> {
                         onRefreshLogCount()
@@ -514,7 +525,8 @@ fun LauncherContentUIPreview() {
             onRefreshLogCount = { },
             onDismissLocationStatistic = {},
             onDismissRouteSavingScreen = {},
-            mvtChange = {}
+            mvtChange = {},
+            onToggleTracking = {}
         )
     }
 }

@@ -13,9 +13,13 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +52,7 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import timber.log.Timber
 import java.io.File
+import androidx.compose.runtime.collectAsState
 
 @RequiresApi(Build.VERSION_CODES.S)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -127,6 +132,8 @@ fun MainScaffoldContent(
     val userLocation = rememberSaveable { mutableStateOf(Location(null)) }
     val cameraMode = remember { mutableIntStateOf(uiState.cameraMode) }
     val renderMode = remember { mutableIntStateOf(uiState.renderMode) }
+    
+    val isTrackingEnabled by viewModel?.isTrackingEnabled?.collectAsState(initial = true) ?: remember { mutableStateOf(true) }
     
     var renderModeMap by remember {
         mutableStateOf(preferences.getString(resources.getString(R.string.pref_render_mode), Const.RENDER_MODE_COMPASS))
@@ -247,6 +254,24 @@ fun MainScaffoldContent(
             onLogCountChange = { viewModel?.setLogCount(it) },
             context = context
         )
+
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .size(16.dp),
+            shape = CircleShape,
+            onClick = {
+                val msg = if (isTrackingEnabled) "Tracking is active" else "Tracking is disabled"
+                viewModel?.setSnackbar(
+                    MainSnackbarData(msg, resources.getString(R.string.toggle),
+                        ToggleTracking, isTrackingEnabled)
+                )
+            },
+            color = if (isTrackingEnabled) Color.Red else Color.White,
+            shadowElevation = 4.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White)
+        ) {}
 
         if (uiState.mainSnackbarData != null) {
             MainMoboSnack(uiState.mainSnackbarData) { action ->
@@ -436,6 +461,12 @@ private fun handleSnackbarAction(
             val resultIntent = Intent()
             (context as Activity).setResult(Activity.RESULT_OK, resultIntent)
             context.finish()
+        }
+
+        ToggleTracking -> {
+            val isTrackingEnabled = uiState.mainSnackbarData?.data as? Boolean
+            isTrackingEnabled?.let { viewModel?.setIsTrackingEnabled(!it) }
+            viewModel?.setSnackbar(null)
         }
     }
 }

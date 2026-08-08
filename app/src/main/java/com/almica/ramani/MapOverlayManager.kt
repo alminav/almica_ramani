@@ -1142,7 +1142,7 @@ fun MapOverlayManagerPreview() {
         CompositionLocalProvider(LocalLiveSharedPreferences provides liveSharedPreferences) {
             Box(modifier = Modifier.fillMaxSize()) {
                 MapOverlayManagerContent(
-                    uiState = MainUiState(progressMsg = "Loading maps..."),
+                    uiState = MainUiState(progressMsg = "Loading maps...",),
                     map = null,
                     cameraPosition = cameraPosition,
                     cameraMode = cameraMode,

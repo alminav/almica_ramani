@@ -9,6 +9,7 @@ import com.almica.ramani.charts.GraphDataPoints
 import com.almica.ramani.charts.PlotResult
 import com.almica.ramani.charts.createPlotDataResult
 import com.almica.ramani.locations.LocationRepository
+import com.almica.ramani.utils.format
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,8 @@ data class LauncherUiState(
     val logCount: Int = 0,
     val lastLocationDate: String? = null,
     val firstLocationDate: String? = null,
+    val lastLocationCoords: String? = null,
+    val isTrackingEnabled: Boolean = true,
     val showLocationStatistic: Boolean = false,
     val showRouteSavingScreen: Boolean = false,
     val plotResult: PlotResult = PlotResult(GraphDataPoints(arrayListOf(), arrayListOf(), arrayListOf(), arrayListOf()), 0f),
@@ -77,10 +80,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
             val firstDateStr = firstLoc?.let { dateFormat.format(it.time) }
             val lastDateStr = lastLoc?.let { dateFormat.format(it.time) }
+            val lastCoordsStr = lastLoc?.let {
+                "lat: ${it.latitude.format(4)}° lon: ${it.longitude.format(4)}°"
+            }
 
             val geojsonFolder = prefs.getString(Const.PREF_GEOJSON_FILEPATH, null)
             val geojsonFile = prefs.getString(Const.RESULT_GEOJSON_FILENAME, null)
-            
+            //val isTracking = Helpers.isServiceRunning(getApplication(), LocationService::class.java)
+            val isTracking = GpsRepository.getInstance().isTrackingEnabled.value
+            Timber.i("isTracking: $isTracking")
+
             _uiState.update {
                 it.copy(
                     rasterTilesPrefSet = rasterTiles,
@@ -91,8 +100,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     logCount = count,
                     firstLocationDate = firstDateStr,
                     lastLocationDate = lastDateStr,
+                    lastLocationCoords = lastCoordsStr,
                     geojsonFolderDescription = geojsonFolder?.let { File(it).name },
-                    geojsonDescription = geojsonFile
+                    geojsonDescription = geojsonFile,
+                    isTrackingEnabled = isTracking
                 )
             }
         }

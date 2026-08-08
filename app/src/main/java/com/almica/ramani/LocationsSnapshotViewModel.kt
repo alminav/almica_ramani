@@ -40,7 +40,6 @@ data class LocationsSnapshotUiState(
 )
 
 class LocationsSnapshotViewModel(application: Application) : AndroidViewModel(application) {
-
     private val _uiState = MutableStateFlow(LocationsSnapshotUiState())
     val uiState: StateFlow<LocationsSnapshotUiState> = _uiState.asStateFlow()
 
@@ -48,7 +47,7 @@ class LocationsSnapshotViewModel(application: Application) : AndroidViewModel(ap
     private val mvtFolder = File(application.filesDir, Const.MVT_FOLDER)
 
     init {
-        loadLocations()
+        Timber.i("LocationsSnapshotViewModel init")
     }
 
     fun loadLocations() {
@@ -75,7 +74,11 @@ class LocationsSnapshotViewModel(application: Application) : AndroidViewModel(ap
             _uiState.update { it.copy(lllhLocations = lllh, logCount = count, isLoading = false) }
             
             if (lllh.isNotEmpty()) {
-                resolveStyle(lllh)
+                resolveStyle(lllh) // takeSnapshot is called in resolveStyle
+                Timber.i("takeSnapshot lllh: ${lllh.size}")
+            } else {
+                Timber.i("lllh is empty")
+                _uiState.update { it.copy(snapshot = null, snapshotBitmap = null, logCount = 0, isLoading = false) }
             }
         }
     }
@@ -140,6 +143,7 @@ class LocationsSnapshotViewModel(application: Application) : AndroidViewModel(ap
     }
 
     fun takeSnapshot() {
+        Timber.i("takeSnapshot")
         val state = _uiState.value
         val lllh = state.lllhLocations ?: return
         val styleUri = state.styleUriToUse ?: return

@@ -18,6 +18,7 @@ import androidx.compose.material.Switch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.SaveAlt
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -25,6 +26,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -50,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.almica.ramani.Helpers.Companion.saveLocations
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.formatDistM
+import kotlinx.coroutines.flow.update
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.snapshotter.MapSnapshot
 import timber.log.Timber
@@ -63,6 +66,10 @@ fun MbsLocationsSnapshot(
     refreshLogCount: () -> Unit, showSaveResult: (String) -> Unit,
     viewModel: LocationsSnapshotViewModel = viewModel()) {
     val context = LocalContext.current
+    LaunchedEffect(viewModel) {
+        Timber.i("MbsLocationsSnapshot LaunchedEffect")
+        viewModel.loadLocations()
+    }
     val uiState by viewModel.uiState.collectAsState()
 
     if (uiState.snapshotBitmap != null) {
@@ -93,6 +100,10 @@ fun MbsLocationsSnapshot(
                 changeGradientState = { state ->
                     viewModel.setShowGradient(state)
                 })
+        }
+    } else if (uiState.isLoading) {
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
     }
 }
@@ -206,7 +217,7 @@ fun MbsLocationsSnapshotContent(
                             val startPadding =
                                     (pixel.x / snap.bitmap.width.toFloat() * widthDp.value - 14).coerceAtLeast(0F).dp
                             val topPadding = (pixel.y / snap.bitmap.height.toFloat() * widthDp.value - 28).coerceAtLeast(0F).dp
-                            Timber.i("startPadding: $startPadding topPadding: $topPadding")
+                            //Timber.i("startPadding: $startPadding topPadding: $topPadding")
                             Image(
                                 painter = BitmapPainter(m.asImageBitmap()),
                                 contentDescription = null,

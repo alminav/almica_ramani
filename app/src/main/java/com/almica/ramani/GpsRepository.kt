@@ -1,8 +1,13 @@
 package com.almica.ramani
 
+import android.app.Application
+import android.content.Intent
+import com.almica.ramani.bglocationaccess.LocationService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import timber.log.Timber
 
 class GpsRepository private constructor() {
     private val _distance = MutableStateFlow(0.0)
@@ -32,6 +37,9 @@ class GpsRepository private constructor() {
     private val _stepCounter = MutableStateFlow(0)
     val stepCounter: StateFlow<Int> = _stepCounter.asStateFlow()
 
+    private val _isTrackingEnabled = MutableStateFlow(true)
+    val isTrackingEnabled: StateFlow<Boolean> = _isTrackingEnabled.asStateFlow()
+
     fun updateDistance(d: Double) { _distance.value = d }
     fun updateSpeed(v: Float) { _speed.value = v }
     fun updateBearing(v: Float) { _bearing.value = v }
@@ -41,6 +49,10 @@ class GpsRepository private constructor() {
     fun updateTravelledTime(t: Long) { _travelledTime.value = t }
     fun updateTime(t: Long) { _time.value = t }
     fun updateStepCounter(steps: Int) { _stepCounter.value = steps }
+    fun updateTrackingEnabled(enabled: Boolean) {
+        _isTrackingEnabled.value = enabled
+        Timber.i("updateTrackingEnabled: $enabled")
+    }
 
     companion object {
         @Volatile
