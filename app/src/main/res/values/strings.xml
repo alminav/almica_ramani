@@ -508,5 +508,11 @@
     <string name="menu">Menu</string>
     <string name="navigation">Navigation</string>
     <string name="import_pdf_geojson">Import pdf + geojson</string>
-    <string name="roundtrip_factor">Calculate roundtrip with factor</string>
+    <string name="roundtrip_factor">Round trip width factor</string>
+    <string name="calculate">Calculate</string>
+    <string name="google_maps_key_title" translatable="false">Google Maps API Key</string>
+    <string name="google_maps_key_summary" translatable="false">Set your Google Maps API Key here</string>
+    <string name="pref_google_maps_key" translatable="false">pref.google.maps.key</string>
+    <string name="account">Account</string>
+    <string name="toggle">Toggle</string>
 </resources>

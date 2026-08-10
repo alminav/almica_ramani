@@ -138,7 +138,7 @@ fun GeoCoderLauncher(latLng: com.google.android.gms.maps.model.LatLng?, showInMa
         }
         showPoiCatMoBoSheet?.let { _ ->
             Timber.i("name: ${showPoiCatMoBoSheet!!.name}")
-            PoiCatMoBoSheet(showPoiCatMoBoSheet!!.name.toString()) { name, category ->
+            PoiCatDialog(showPoiCatMoBoSheet!!.name.toString()) { name, category ->
                 Timber.i("$name $category")
                 if (showPoiCatMoBoSheet!!.latLng != null)
                     when (category) {

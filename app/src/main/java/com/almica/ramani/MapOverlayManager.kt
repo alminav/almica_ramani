@@ -528,7 +528,7 @@ fun BoxScope.MapOverlayManagerContent(
             }
             setSelectedFeature(null)
         } else {
-            PoiCatMoBoSheet(selectedFeatureItem.name.toString()) { name, category ->
+            PoiCatDialog(selectedFeatureItem.name.toString()) { name, category ->
                 if (category != null) {
                     addPoiDao(context, name, com.google.android.gms.maps.model.LatLng(selectedFeatureItem.lat,
                         selectedFeatureItem.lon), -1.0, category) { poi ->

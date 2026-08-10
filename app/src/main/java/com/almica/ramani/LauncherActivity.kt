@@ -288,7 +288,7 @@ fun LauncherContentUI(
         }
 
         showPoiCatMoBoSheet?.let { sheetData ->
-            PoiCatMoBoSheet(sheetData.name.toString()) { name, category ->
+            PoiCatDialog(sheetData.name.toString()) { name, category ->
                 if (sheetData.latLng != null) {
                     if (category == null) {
                         showPoiCatMoBoSheet = null
