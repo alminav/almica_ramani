@@ -1,6 +1,7 @@
 package com.almica.ramani.googlemaps
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -36,7 +38,7 @@ import com.almica.ramani.R
 import com.almica.ramani.ui.theme.RamaniTheme
 import timber.log.Timber
 
-private data class MapTypeOption(
+data class MapTypeOption(
     val entry: String,
     val url: String,
     val imageRes: Int?,
@@ -77,7 +79,20 @@ fun MaptypeMenu(context: Context, finished: (String?) -> Unit) {
         Timber.i("currentMapType: $currentMapType")
     }
 
-    MaptypeMenu(
+    MaptypeWheel(options,
+        select = { wheelItem ->
+            Timber.i("wheelItem: $wheelItem")
+            preferences.edit {
+                putString(context.getString(R.string.pref_tilemaker_url), options[wheelItem.id].url)
+                putString(context.getString(R.string.pref_tilemaker_maptype), options[wheelItem.id].entry)
+            }
+            finished(options[wheelItem.id].entry)
+        },
+        finished = {finished(null)},
+        initialSelection = options.indexOfFirst { it.entry == currentMapType }.coerceAtLeast(0)
+    )
+    /*
+        MaptypeMenu(
         options = options,
         currentMapType = currentMapType,
         onMapTypeSelected = { option ->
@@ -89,6 +104,7 @@ fun MaptypeMenu(context: Context, finished: (String?) -> Unit) {
             finished(option.entry)
         }
     ) { finished(null) }
+    */
 }
 
 @Composable
@@ -98,38 +114,65 @@ private fun MaptypeMenu(
     onMapTypeSelected: (MapTypeOption) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.uc_close))
-            }
-        },
-        title = {
-            Text(
-                text = stringResource(R.string.raster_map_type),
-                style = MaterialTheme.typography.headlineSmall
-            )
-        },
-        text = {
-            Column {
-                currentMapType?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-                MaptypeMenuContent(
-                    options = options,
-                    currentMapType = currentMapType,
-                    onMapTypeSelected = onMapTypeSelected
+    val content = @Composable {
+        Column {
+            currentMapType?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
+            MaptypeMenuContent(
+                options = options,
+                currentMapType = currentMapType,
+                onMapTypeSelected = onMapTypeSelected
+            )
         }
-    )
+    }
+
+    if (LocalInspectionMode.current) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = stringResource(R.string.raster_map_type),
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                content()
+                Spacer(modifier = Modifier.height(24.dp))
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text(text = stringResource(R.string.uc_close))
+                }
+            }
+        }
+    } else {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(text = stringResource(R.string.uc_close))
+                }
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.raster_map_type),
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = content
+        )
+    }
 }
 
 @Composable
@@ -206,7 +249,7 @@ fun MaptypeMenuPreview() {
     }
 }
 
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun MaptypeMenuDarkPreview() {
     val options = listOf(
