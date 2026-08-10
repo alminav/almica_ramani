@@ -32,7 +32,7 @@ fun PoiCatDialog(
     presetName: String,
     callback: (name: String, category: String?) -> Unit
 ) {
-    Timber.i("PoiCatMoBoSheet $presetName")
+    Timber.i("PoiCatDialog $presetName")
     val context = LocalContext.current
     var placemarkName by rememberSaveable { mutableStateOf(presetName) }
 

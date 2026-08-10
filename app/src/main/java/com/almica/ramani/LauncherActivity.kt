@@ -235,7 +235,7 @@ fun LauncherContentUI(
     var showLocationsMenu by remember { mutableStateOf(false) }
     var showLocationsSnapshot by remember { mutableStateOf(false) }
     var showLocationsTimeDialog by remember { mutableStateOf(false) }
-    var showPoiCatMoBoSheet: ResultData? by remember { mutableStateOf(null) }
+    var showPoiCatDialog: ResultData? by remember { mutableStateOf(null) }
 
     LaunchedEffect(key1 = snackbarData) {
         if (snackDelay > 0) {
@@ -287,14 +287,14 @@ fun LauncherContentUI(
             }
         }
 
-        showPoiCatMoBoSheet?.let { sheetData ->
+        showPoiCatDialog?.let { sheetData ->
             PoiCatDialog(sheetData.name.toString()) { name, category ->
                 if (sheetData.latLng != null) {
                     if (category == null) {
-                        showPoiCatMoBoSheet = null
+                        showPoiCatDialog = null
                     } else {
                         onAddPoi(name, sheetData.latLng, category) { addedName ->
-                            showPoiCatMoBoSheet = null
+                            showPoiCatDialog = null
                             snackDelay = snackDelayDefault
                             snackbarData = LauncherActivity.LauncherSnackbarData(
                                 resources.getString(R.string.added_to_database, addedName),

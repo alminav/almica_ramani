@@ -53,11 +53,11 @@ import kotlin.time.Duration.Companion.milliseconds
 fun GeoCoderLauncher(latLng: com.google.android.gms.maps.model.LatLng?, showInMap: (name: String?, category: String?, LatLng?) -> Unit) {
     val context = LocalContext.current
     val marginTopDp = TopAppBarDefaults.TopAppBarExpandedHeight.value
-    var showPoiCatMoBoSheet: ResultData? by remember { mutableStateOf(null) }
+    var showPoiCatDialog: ResultData? by remember { mutableStateOf(null) }
     var snackbarData by remember { mutableStateOf<GeoCoderLauncherSnackbarData?>(null) }
     LaunchedEffect(key1 = snackbarData) {
         Timber.i( "LaunchedEffect: ${snackbarData?.actionData?.name} ${snackbarData?.action}")
-        delay(5000)
+        delay(5000.milliseconds)
         if (snackbarData != null && snackbarData!!.actionData != null) {
             showInMap(snackbarData!!.actionData!!.name,
                 snackbarData!!.actionData!!.category, snackbarData!!.actionData!!.latLng)
@@ -66,8 +66,8 @@ fun GeoCoderLauncher(latLng: com.google.android.gms.maps.model.LatLng?, showInMa
     }
     BackPressHandler {
         Timber.i( "Back Press intercepted")
-        if (showPoiCatMoBoSheet != null)
-            showPoiCatMoBoSheet = null
+        if (showPoiCatDialog != null)
+            showPoiCatDialog = null
         else
             showInMap(null, null, null)
     }
@@ -85,7 +85,7 @@ fun GeoCoderLauncher(latLng: com.google.android.gms.maps.model.LatLng?, showInMa
 //            prefs.edit { placesLon?.let { putLong(Const.PREF_LONGITUDE, it.toRawBits()) } }
             placesLat?.let { resultLatLng[0] = it }
             placesLon?.let { resultLatLng[1] = it }
-            showPoiCatMoBoSheet =
+            showPoiCatDialog =
                 ResultData(placesName, LatLng(resultLatLng[0], resultLatLng[1]), null)
         }
         activityResult = null
@@ -136,24 +136,24 @@ fun GeoCoderLauncher(latLng: com.google.android.gms.maps.model.LatLng?, showInMa
                 snackbarData = null
             }
         }
-        showPoiCatMoBoSheet?.let { _ ->
-            Timber.i("name: ${showPoiCatMoBoSheet!!.name}")
-            PoiCatDialog(showPoiCatMoBoSheet!!.name.toString()) { name, category ->
+        showPoiCatDialog?.let { _ ->
+            Timber.i("name: ${showPoiCatDialog!!.name}")
+            PoiCatDialog(showPoiCatDialog!!.name.toString()) { name, category ->
                 Timber.i("$name $category")
-                if (showPoiCatMoBoSheet!!.latLng != null)
+                if (showPoiCatDialog!!.latLng != null)
                     when (category) {
                         null -> {
-                            showInMap(null, null, showPoiCatMoBoSheet!!.latLng)
-                            showPoiCatMoBoSheet = null
+                            showInMap(null, null, showPoiCatDialog!!.latLng)
+                            showPoiCatDialog = null
                         } else -> {
-                            val locationsParm = "${showPoiCatMoBoSheet!!.latLng!!.latitude},${showPoiCatMoBoSheet!!.latLng!!.longitude}"
+                            val locationsParm = "${showPoiCatDialog!!.latLng!!.latitude},${showPoiCatDialog!!.latLng!!.longitude}"
                             gmsElevationService(context, locationsParm) { lllh0 ->
                                 val h = lllh0[0].altitude
                                 addPoiDao(
                                     context, name,
                                     com.google.android.gms.maps.model.LatLng(
-                                        showPoiCatMoBoSheet!!.latLng!!.latitude,
-                                        showPoiCatMoBoSheet!!.latLng!!.longitude),
+                                        showPoiCatDialog!!.latLng!!.latitude,
+                                        showPoiCatDialog!!.latLng!!.longitude),
                                     h,
                                     category
                                 ) { _ ->
@@ -164,9 +164,9 @@ fun GeoCoderLauncher(latLng: com.google.android.gms.maps.model.LatLng?, showInMa
                                         ),
                                         null, null,
                                         GeoCoderLauncherSnackbarAction.Nothing,
-                                        showPoiCatMoBoSheet
+                                        showPoiCatDialog
                                     )
-                                    showPoiCatMoBoSheet = null
+                                    showPoiCatDialog = null
                                 }
                             }
                         }
