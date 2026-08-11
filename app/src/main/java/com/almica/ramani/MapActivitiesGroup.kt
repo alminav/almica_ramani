@@ -2,11 +2,13 @@ package com.almica.ramani
 
 import androidx.activity.ComponentActivity
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.NavigationBar
@@ -24,20 +26,29 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,6 +65,7 @@ import com.almica.ramani.geojsonMaps.TilemakerActivity
 import com.almica.ramani.googlemaps.GoogleMapsActivity
 import com.almica.ramani.googlemaps.GmsTileOverlayActivity
 import com.almica.ramani.routes.RouteActivity
+import com.almica.ramani.R
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.almica.ramani.ui.theme.RamaniTheme
@@ -360,165 +372,375 @@ fun RamaniNavHost(
             }
         }
     ) { innerPadding ->
-    NavHost(
-        navController = navController,
-        startDestination = "map_provider",
-        modifier = Modifier.padding(innerPadding)
-    ) {
-        composable("map_provider") {
-            ActivityGroup.MapProvider.let { group ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 16.dp, end = 16.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // Create a card for each activity in the group.
-                    group.activities.forEach { activity ->
-                        RamaniActivityItem(
-                            onActivityClick, activity,
-                            mvtName,
-                            rasterDescription,
-                            geojsonDescription,
-                            ghDescription,
-                            geojsonFolderDescription,
-                            routeFolderDescription,
-                            activity.maptypeKey
-                        )
-                    }
-
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                            lastLocationCoords?.let {
-                                Text(
-                                    text = "${stringResource(R.string.last_location)} $it",
-                                    modifier = Modifier
-                                        .align(Alignment.CenterHorizontally)
-                                        .padding(bottom = 3.dp)
-                                )
-                            }
-
-                            OutlinedButton(
-                                onClick = { onToggleTracking(!isTrackingEnabled) },
-                                modifier = Modifier
-                                    .align(Alignment.CenterHorizontally)
-                                    .padding(bottom = 8.dp),
-                                colors = if (isTrackingEnabled) {
-                                    ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                                } else {
-                                    ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                                }
-                            ) {
-                                Icon(
-                                    if (isTrackingEnabled) Icons.Default.Stop else Icons.Default.PlayArrow,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(end = 8.dp)
-                                )
-                                Text(text = if (isTrackingEnabled) "Disable Logging" else "Enable Logging")
-                            }
-
-                            BadgedBox(modifier = Modifier.align(Alignment.CenterHorizontally), badge = { Badge { Text("$logCount") } }) {
-                                Button(
-                                    onClick = { showLocationsMenu() },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary
-                                    )
-                                ) {
-                                    Text(text = stringResource(R.string.tracking))
-                                }
-                            }
-                            firstLocationDate?.let {
-                                Text(
-                                    text = "First: $it",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                                )
-                            }
-                            lastLocationDate?.let {
-                                Text(
-                                    text = "Last: $it",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                                )
-                            }
-
+        NavHost(
+            navController = navController,
+            startDestination = "map_provider",
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable("map_provider") {
+                ActivityGroup.MapProvider.let { group ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 16.dp, end = 16.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            ActivityWheelPicker(
+                                activities = group.activities,
+                                onActivityClick = onActivityClick,
+                                mvtName = mvtName,
+                                rasterDescription = rasterDescription,
+                                geojsonDescription = geojsonDescription,
+                                ghDescription = ghDescription,
+                                geojsonFolderDescription = geojsonFolderDescription,
+                                routeFolderDescription = routeFolderDescription
+                            )
                         }
 
-                }
-            }
-        }
-        composable("map_administration") {
-            ActivityGroup.MapAdministration.let { group ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 16.dp, end = 16.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // Create a card for each activity in the group.
-                    group.activities.forEach { activity ->
-                        RamaniActivityItem(
-                            onActivityClick, activity,
-                            mvtName,
-                            rasterDescription,
-                            geojsonDescription,
-                            ghDescription,
-                            geojsonFolderDescription,
-                            routeFolderDescription,
-                            activity.maptypeKey
-                        )
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth(),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                                        alpha = 0.3f
+                                    )
+                                ),
+                                border = BorderStroke(
+                                    2.dp,
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 1.0f)
+                                )
+                            ) {
+                                BadgedBox(
+                                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                                        .padding(top = 4.dp),
+                                    badge = { Badge { Text("$logCount") } }) {
+                                    Button(
+                                        onClick = { showLocationsMenu() },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    ) {
+                                        Text(text = stringResource(R.string.tracking))
+                                    }
+                                }
+                                firstLocationDate?.let {
+                                    Text(
+                                        text = "First: $it",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                                    )
+                                }
+                                lastLocationDate?.let {
+                                    Text(
+                                        text = "Last: $it",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                                    )
+                                }
+                                lastLocationCoords?.let {
+                                    Text(
+                                        text = "${stringResource(R.string.last_location)} $it",
+                                        modifier = Modifier
+                                            .align(Alignment.CenterHorizontally)
+                                            .padding(bottom = 3.dp)
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = { onToggleTracking(!isTrackingEnabled) },
+                                    modifier = Modifier
+                                        .align(Alignment.CenterHorizontally)
+                                        .padding(bottom = 8.dp),
+                                    colors = if (isTrackingEnabled) {
+                                        ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                    } else {
+                                        ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                                    }
+                                ) {
+                                    Icon(
+                                        if (isTrackingEnabled) Icons.Default.Stop else Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                    )
+                                    Text(text = if (isTrackingEnabled) "Disable Logging" else "Enable Logging")
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
-        composable("map_creation") {
-            ActivityGroup.MapCreation.let { group ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 16.dp, end = 16.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // Create a card for each activity in the group.
-                    group.activities.forEach { activity ->
-                        RamaniActivityItem(
-                            onActivityClick, activity,
-                            mvtName,
-                            rasterDescription,
-                            geojsonDescription,
-                            ghDescription,
-                            geojsonFolderDescription,
-                            routeFolderDescription,
-                            activity.maptypeKey
-                        )
+            composable("map_administration") {
+                ActivityGroup.MapAdministration.let { group ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 16.dp, end = 16.dp)
+                    ) {
+                        // Create a card for each activity in the group.
+                        group.activities.forEach { activity ->
+                            RamaniActivityItem(
+                                onActivityClick, activity,
+                                mvtName,
+                                rasterDescription,
+                                geojsonDescription,
+                                ghDescription,
+                                geojsonFolderDescription,
+                                routeFolderDescription,
+                                activity.maptypeKey
+                            )
+                        }
                     }
                 }
             }
-        }
-        composable("map_import") {
-            ActivityGroup.MapImport.let { group ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 16.dp, end = 16.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // Create a card for each activity in the group.
-                    group.activities.forEach { activity ->
-                        RamaniActivityItem(
-                            onActivityClick, activity,
-                            mvtName,
-                            rasterDescription,
-                            geojsonDescription,
-                            ghDescription,
-                            geojsonFolderDescription,
-                            routeFolderDescription,
-                            activity.maptypeKey
-                        )
+            composable("map_creation") {
+                ActivityGroup.MapCreation.let { group ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 16.dp, end = 16.dp)
+                    ) {
+                        // Create a card for each activity in the group.
+                        group.activities.forEach { activity ->
+                            RamaniActivityItem(
+                                onActivityClick, activity,
+                                mvtName,
+                                rasterDescription,
+                                geojsonDescription,
+                                ghDescription,
+                                geojsonFolderDescription,
+                                routeFolderDescription,
+                                activity.maptypeKey
+                            )
+                        }
+                    }
+                }
+            }
+            composable("map_import") {
+                ActivityGroup.MapImport.let { group ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                    ) {
+                        // Create a card for each activity in the group.
+                        group.activities.forEach { activity ->
+                            RamaniActivityItem(
+                                onActivityClick, activity,
+                                mvtName,
+                                rasterDescription,
+                                geojsonDescription,
+                                ghDescription,
+                                geojsonFolderDescription,
+                                routeFolderDescription,
+                                activity.maptypeKey
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun ActivityWheelPicker(
+    activities: List<Activity>,
+    onActivityClick: (KClass<out ComponentActivity>, ArrayList<Pair<String, String>>, ArrayList<Pair<String, Double>>, MaptypeKey) -> Unit,
+    mvtName: String?,
+    rasterDescription: String?,
+    geojsonDescription: String?,
+    ghDescription: String?,
+    geojsonFolderDescription: String?,
+    routeFolderDescription: String?
+) {
+    val itemHeight = 80.dp
+    val listState = rememberLazyListState()
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+    val centerIndex by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+            layoutInfo.visibleItemsInfo
+                .minByOrNull { Math.abs((it.offset + it.size / 2) - viewportCenter) }
+                ?.index ?: 0
+        }
+    }
+
+    Card(
+        modifier = Modifier.padding(bottom = 6.dp)
+            .fillMaxWidth()
+            .height(itemHeight * 3),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 1f))
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Selection Border for the center item
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(itemHeight)
+                    .align(Alignment.Center)
+                    .padding(horizontal = 16.dp)
+                    .background(Color.White)
+                    .border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+            )
+            LazyColumn(
+                state = listState,
+                flingBehavior = flingBehavior,
+                contentPadding = PaddingValues(vertical = itemHeight),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Using a large number for infinite-ish scrolling feel or just items
+                items(activities.size) { index ->
+                    val activity = activities[index % activities.size]
+                    Timber.i("index: $index ${activity.kClass}")
+/*
+                    val transformation by remember {
+                        derivedStateOf {
+                            val layoutInfo = listState.layoutInfo
+                            val visibleItems = layoutInfo.visibleItemsInfo
+                            val item = visibleItems.find { it.index == index }
+
+                            if (item != null) {
+                                val itemCenter = item.offset + item.size / 2
+                                val viewportCenter = layoutInfo.viewportEndOffset / 2
+                                val distanceFromCenter = (itemCenter - viewportCenter).toFloat()
+                                val containerHeight = layoutInfo.viewportEndOffset.toFloat()
+
+                                // Normalize distance from center (-1 to 1)
+                                val progress = (distanceFromCenter / (containerHeight / 2)).coerceIn(-1f, 1f)
+
+                                object {
+                                    val alpha = 1f - Math.abs(progress) * 0.6f
+                                    val scale = 1f - Math.abs(progress) * 0.2f
+                                }
+                            } else null
+                        }
+                    }
+*/
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(itemHeight)
+//                            .graphicsLayer {
+//                                transformation?.let {
+//                                    alpha = it.alpha
+//                                    scaleX = it.scale
+//                                    scaleY = it.scale
+//                                }
+//                            }
+                            .clickable(enabled = false) { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        WheelItemContent(
+                            activity = activity,
+                            mvtName = mvtName,
+                            rasterDescription = rasterDescription,
+                            geojsonDescription = geojsonDescription,
+                            ghDescription = ghDescription,
+                            geojsonFolderDescription = geojsonFolderDescription,
+                            routeFolderDescription = routeFolderDescription,
+                            maptypeKey = activity.maptypeKey,
+                            isCenter = index % activities.size == centerIndex % activities.size
+                        )
+                    }
+                }
+            }
+
+            // Action button to select the item in the center
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        val safeIndex = centerIndex.coerceIn(0, activities.size - 1)
+                        val activity = activities[safeIndex]
+                        onActivityClick(
+                            activity.kClass,
+                            activity.stringExtras,
+                            activity.doubleExtras,
+                            activity.maptypeKey
+                        )
+                    },
+                    modifier = Modifier
+                        .height(40.dp)
+                        .fillMaxWidth(0.5f)
+                        .align(Alignment.TopCenter),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.activity_wheel_select).uppercase(),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WheelItemContent(
+    activity: Activity,
+    mvtName: String?,
+    rasterDescription: String?,
+    geojsonDescription: String?,
+    ghDescription: String?,
+    geojsonFolderDescription: String?,
+    routeFolderDescription: String?,
+    maptypeKey: MaptypeKey,
+    isCenter: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(activity.title),
+            style = if (isCenter) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1
+        )
+
+        val descriptionText = when (maptypeKey) {
+            MaptypeKey.GeoJson -> geojsonFolderDescription.takeIf { !it.isNullOrEmpty() } ?: geojsonDescription
+            MaptypeKey.Raster -> rasterDescription
+            MaptypeKey.Mvt -> mvtName
+            else -> {
+                when (activity.kClass) {
+                    ListGhActivity::class -> ghDescription
+                    ListRouteFoldersActivity::class -> routeFolderDescription
+                    ListGeojsonActivity::class -> geojsonFolderDescription
+                    else -> stringResource(activity.description).takeIf { it.isNotEmpty() }
+                }
+            }
+        }
+
+        descriptionText?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
     }
 }
 

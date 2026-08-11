@@ -430,6 +430,7 @@
     <string name="maplibre_default">Maplibre Default</string>
     <string name="maplibre_default_description">Maplibre without local maps</string>
     <string name="launcher_activity_title">Ramani</string>
+    <string name="launcher_activity_map_providers">Ramani Map Providers</string>
     <string name="srtm_file">SRTM archive file (for example n52e010hgt.zip)</string>
     <string name="srtm_files">SRTM Files</string>
     <string name="places_search">Search for places</string>
@@ -515,4 +516,5 @@
     <string name="pref_google_maps_key" translatable="false">pref.google.maps.key</string>
     <string name="account">Account</string>
     <string name="toggle">Toggle</string>
+    <string name="activity_wheel_select">Start</string>
 </resources>
