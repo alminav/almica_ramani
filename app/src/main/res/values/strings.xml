@@ -48,6 +48,7 @@
     <string name="route_list">Routes</string>
     <string name="file_types">File Types</string>
     <string name="file_name">File Name</string>
+    <string name="view_on_map">View on Map</string>
     <string name="file_imported_successfully">file import successful</string>
     <string name="file_imported_successfully_">%1$s File import successful</string>
     <string name="file_imported_failed">file import failed</string>

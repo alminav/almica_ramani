@@ -11,6 +11,7 @@ import com.almica.ramani.utils.HgtReader
 import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
 import com.almica.ramani.utils.getCenter
 import com.almica.ramani.utils.getDistanceFromLllh
+import com.almica.ramani.Helpers.Companion.decompressString
 import com.almica.ramani.utils.isNotNull
 import com.almica.ramani.utils.kmlString2Lllh
 import com.almica.ramani.utils.lllhToKmlString
@@ -43,7 +44,7 @@ fun getGeojsonFromSnapshot(
         exifInterface = ExifInterface(routeFile.path)
         routesGeoJsonStringResult =
             exifInterface.getAttribute(ExifInterface.TAG_USER_COMMENT)
-                ?.let { compressedData -> decompressString(compressedData) }
+                ?.let { compressedData -> Helpers.decompressString(compressedData) }
         Timber.i("geojsonString: $routesGeoJsonStringResult")
         val routesGeojsonSource =
             map?.style?.getSource("routes${Const.GEOJSON_EXT}") as? GeoJsonSource

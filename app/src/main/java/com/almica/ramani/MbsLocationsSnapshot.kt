@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.PointF
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +78,6 @@ fun MbsLocationsSnapshot(
             finished()
         }) {
             MbsLocationsSnapshotContent(
-                snapshot = uiState.snapshot,
                 snapshotBitmap = uiState.snapshotBitmap!!,
                 title = uiState.title,
                 locationsLllh = uiState.lllhLocations,
@@ -99,7 +99,9 @@ fun MbsLocationsSnapshot(
                 },
                 changeGradientState = { state ->
                     viewModel.setShowGradient(state)
-                })
+                },
+                pixelForLatLng = uiState.snapshot?.let { snap -> { latLng -> snap.pixelForLatLng(latLng) } }
+            )
         }
     } else if (uiState.isLoading) {
         Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
@@ -110,7 +112,6 @@ fun MbsLocationsSnapshot(
 
 @Composable
 fun MbsLocationsSnapshotContent(
-    snapshot: MapSnapshot?,
     snapshotBitmap: ImageBitmap,
     title: String?,
     locationsLllh: List<LatLngH>?,
@@ -120,7 +121,8 @@ fun MbsLocationsSnapshotContent(
     saveLocations: (Long) -> Unit,
     deleteLocationsAfter: (Long) -> Unit,
     deleteLocationsBefore: (Long) -> Unit,
-    changeGradientState: (Boolean) -> Unit
+    changeGradientState: (Boolean) -> Unit,
+    pixelForLatLng: ((LatLng) -> PointF)? = null
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -205,18 +207,18 @@ fun MbsLocationsSnapshotContent(
             )
 
             // Marker Overlay
-            snapshot?.let { snap ->
+            pixelForLatLng?.let { pfl ->
                 locationsLllh?.let { lllh ->
                     val index = lllh.indexOfLast { it.time <= selectedTime }.coerceAtLeast(0)
                     if (index < lllh.size) {
                         val h = lllh[index].altitude
                         val textH = "${Const.UC_ELE_ARROW}${h.formatDistM(true)}"
-                        val pixel = snap.pixelForLatLng(lllh[index].latLngMapLibre)
+                        val pixel = pfl(lllh[index].latLngMapLibre)
                         val markerRed = remember { Helpers.getBitmapFromVectorDrawable(context, R.drawable.stop_marker_24) }
                         markerRed?.let { m ->
                             val startPadding =
-                                    (pixel.x / snap.bitmap.width.toFloat() * widthDp.value - 14).coerceAtLeast(0F).dp
-                            val topPadding = (pixel.y / snap.bitmap.height.toFloat() * widthDp.value - 28).coerceAtLeast(0F).dp
+                                    (pixel.x / snapshotBitmap.width.toFloat() * widthDp.value - 14).coerceAtLeast(0F).dp
+                            val topPadding = (pixel.y / snapshotBitmap.height.toFloat() * widthDp.value - 28).coerceAtLeast(0F).dp
                             //Timber.i("startPadding: $startPadding topPadding: $topPadding")
                             Image(
                                 painter = BitmapPainter(m.asImageBitmap()),
@@ -282,7 +284,6 @@ fun MbsLocationsSnapshotContent(
 fun MbsLocationsSnapshotContentPreview() {
     RamaniTheme {
         MbsLocationsSnapshotContent(
-            snapshot = null,
             snapshotBitmap = ImageBitmap(100, 100),
             title = "10.5 km 01:23:45 [h:m:s]",
             locationsLllh = listOf(),
@@ -298,14 +299,15 @@ fun MbsLocationsSnapshotContentPreview() {
 }
 
 private fun addMarker(
-    snapshot: MapSnapshot,
+    snapshot: Any,
     bitmap: Bitmap?,
     context: Context,
     latLng: LatLng
 ): Bitmap? {
+    val snap = snapshot as MapSnapshot
     val canvas = bitmap?.let { Canvas(it) }
     val marker = Helpers.getBitmapFromVectorDrawable(context, R.drawable.stop_marker_24)
-    val markerLocation = snapshot.pixelForLatLng(latLng)
+    val markerLocation = snap.pixelForLatLng(latLng)
     marker?.let {
         canvas?.drawBitmap(
             it, /* Subtract half of the width so we center the bitmap correctly */

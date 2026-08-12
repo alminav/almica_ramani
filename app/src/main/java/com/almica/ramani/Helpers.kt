@@ -73,6 +73,7 @@ import org.xmlpull.v1.XmlPullParserFactory
 import timber.log.Timber
 import java.io.BufferedReader
 import java.io.BufferedWriter
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileFilter
 import java.io.FileInputStream
@@ -93,6 +94,8 @@ import java.util.Date
 import java.util.Locale
 import java.util.Locale.getDefault
 import java.util.concurrent.Executors
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.ParserConfigurationException
 import kotlin.math.atan
@@ -112,6 +115,19 @@ private const val logtag = "com.almica.ramani.Helpers"
 class Helpers {
 
     companion object {
+        fun compressString(data: String): String {
+            val bos = ByteArrayOutputStream(data.length)
+            GZIPOutputStream(bos).use { it.write(data.toByteArray(StandardCharsets.UTF_8)) }
+            return "GZIP:" + android.util.Base64.encodeToString(bos.toByteArray(), android.util.Base64.NO_WRAP)
+        }
+
+        fun decompressString(compressedData: String): String {
+            if (!compressedData.startsWith("GZIP:")) return compressedData
+            val base64Data = compressedData.substring(5)
+            val compressedBytes = android.util.Base64.decode(base64Data, android.util.Base64.NO_WRAP)
+            return GZIPInputStream(compressedBytes.inputStream()).bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+        }
+
         fun isServiceRunning(context: Context, serviceClass: Class<*>): Boolean {
             val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             @Suppress("DEPRECATION")

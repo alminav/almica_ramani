@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -38,12 +40,18 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.createBitmap
@@ -148,7 +156,7 @@ fun RouteDialog(filesDir: File?, routeFile: File, finish: () -> Unit, alert: (St
                                     geojsonString =
                                         exifInterface.getAttribute(ExifInterface.TAG_USER_COMMENT)
                                             ?.let { compressedData ->
-                                                decompressString(compressedData)
+                                                Helpers.decompressString(compressedData)
                                             }
                                     Timber.i("geojsonString: $geojsonString")
                                 } catch (e: IOException) {
@@ -508,23 +516,15 @@ private fun RouteMapViewer(
     dialogMode: RouteDialogMode,
     onSelected: () -> Unit
 ) {
-    val projection = state.projection ?: return // Guard against missing projection
-    val point = state.lllh.getOrNull(routePointer) ?: return // Guard against invalid index
+    val projection = state.projection ?: return
+    val point = state.lllh.getOrNull(routePointer) ?: return
 
+    val markerPainter = painterResource(id = R.drawable.stop_marker_24)
     val aspectRatio = remember(thumbnail) {
         thumbnail.width.toFloat() / thumbnail.height.toFloat()
     }
 
-    val textPaint = remember {
-        Paint().apply {
-            color = android.graphics.Color.BLACK
-            textSize = 32f
-            isAntiAlias = true
-            textAlign = Paint.Align.CENTER
-        }
-    }
-
-    // Pre-calculate marker position relative to thumbnail size
+    // Pre-calculate marker position relative to original thumbnail pixels
     val markerPosition = remember(point, projection) {
         val projectedPoint = projectMercator(point.latLngGms)
         Offset(
@@ -533,53 +533,74 @@ private fun RouteMapViewer(
         )
     }
 
+    // Optimize Text Paint for theme changes and accessibility
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val density = LocalDensity.current
+    val textSizePx = with(density) { 14.sp.toPx() } // Using SP for accessibility
+
+    val textPaint = remember(textColor, textSizePx) {
+        Paint().apply {
+            color = textColor
+            textSize = textSizePx
+            isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+            // Optional: add a small shadow for better legibility on busy maps
+            setShadowLayer(2f, 0f, 0f, android.graphics.Color.WHITE)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onSelected),
+            .clickable(
+                onClick = onSelected,
+                onClickLabel = stringResource(R.string.view_on_map)
+            )
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspectRatio)
-                .padding(vertical = 8.dp)
         ) {
-            val canvasWidth = size.width
-            val canvasHeight = size.height
-            val scaleFactor = canvasWidth / thumbnail.width
-
-            // Draw the thumbnail
+            // 1. Draw the background thumbnail
             drawImage(
                 image = thumbnail,
-                dstSize = IntSize(canvasWidth.toInt(), canvasHeight.toInt())
+                dstSize = IntSize(size.width.toInt(), size.height.toInt())
             )
 
-            // Calculate final marker coordinates based on current canvas scale
+            // 2. Calculate scaling for overlays
+            val scaleFactor = size.width / thumbnail.width
             val markerX = markerPosition.x * scaleFactor
             val markerY = markerPosition.y * scaleFactor
+            val markerSize = 24.dp.toPx()
 
-            drawCircle(
-                color = Color.Red,
-                radius = 8.dp.toPx(),
-                center = Offset(markerX, markerY)
-            )
+            // 3. Draw the marker
+            translate(left = markerX - markerSize / 2, top = markerY - markerSize) {
+                with(markerPainter) {
+                    draw(size = androidx.compose.ui.geometry.Size(markerSize, markerSize))
+                }
+            }
 
+            // 4. Draw the altitude text
             drawIntoCanvas { canvas ->
                 canvas.nativeCanvas.drawText(
                     point.altitude.formatAlti(true),
                     markerX,
-                    markerY - 12.dp.toPx(),
+                    markerY - markerSize - 2,
                     textPaint
                 )
             }
         }
 
+        // Overlay Map Icon for specific modes
         if (dialogMode == RouteDialogMode.MapProvider) {
-            Image(
+            Icon(
                 imageVector = Icons.Default.Map,
-                contentDescription = "Map Icon",
-                colorFilter = ColorFilter.tint(Color.Gray.copy(alpha = 0.5f))
+                contentDescription = null, // Visual indicator only
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(48.dp)
             )
         }
     }
