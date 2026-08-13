@@ -23,7 +23,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview as ComposePreview
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -134,8 +133,11 @@ import java.util.UUID
 import java.util.concurrent.Executors
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
 import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.ui.theme.RamaniTheme
+import com.almica.ramani.utils.GeoJsonUtils
+import com.almica.ramani.weather.WeatherScreen
 import com.google.android.gms.maps.model.LatLng as GmsLatLng
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -255,6 +257,8 @@ fun BoxScope.MapOverlayManagerContent(
     val showPdfRoutes = uiState.activeOverlay == PDF_ROUTES
     val showLayersControlMenu = uiState.activeOverlay == LAYERS_CONTROL
     val showBbbikeFunctionsMenu = uiState.activeOverlay == BBBIKE_FUNCTIONS
+    // Place Weather check here to ensure it can be evaluated alongside or after menus
+    val showWeather = uiState.activeOverlay == OverlayType.WEATHER
     val showHaircrossMenu = uiState.activeOverlay == HAIRCROSS
     val showMapMenu = uiState.activeOverlay == MAP_MENU
     val showPoiDatabase = uiState.activeOverlay == POI_DATABASE
@@ -621,7 +625,7 @@ fun BoxScope.MapOverlayManagerContent(
                 MapLongClickAction.MvtBbbike09 -> {
                     cameraPosition.value.target?.let { cp ->
                         val mvtTile = pointToTile(cp.longitude, cp.latitude, 9.0)
-                        val mvtBounds = com.almica.ramani.utils.GeoJsonUtils.tileToGmsBounds(mvtTile)
+                        val mvtBounds = GeoJsonUtils.tileToGmsBounds(mvtTile)
                         val currentMvtPath = preferences.getString(Const.PREF_MVT_FILEPATH, null)
                         val driveMap = DriveSharedLinks.Companion.MvtRegions().list
                         val mvtname = "mvt_${mvtTile.x}_${mvtTile.y}_${mvtTile.z}${Const.MBTILES_EXT}"
@@ -633,7 +637,7 @@ fun BoxScope.MapOverlayManagerContent(
                             if (driveUrl != null) {
                                 setSnackbar(MainSnackbarData(resources.getString(R.string.map_available_on_drive, mvtname), resources.getString(android.R.string.ok), Drive, mvtname))
                             } else {
-                                val bbbikeUrl = com.almica.ramani.utils.GeoJsonUtils.getBbbikeUrl("mvt_${mvtTile.x}_${mvtTile.y}_${mvtTile.z}", mvtBounds, "mbtiles-basic.zip")
+                                val bbbikeUrl = GeoJsonUtils.getBbbikeUrl("mvt_${mvtTile.x}_${mvtTile.y}_${mvtTile.z}", mvtBounds, "mbtiles-basic.zip")
                                 bbbikeUrl?.let { setSnackbar(MainSnackbarData(resources.getString(R.string.bbbike_mvt, mvtname), resources.getString(android.R.string.ok), Bbbike, it)) }
                             }
                         }
@@ -642,6 +646,7 @@ fun BoxScope.MapOverlayManagerContent(
                 MapLongClickAction.RouteFolders -> setOverlay(ROUTE_FOLDERS)
                 MapLongClickAction.PdfViewer -> setOverlay(PDF_VIEWER)
                 MapLongClickAction.Nothing -> {}
+                MapLongClickAction.Weather -> setOverlay(OverlayType.WEATHER)
             }
         }, navigateToHome = { home ->
             closeOverlay()
@@ -758,7 +763,6 @@ fun BoxScope.MapOverlayManagerContent(
     }
 
     if (showSatStatus) SatStatusComposeScreen { closeOverlay() }
-
     if (showBbbikeFunctionsMenu) {
         BbbikeFunctionsMenu(context) { selection ->
             closeOverlay()
@@ -1042,6 +1046,19 @@ fun BoxScope.MapOverlayManagerContent(
                 }
             }
         }, onRouteInfoSelected = { setRouteInfo(it) }, createSnapshots = {}, dialogMode = RouteDialogMode.MapProvider.ordinal)
+    }
+
+    // Render WeatherScreen last among overlays to ensure it is on top
+    if (showWeather) { // showWeather = false after map click
+        cameraPosition.value.target?.let { cp ->
+            WeatherScreen(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 0.dp),
+                latitude = cp.latitude,
+                longitude = cp.longitude
+            )
+        }
     }
 
     if (showRouteFiles) {

@@ -21,7 +21,14 @@ import kotlinx.serialization.json.Json
 // Der Aufruf geschieht in der Methode loadWeather() innerhalb der Datei WeatherViewModel.kt:
 @Serializable
 data class WeatherResponse(
-    val current: CurrentWeather
+    val current: CurrentWeather,
+    val daily: DailyWeather? = null
+)
+
+@Serializable
+data class DailyWeather(
+    val sunrise: List<String>,
+    val sunset: List<String>
 )
 
 @Serializable
@@ -50,6 +57,8 @@ class WeatherRepository {
             parameter("latitude", lat)
             parameter("longitude", lon)
             parameter("current", "temperature_2m,wind_speed_10m,weather_code,relative_humidity_2m")
+            parameter("daily", "sunrise,sunset")
+            parameter("timezone", "auto")
         }.body()
     }
 }

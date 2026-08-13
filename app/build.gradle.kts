@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
 //    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     //alias(libs.plugins.kotlin.parcelize)
     id("kotlin-parcelize")
     id("com.google.devtools.ksp")
@@ -164,4 +165,9 @@ dependencies {
     implementation(libs.androidx.webkit)
     // coil
     implementation(libs.coil.compose)
+    // Ktor (HTTP Client) & Serialization
+    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.kotlinx.serialization.json)
 }

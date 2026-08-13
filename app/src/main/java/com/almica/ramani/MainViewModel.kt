@@ -51,7 +51,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 enum class OverlayType {
     NONE, PREFERENCES, GH_FOLDERS, VEHICLE_MENU, GEO_CODER, ROUTE_MONITOR, MAP_LONG_CLICK,
-    RASTER_MAPS, MAP_TYPE, SAT_STATUS, LAYERS_CONTROL, BBBIKE_FUNCTIONS, HAIRCROSS, MAP_MENU,
+    RASTER_MAPS, MAP_TYPE, SAT_STATUS, WEATHER, LAYERS_CONTROL, BBBIKE_FUNCTIONS, HAIRCROSS, MAP_MENU,
     POI_DATABASE, LOCATIONS, ROUTE_FILES, ROUTE_FILES_REGION, ROUTE_FOLDERS, MVT_LIST,
     ADDITIONAL_MAPS, LOCATION_STATISTIC, ROUTE_SAVING, PDF_VIEWER, PDF_ROUTES, VALUE_PICKER
 }
@@ -255,12 +255,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { 
             it.copy(
                 activeOverlay = overlay,
-                hairCrossOffsetFraction = if (overlay == OverlayType.LOCATION_STATISTIC) 0.2f else it.hairCrossOffsetFraction
+                hairCrossOffsetFraction = if (overlay == OverlayType.LOCATION_STATISTIC) 0.2f
+                    else it.hairCrossOffsetFraction
             ) 
         }
     }
 
     fun closeOverlay() {
+        Timber.i("closeOverlay: ${_uiState.value.activeOverlay.name}")
         _uiState.update { 
             it.copy(
                 activeOverlay = OverlayType.NONE, 

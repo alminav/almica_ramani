@@ -4,6 +4,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Brightness6
 import androidx.compose.material.icons.outlined.ClearAll
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.GpsFixed
 import androidx.compose.material.icons.outlined.Home
@@ -40,6 +41,7 @@ import java.util.concurrent.Executors
 enum class MapLongClickAction {
     ChangeDimmerState,
     SatStatus,
+    Weather,
     PdfViewer,
     ClearGpsCircles,
     RouteFolders,
@@ -102,15 +104,13 @@ fun MapLongClickMenuContent(
             onClick = { finished(MapLongClickAction.SatStatus) },
             leadingIcon = {Icon (Icons.Outlined.GpsFixed, null)}
         )
-/*
+
         DropdownMenuItem(
-            { Text(text =
-                if (prefRouteFolder != null) resources.getString(R.string.pdf_viewer_, prefRouteFolder)
-                    else resources.getString(R.string.pdf_viewer), color = Black) },
-            onClick = { finished(MapLongClickAction.PdfViewer) },
-            leadingIcon = {Icon (Icons.Outlined.PictureAsPdf, null)}
+            { Text(text = resources.getString(R.string.weather), color = Black) },
+            onClick = { finished(MapLongClickAction.Weather) },
+            leadingIcon = {Icon (Icons.Outlined.Cloud, null)}
         )
- */
+
         DropdownMenuItem(
             { Text(text = resources.getString(R.string.clear_gps_circles), color = Black) },
             onClick = { finished(MapLongClickAction.ClearGpsCircles) },

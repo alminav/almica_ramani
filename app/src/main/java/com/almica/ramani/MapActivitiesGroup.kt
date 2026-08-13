@@ -470,20 +470,18 @@ fun RamaniNavHost(
                                 }
                             }
                         }
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            val lat = lastLocationCoords?.let {
-                                Regex("lat:?\\s*(-?\\d+\\.?\\d*)").find(it)?.groupValues?.get(1)?.toDoubleOrNull()
-                            }
-                            val lon = lastLocationCoords?.let {
-                                Regex("lon:?\\s*(-?\\d+\\.?\\d*)").find(it)?.groupValues?.get(1)?.toDoubleOrNull()
-                            }
-
-                            if (lat != null && lon != null) {
-                                WeatherScreen(latitude = lat, longitude = lon)
-                            } else {
-                                WeatherScreen()
-                            }
+                        val lat = lastLocationCoords?.let {
+                            Regex("lat:?\\s*(-?\\d+\\.?\\d*)").find(it)?.groupValues?.get(1)?.toDoubleOrNull()
                         }
+                        val lon = lastLocationCoords?.let {
+                            Regex("lon:?\\s*(-?\\d+\\.?\\d*)").find(it)?.groupValues?.get(1)?.toDoubleOrNull()
+                        }
+
+                        WeatherScreen(
+                            modifier = Modifier.fillMaxWidth(),
+                            latitude = lat,
+                            longitude = lon
+                        )
                     }
                 }
             }
