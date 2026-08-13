@@ -70,6 +70,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.format
+import com.almica.ramani.weather.WeatherScreen
 import timber.log.Timber
 import java.util.ArrayList
 import kotlin.reflect.KClass
@@ -383,8 +384,9 @@ fun RamaniNavHost(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(start = 16.dp, end = 16.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
-                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                             ActivityWheelPicker(
                                 activities = group.activities,
                                 onActivityClick = onActivityClick,
@@ -397,7 +399,7 @@ fun RamaniNavHost(
                             )
                         }
 
-                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth(),
@@ -468,6 +470,20 @@ fun RamaniNavHost(
                                 }
                             }
                         }
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            val lat = lastLocationCoords?.let {
+                                Regex("lat:?\\s*(-?\\d+\\.?\\d*)").find(it)?.groupValues?.get(1)?.toDoubleOrNull()
+                            }
+                            val lon = lastLocationCoords?.let {
+                                Regex("lon:?\\s*(-?\\d+\\.?\\d*)").find(it)?.groupValues?.get(1)?.toDoubleOrNull()
+                            }
+
+                            if (lat != null && lon != null) {
+                                WeatherScreen(latitude = lat, longitude = lon)
+                            } else {
+                                WeatherScreen()
+                            }
+                        }
                     }
                 }
             }
@@ -477,6 +493,7 @@ fun RamaniNavHost(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(start = 16.dp, end = 16.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
                         // Create a card for each activity in the group.
                         group.activities.forEach { activity ->
@@ -500,6 +517,7 @@ fun RamaniNavHost(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(start = 16.dp, end = 16.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
                         // Create a card for each activity in the group.
                         group.activities.forEach { activity ->
@@ -522,6 +540,8 @@ fun RamaniNavHost(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(start = 16.dp, end = 16.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
                         // Create a card for each activity in the group.
                         group.activities.forEach { activity ->
