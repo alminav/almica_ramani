@@ -1,14 +1,14 @@
 package com.almica.ramani
 
-import android.annotation.SuppressLint
-import android.app.Activity.RESULT_OK
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -21,7 +21,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,11 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.almica.ramani.googlemaps.MapUtils.gmsElevationService
-import com.almica.ramani.utils.BackPressHandler
 import com.almica.ramani.utils.addPoiDao
 import com.strongtogether.googlemapsjetpackcompose.PlacesActivity
 import kotlinx.coroutines.delay
@@ -46,134 +45,132 @@ import timber.log.Timber
 import androidx.compose.ui.tooling.preview.Preview
 import com.almica.ramani.ui.theme.RamaniTheme
 import kotlin.time.Duration.Companion.milliseconds
+import com.google.android.gms.maps.model.LatLng as GmsLatLng
 
-@SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GeoCoderLauncher(latLng: com.google.android.gms.maps.model.LatLng?, showInMap: (name: String?, category: String?, LatLng?) -> Unit) {
+fun GeoCoderLauncher(
+    latLng: GmsLatLng?,
+    showInMap: (name: String?, category: String?, LatLng?) -> Unit
+) {
+    Timber.i("GeoCoderLauncher")
     val context = LocalContext.current
-    val marginTopDp = TopAppBarDefaults.TopAppBarExpandedHeight.value
     var showPoiCatDialog: ResultData? by remember { mutableStateOf(null) }
     var snackbarData by remember { mutableStateOf<GeoCoderLauncherSnackbarData?>(null) }
+
     LaunchedEffect(key1 = snackbarData) {
-        Timber.i( "LaunchedEffect: ${snackbarData?.actionData?.name} ${snackbarData?.action}")
-        delay(5000.milliseconds)
-        if (snackbarData != null && snackbarData!!.actionData != null) {
-            showInMap(snackbarData!!.actionData!!.name,
-                snackbarData!!.actionData!!.category, snackbarData!!.actionData!!.latLng)
+        snackbarData?.actionData?.let { actionData ->
+            Timber.i("LaunchedEffect: ${actionData.name} ${snackbarData?.action}")
+            delay(5000.milliseconds)
+            showInMap(actionData.name, actionData.category, actionData.latLng)
+            snackbarData = null
         }
-        snackbarData = null
     }
-    BackPressHandler {
-        Timber.i( "Back Press intercepted")
-        if (showPoiCatDialog != null)
+
+    BackHandler {
+        Timber.i("Back Press intercepted")
+        if (showPoiCatDialog != null) {
             showPoiCatDialog = null
-        else
+        } else {
             showInMap(null, null, null)
+        }
     }
+
     var activityResult by remember { mutableStateOf<ActivityResult?>(null) }
-    var resultLatLng by remember { mutableStateOf(arrayOf(latLng?.latitude ?: -1.0,
-        latLng?.longitude ?: -1.0)) }
+    var resultLatLng by remember {
+        mutableStateOf(
+            LatLng(latLng?.latitude ?: -1.0, latLng?.longitude ?: -1.0)
+        )
+    }
+
     activityResult?.let { result ->
-        // places api result from: com.strongtogether.googlemapsjetpackcompose.PlacesActivity
         val placesName = result.data?.getStringExtra(Const.PLACE_NAME)
-        val placesLat = result.data?.getDoubleExtra(Const.PLACE_LATITUDE, -1.0)
-        val placesLon = result.data?.getDoubleExtra(Const.PLACE_LONGITUDE, -1.0)
+        val placesLat = result.data?.getDoubleExtra(Const.PLACE_LATITUDE, -1.0) ?: -1.0
+        val placesLon = result.data?.getDoubleExtra(Const.PLACE_LONGITUDE, -1.0) ?: -1.0
+
         if (placesName != null) {
             Timber.i("placesName = $placesName $placesLat $placesLon")
-//            prefs.edit { placesLat?.let { putLong(Const.PREF_LATITUDE, it.toRawBits()) } }
-//            prefs.edit { placesLon?.let { putLong(Const.PREF_LONGITUDE, it.toRawBits()) } }
-            placesLat?.let { resultLatLng[0] = it }
-            placesLon?.let { resultLatLng[1] = it }
-            showPoiCatDialog =
-                ResultData(placesName, LatLng(resultLatLng[0], resultLatLng[1]), null)
+            resultLatLng = LatLng(placesLat, placesLon)
+            showPoiCatDialog = ResultData(placesName, resultLatLng, null)
         }
         activityResult = null
     }
 
-    val launcher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                activityResult = result
-                // Process the result here
-            }
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            activityResult = result
         }
+    }
+
     LaunchedEffect(key1 = Unit) {
         delay(100.milliseconds)
-        val intent = Intent(context, PlacesActivity::class.java)
-        intent.putExtra(Const.EXTRA_LATITUDE, resultLatLng[0])
-        intent.putExtra(Const.EXTRA_LONGITUDE, resultLatLng[1])
+        val intent = Intent(context, PlacesActivity::class.java).apply {
+            putExtra(Const.EXTRA_LATITUDE, resultLatLng.latitude)
+            putExtra(Const.EXTRA_LONGITUDE, resultLatLng.longitude)
+        }
         launcher.launch(intent)
     }
-    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+
     Scaffold(
-        modifier = Modifier.padding(top = marginTopDp.dp),
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(
-                        onClick = { showInMap(null, null, null) }
-                    ) {
+                    IconButton(onClick = { showInMap(null, null, null) }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go back home"
+                            contentDescription = stringResource(R.string.go_back_home)
                         )
                     }
                 },
-                title = {
-                    Text(text = "GeoCoder")
-                }
+                title = { Text(text = stringResource(R.string.geocoder)) }
             )
         }
     ) { paddingValues ->
-        snackbarData?.let {
-            MoboSnack(snackbarData!!) { action ->
-                when (action) {
-                    GeoCoderLauncherSnackbarAction.Nothing -> {
-                        Timber.i("action: $action")
-                    }
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            snackbarData?.let { data ->
+                PlaceAddedBottomSheet(data) {
+                    snackbarData = null
                 }
-                snackbarData = null
             }
-        }
-        showPoiCatDialog?.let { _ ->
-            Timber.i("name: ${showPoiCatDialog!!.name}")
-            PoiCatDialog(showPoiCatDialog!!.name.toString()) { name, category ->
-                Timber.i("$name $category")
-                if (showPoiCatDialog!!.latLng != null)
-                    when (category) {
-                        null -> {
-                            showInMap(null, null, showPoiCatDialog!!.latLng)
+
+            showPoiCatDialog?.let { dialogData ->
+                Timber.i("name: ${dialogData.name}")
+                PoiCatDialog(dialogData.name.toString()) { name, category ->
+                    Timber.i("$name $category")
+                    val dialogLatLng = dialogData.latLng
+                    if (dialogLatLng != null) {
+                        if (category == null) {
+                            showInMap(null, null, dialogLatLng)
                             showPoiCatDialog = null
-                        } else -> {
-                            val locationsParm = "${showPoiCatDialog!!.latLng!!.latitude},${showPoiCatDialog!!.latLng!!.longitude}"
-                            gmsElevationService(context, locationsParm) { lllh0 ->
-                                val h = lllh0[0].altitude
+                        } else {
+                            val locationsParam = "${dialogLatLng.latitude},${dialogLatLng.longitude}"
+                            gmsElevationService(context, locationsParam) { lllh0 ->
+                                val h = lllh0.firstOrNull()?.altitude ?: 0.0
+                                val addedToDatabaseMsg = context.resources.getString(R.string.added_to_database, name)
                                 addPoiDao(
-                                    context, name,
-                                    com.google.android.gms.maps.model.LatLng(
-                                        showPoiCatDialog!!.latLng!!.latitude,
-                                        showPoiCatDialog!!.latLng!!.longitude),
+                                    context,
+                                    name,
+                                    GmsLatLng(dialogLatLng.latitude, dialogLatLng.longitude),
                                     h,
                                     category
                                 ) { _ ->
                                     snackbarData = GeoCoderLauncherSnackbarData(
-                                        context.getString(
-                                            R.string.added_to_database,
-                                            name
-                                        ),
-                                        null, null,
+                                        addedToDatabaseMsg,
+                                        null,
+                                        null,
                                         GeoCoderLauncherSnackbarAction.Nothing,
-                                        showPoiCatDialog
+                                        dialogData
                                     )
                                     showPoiCatDialog = null
                                 }
                             }
                         }
                     }
+                }
             }
         }
-
     }
 }
 
@@ -190,12 +187,15 @@ enum class GeoCoderLauncherSnackbarAction {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MoboSnack(geoCoderSnackbarData: GeoCoderLauncherSnackbarData, finished: (action: GeoCoderLauncherSnackbarAction) -> Unit) {
+private fun PlaceAddedBottomSheet(
+    geoCoderSnackbarData: GeoCoderLauncherSnackbarData,
+    onDismiss: () -> Unit
+) {
     ModalBottomSheet(onDismissRequest = {
         Timber.i("onDismissRequest")
-        finished(GeoCoderLauncherSnackbarAction.Nothing)
+        onDismiss()
     }) {
-        Box(modifier = Modifier.padding(start = 10.dp, end = 10.dp)) {
+        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
                 modifier = Modifier.border(
                     width = 2.dp,
@@ -207,28 +207,26 @@ private fun MoboSnack(geoCoderSnackbarData: GeoCoderLauncherSnackbarData, finish
                 geoCoderSnackbarData.name?.let {
                     Text(
                         text = it,
-                        Modifier
+                        modifier = Modifier
                             .weight(0.8f)
-                            .padding(top = 8.dp, bottom = 8.dp),
+                            .padding(vertical = 12.dp),
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Blue
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
-                geoCoderSnackbarData.category.let { text ->
-                    TextButton(onClick = {
-                        Timber.i("category: $text")
-                        finished(GeoCoderLauncherSnackbarAction.Nothing)
-                    }, modifier = Modifier.weight(0.2f)) {
-                        if (text != null) {
-                            Text(
-                                text = text,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Blue
-                            )
-                        }
+                geoCoderSnackbarData.category?.let { text ->
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(0.2f)
+                    ) {
+                        Text(
+                            text = text,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -241,7 +239,7 @@ private fun MoboSnack(geoCoderSnackbarData: GeoCoderLauncherSnackbarData, finish
 fun GeoCoderLauncherPreview() {
     RamaniTheme {
         GeoCoderLauncher(
-            latLng = com.google.android.gms.maps.model.LatLng(-1.286389, 36.817223),
+            latLng = GmsLatLng(-1.286389, 36.817223),
             showInMap = { _, _, _ -> }
         )
     }
@@ -249,9 +247,9 @@ fun GeoCoderLauncherPreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun MoboSnackPreview() {
+private fun PlaceAddedBottomSheetPreview() {
     RamaniTheme {
-        MoboSnack(
+        PlaceAddedBottomSheet(
             geoCoderSnackbarData = GeoCoderLauncherSnackbarData(
                 name = "Sample Place",
                 category = "Sample Category",
@@ -259,7 +257,7 @@ private fun MoboSnackPreview() {
                 action = GeoCoderLauncherSnackbarAction.Nothing,
                 actionData = null
             ),
-            finished = {}
+            onDismiss = {}
         )
     }
 }
