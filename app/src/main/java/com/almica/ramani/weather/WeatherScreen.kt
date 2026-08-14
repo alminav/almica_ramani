@@ -51,6 +51,21 @@ fun WeatherScreen(
     )
 }
 
+private fun getCardinalDirection(degrees: Double): String {
+    val directions = arrayOf(
+        "N", "NNO", "NO", "ONO",
+        "O", "OSO", "SO", "SSO",
+        "S", "SSW", "SW", "WSW",
+        "W", "WNW", "NW", "NNW"
+    )
+    // Normalize degrees to [0, 360)
+    val normalizedDegrees = (degrees % 360 + 360) % 360
+    // Divide into 16 sectors (22.5 degrees each)
+    // Adding 11.25 shifts the sectors so that N is centered around 0
+    val index = (((normalizedDegrees + 11.25) % 360) / 22.5).toInt()
+    return directions[index % 16]
+}
+
 @Composable
 fun WeatherScreenContent(
     uiState: WeatherUiState,
@@ -171,6 +186,7 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
             ) {
                 WeatherDetailItem(label = "Feuchtigkeit", value = "${current.humidity}%")
                 WeatherDetailItem(label = "Wind", value = "${current.wind_speed_10m} km/h")
+                WeatherDetailItem(label = "Richtung", value = getCardinalDirection(current.wind_direction_10m))
             }
 
             weather.hourly?.let { hourly ->
@@ -329,6 +345,7 @@ fun WeatherScreenPreview() {
                         time = "${datePart}T12:00",
                         temperature_2m = 22.5,
                         wind_speed_10m = 12.0,
+                        wind_direction_10m = 180.0,
                         weather_code = 1, // Leicht bewölkt
                         humidity = 45
                     ),

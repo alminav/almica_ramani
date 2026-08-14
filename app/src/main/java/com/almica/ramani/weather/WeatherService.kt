@@ -44,6 +44,7 @@ data class CurrentWeather(
     val time: String,
     val temperature_2m: Double,
     val wind_speed_10m: Double,
+    val wind_direction_10m: Double,
     val weather_code: Int, // <-- Neu hinzugefügt für Icons
     @SerialName("relative_humidity_2m") val humidity: Int
 )
@@ -64,7 +65,7 @@ class WeatherRepository {
         return httpClient.get(url) {
             parameter("latitude", lat)
             parameter("longitude", lon)
-            parameter("current", "temperature_2m,wind_speed_10m,weather_code,relative_humidity_2m")
+            parameter("current", "temperature_2m,wind_speed_10m,wind_direction_10m,weather_code,relative_humidity_2m")
             parameter("daily", "sunrise,sunset")
             parameter("hourly", "temperature_2m,weather_code")
             parameter("timezone", "auto")
