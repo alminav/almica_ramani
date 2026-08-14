@@ -22,13 +22,21 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class WeatherResponse(
     val current: CurrentWeather,
-    val daily: DailyWeather? = null
+    val daily: DailyWeather? = null,
+    val hourly: HourlyWeather? = null
 )
 
 @Serializable
 data class DailyWeather(
     val sunrise: List<String>,
     val sunset: List<String>
+)
+
+@Serializable
+data class HourlyWeather(
+    val time: List<String>,
+    val temperature_2m: List<Double>,
+    val weather_code: List<Int>
 )
 
 @Serializable
@@ -58,7 +66,9 @@ class WeatherRepository {
             parameter("longitude", lon)
             parameter("current", "temperature_2m,wind_speed_10m,weather_code,relative_humidity_2m")
             parameter("daily", "sunrise,sunset")
+            parameter("hourly", "temperature_2m,weather_code")
             parameter("timezone", "auto")
+            parameter("forecast_days", 1)
         }.body()
     }
 }

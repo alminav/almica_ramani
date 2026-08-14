@@ -2,6 +2,10 @@ package com.almica.ramani.weather
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -83,7 +87,7 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
     val weatherInfo = mapWmoCodeToWeather(current.weather_code)
 
     Card(
-        modifier = modifier.fillMaxWidth().padding(6.dp),
+        modifier = modifier.fillMaxWidth().wrapContentHeight().padding(6.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -99,7 +103,9 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
             }
 
             Column(
-                modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
             Text(
@@ -167,6 +173,25 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
                 WeatherDetailItem(label = "Wind", value = "${current.wind_speed_10m} km/h")
             }
 
+            weather.hourly?.let { hourly ->
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                )
+                /*
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Stündliche Vorhersage",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
+
+                 */
+                HourlyForecastList(hourly = hourly)
+            }
             weather.daily?.let { daily ->
                 if (daily.sunrise.isNotEmpty() && daily.sunset.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -197,6 +222,84 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
 }
 
 @Composable
+fun HourlyForecastList(hourly: HourlyWeather) {
+    val locale = LocalLocale.current.platformLocale
+    val timeFormatter = remember(locale) { DateTimeFormatter.ofPattern("HH:mm", locale) }
+    val inputFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm") }
+    val now = remember { LocalDateTime.now() }
+
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp)
+    ) {
+        // Filter for indices that are from the current hour onwards, up to 24 items
+        val nowTruncated = now.withMinute(0).withSecond(0).withNano(0)
+
+        var next24HoursIndices = hourly.time.indices.filter { i ->
+            try {
+                val time = LocalDateTime.parse(hourly.time[i], inputFormatter)
+                !time.isBefore(nowTruncated) && time.isBefore(nowTruncated.plusHours(25))
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        // Fallback: If filtering resulted in empty list (e.g. timezone mismatch), just show the first 24 items
+        if (next24HoursIndices.isEmpty() && hourly.time.isNotEmpty()) {
+            next24HoursIndices = hourly.time.indices.take(24)
+        }
+
+        itemsIndexed(next24HoursIndices.toList()) { _, originalIndex ->
+            Timber.i("originalIndex: $originalIndex")
+            val timeString = try {
+                val time = LocalDateTime.parse(hourly.time[originalIndex], inputFormatter)
+                time.format(timeFormatter)
+            } catch (e: Exception) {
+                hourly.time[originalIndex].split("T").lastOrNull() ?: "--:--"
+            }
+
+            HourlyForecastItem(
+                time = timeString,
+                temperature = hourly.temperature_2m[originalIndex],
+                weatherCode = hourly.weather_code[originalIndex]
+            )
+        }
+    }
+}
+
+@Composable
+fun HourlyForecastItem(time: String, temperature: Double, weatherCode: Int) {
+    val weatherInfo = mapWmoCodeToWeather(weatherCode)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(vertical = 4.dp)
+    ) {
+        Text(
+            text = time,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Icon(
+            imageVector = weatherInfo.icon,
+            contentDescription = weatherInfo.description,
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "${temperature.toInt()}°",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    }
+}
+
+@Composable
 fun WeatherDetailItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
@@ -216,16 +319,23 @@ fun WeatherDetailItem(label: String, value: String) {
 @Preview(showBackground = true)
 @Composable
 fun WeatherScreenPreview() {
+    val now = LocalDateTime.now()
+    val datePart = now.format(DateTimeFormatter.ISO_LOCAL_DATE)
     RamaniTheme {
         WeatherScreenContent(
             uiState = WeatherUiState.Success(
                 weather = WeatherResponse(
                     current = CurrentWeather(
-                        time = "2024-03-21T12:00",
+                        time = "${datePart}T12:00",
                         temperature_2m = 22.5,
                         wind_speed_10m = 12.0,
                         weather_code = 1, // Leicht bewölkt
                         humidity = 45
+                    ),
+                    hourly = HourlyWeather(
+                        time = List(24) { String.format(Locale.US, "%sT%02d:00", datePart, it) },
+                        temperature_2m = List(24) { 15.0 + it / 2.0 },
+                        weather_code = List(24) { if (it % 3 == 0) 0 else 1 }
                     )
                 )
             ),
