@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.format
 import com.almica.ramani_lib.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.maps.MapLibreMap
 import timber.log.Timber
 
@@ -34,14 +35,16 @@ fun MainZoomButtons(
     visibility: Boolean,
     mapPositionZoom: MutableState<Double?>,
     map: MapLibreMap?,
-    cameraPosition: MutableState<CameraPosition>, setZoom: (Double?) -> Unit
+    cameraPosition: MutableState<CameraPosition>, 
+    setZoom: (Double?) -> Unit
 ) {
+
     val zoomText by remember {
         derivedStateOf {
             (mapPositionZoom.value ?: cameraPosition.value.zoom)?.format(1) ?: ""
         }
     }
-    //Timber.i("zoomText: $zoomText")
+    
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.align(alignment = Alignment.CenterEnd)) {
             AnimatedVisibility(
@@ -56,10 +59,20 @@ fun MainZoomButtons(
                             containerColor = colorResource(R.color.teal_200_trans)
                         ),
                         onClick = {
-                            //val cameraModeClone = cameraMode
-                            //cameraMode.intValue = CameraMode.NONE
-                            val newZoom: Double? = map?.cameraPosition?.zoom?.plus(1.0)
-                            Timber.i("zoom: $newZoom")
+                            // 1. Get current zoom from map (most accurate)
+                            val currentActual = map?.cameraPosition?.zoom ?: 13.0
+                            
+                            // 2. Calculate new zoom: Snap to nearest integer then add 1.0
+                            // This ensures the "step width is 1" even if currently at 13.2
+                            val newZoom = (Math.round(currentActual) + 1).toDouble()
+                            
+                            Timber.i("zoom +: $newZoom (from $currentActual)")
+                            
+                            // 3. Use moveCamera (Instant) instead of easeCamera
+                            // This prevents GPS updates from cancelling the zoom mid-animation
+                            map?.moveCamera(CameraUpdateFactory.zoomTo(newZoom))
+                            
+                            // 4. Update UI state
                             setZoom(newZoom)
                         }) {
                         Text(
@@ -81,10 +94,14 @@ fun MainZoomButtons(
                             containerColor = colorResource(R.color.teal_200_trans)
                         ),
                         onClick = {
-                            //val cameraModeClone = cameraMode
-                            //cameraMode.intValue = CameraMode.NONE
-                            val newZoom = cameraPosition.value.zoom?.minus(1.0)
-                            Timber.i("zoom: $newZoom")
+                            val currentActual = map?.cameraPosition?.zoom ?: 13.0
+                            
+                            // Snap to nearest integer then subtract 1.0
+                            val newZoom = (Math.round(currentActual) - 1).toDouble()
+                            
+                            Timber.i("zoom -: $newZoom (from $currentActual)")
+                            
+                            map?.moveCamera(CameraUpdateFactory.zoomTo(newZoom))
                             setZoom(newZoom)
                         },
                     ) {

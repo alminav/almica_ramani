@@ -113,6 +113,7 @@ class LauncherActivity : ComponentActivity() {
                 val intent = Intent(context, activityKClass.java).apply {
                     stringExtras.forEach { putExtra(it.first, it.second) }
                     doubleExtras.forEach { putExtra(it.first, it.second) }
+                    Timber.i("uiState.resultLatLng: ${uiState.resultLatLng}")
                     putExtra(Const.EXTRA_LATITUDE, uiState.resultLatLng.first)
                     putExtra(Const.EXTRA_LONGITUDE, uiState.resultLatLng.second)
                     putExtra(Const.EXTRA_ROUTE_DIALOG_MODE, RouteDialogMode.Admin.ordinal)
@@ -427,7 +428,7 @@ fun LauncherTopBar(appIcon: android.graphics.Bitmap?) {
                         bitmap = it.asImageBitmap(),
                         contentDescription = "App Icon",
                         tint = Color.Unspecified,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(36.dp)
                     )
                 }
                 Spacer(modifier = Modifier.size(8.dp))

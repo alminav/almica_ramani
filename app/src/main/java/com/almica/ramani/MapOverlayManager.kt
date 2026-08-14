@@ -1054,7 +1054,7 @@ fun BoxScope.MapOverlayManagerContent(
             WeatherScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 0.dp),
+                    .padding(vertical = 0.dp, horizontal = 16.dp),
                 latitude = cp.latitude,
                 longitude = cp.longitude
             )

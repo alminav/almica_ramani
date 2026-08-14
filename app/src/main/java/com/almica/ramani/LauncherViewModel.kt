@@ -89,13 +89,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             //val isTracking = Helpers.isServiceRunning(getApplication(), LocationService::class.java)
             val isTracking = GpsRepository.getInstance().isTrackingEnabled.value
             Timber.i("isTracking: $isTracking")
-
+            //Timber.i("lat: $lat lon: $lon")
             _uiState.update {
                 it.copy(
                     rasterTilesPrefSet = rasterTiles,
                     mvtName = mvtPath?.let { path -> File(path).name.plus(if (useOpenGL) " (OpenGL)" else " (Vulkan)") },
                     ghFileName = ghPath?.let { path -> File(path).name },
                     resultRouteFolderName = routeFolderPath,
+                    // resultLatLng is updated here by reading from SharedPreferences
+                    // resultLatLng updated from Prefs: lat=$lat, lon=$lon
                     resultLatLng = Pair(lat, lon),
                     logCount = count,
                     firstLocationDate = firstDateStr,
@@ -110,6 +112,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun updateCoordinates(lat: Double, lon: Double) {
+        Timber.i("updateCoordinates: lat=$lat lon=$lon")
+        // This is where the preference is written.
+        // It uses toRawBits() to store the Double as a Long in SharedPreferences.
         prefs.edit {
             putLong(Const.PREF_LATITUDE, lat.toRawBits())
             putLong(Const.PREF_LONGITUDE, lon.toRawBits())

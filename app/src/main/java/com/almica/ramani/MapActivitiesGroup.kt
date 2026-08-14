@@ -404,15 +404,11 @@ fun RamaniNavHost(
                                 modifier = Modifier
                                     .fillMaxWidth(),
                                 shape = RoundedCornerShape(24.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
-                                        alpha = 0.3f
-                                    )
-                                ),
-                                border = BorderStroke(
-                                    2.dp,
-                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 1.0f)
-                                )
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+//                                border = BorderStroke(
+//                                    2.dp,
+//                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 1.0f)
+//                                )
                             ) {
                                 BadgedBox(
                                     modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -441,6 +437,7 @@ fun RamaniNavHost(
                                         modifier = Modifier.align(Alignment.CenterHorizontally)
                                     )
                                 }
+
                                 lastLocationCoords?.let {
                                     Text(
                                         text = "${stringResource(R.string.last_location)} $it",
@@ -585,13 +582,20 @@ fun ActivityWheelPicker(
         }
     }
 
+    LaunchedEffect(Unit) {
+        if (activities.isNotEmpty()) {
+            val midIndex = Int.MAX_VALUE / 2
+            val offset = midIndex % activities.size
+            listState.scrollToItem(midIndex - offset)
+        }
+    }
+
     Card(
         modifier = Modifier.padding(bottom = 6.dp)
             .fillMaxWidth()
             .height(itemHeight * 3),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 1f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -604,9 +608,9 @@ fun ActivityWheelPicker(
                     .height(itemHeight)
                     .align(Alignment.Center)
                     .padding(horizontal = 16.dp)
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp))
                     .border(
-                        width = 2.dp,
+                        width = 1.dp,
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -617,12 +621,10 @@ fun ActivityWheelPicker(
                 contentPadding = PaddingValues(vertical = itemHeight),
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Using a large number for infinite-ish scrolling feel or just items
-                items(activities.size) { index ->
+                items(Int.MAX_VALUE) { index ->
                     val activity = activities[index % activities.size]
-                    Timber.i("index: $index ${activity.kClass}")
-/*
-                    val transformation by remember {
+
+                    val transformation by remember(index) {
                         derivedStateOf {
                             val layoutInfo = listState.layoutInfo
                             val visibleItems = layoutInfo.visibleItemsInfo
@@ -630,33 +632,32 @@ fun ActivityWheelPicker(
 
                             if (item != null) {
                                 val itemCenter = item.offset + item.size / 2
-                                val viewportCenter = layoutInfo.viewportEndOffset / 2
+                                val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
                                 val distanceFromCenter = (itemCenter - viewportCenter).toFloat()
-                                val containerHeight = layoutInfo.viewportEndOffset.toFloat()
+                                val containerHeight = itemHeight.value * 3
 
                                 // Normalize distance from center (-1 to 1)
                                 val progress = (distanceFromCenter / (containerHeight / 2)).coerceIn(-1f, 1f)
 
                                 object {
-                                    val alpha = 1f - Math.abs(progress) * 0.6f
+                                    val alpha = 1f - Math.abs(progress) * 0.5f
                                     val scale = 1f - Math.abs(progress) * 0.2f
                                 }
                             } else null
                         }
                     }
-*/
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(itemHeight)
-//                            .graphicsLayer {
-//                                transformation?.let {
-//                                    alpha = it.alpha
-//                                    scaleX = it.scale
-//                                    scaleY = it.scale
-//                                }
-//                            }
-                            .clickable(enabled = false) { },
+                            .graphicsLayer {
+                                transformation?.let {
+                                    alpha = it.alpha
+                                    scaleX = it.scale
+                                    scaleY = it.scale
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         WheelItemContent(
@@ -683,14 +684,15 @@ fun ActivityWheelPicker(
             ) {
                 Button(
                     onClick = {
-                        val safeIndex = centerIndex.coerceIn(0, activities.size - 1)
-                        val activity = activities[safeIndex]
-                        onActivityClick(
-                            activity.kClass,
-                            activity.stringExtras,
-                            activity.doubleExtras,
-                            activity.maptypeKey
-                        )
+                        if (activities.isNotEmpty()) {
+                            val activity = activities[centerIndex % activities.size]
+                            onActivityClick(
+                                activity.kClass,
+                                activity.stringExtras,
+                                activity.doubleExtras,
+                                activity.maptypeKey
+                            )
+                        }
                     },
                     modifier = Modifier
                         .height(40.dp)

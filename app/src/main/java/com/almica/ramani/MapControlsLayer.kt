@@ -61,7 +61,6 @@ fun BoxScope.MapControlsLayer(
         gradientRouteEntity = uiState.gradientRouteEntity,
         chartRouteEntity = uiState.chartRouteEntity,
         appRestartRequired = uiState.appRestartRequired,
-        prefMaptypeKey = uiState.prefMaptypeKey,
         map = map,
         cameraPosition = cameraPosition,
         mapPositionLatitude = mapPositionLatitude,
@@ -92,7 +91,6 @@ fun BoxScope.MapControlsLayerContent(
     gradientRouteEntity: RouteEntity?,
     chartRouteEntity: RouteEntity?,
     appRestartRequired: Boolean,
-    prefMaptypeKey: Int,
     map: MapLibreMap?,
     cameraPosition: MutableState<CameraPosition>,
     mapPositionLatitude: Double,
@@ -210,14 +208,7 @@ fun BoxScope.MapControlsLayerContent(
         cameraPosition = cameraPosition,
         setZoom = { newZoom ->
             mapPositionZoom.value = newZoom
-            cameraPosition.value = CameraPosition(cameraPosition.value).apply {
-                this.motionType = com.almica.ramani_lib.CameraMotionType.INSTANT
-                this.zoom = newZoom
-                this.animationDurationMs = 0
-            }
-            if (prefMaptypeKey == MaptypeKey.GeoJson.ordinal) {
-                // map?.let { checkGeojsonMaps(it, context) }
-            }
+            // cameraPosition.value update is handled by map listeners after easeCamera
         }
     )
 
@@ -273,7 +264,6 @@ fun MapControlsLayerPreview() {
                     gradientRouteEntity = null,
                     chartRouteEntity = null,
                     appRestartRequired = false,
-                    prefMaptypeKey = 0,
                     map = null, // Can't easily mock MapLibreMap for preview
                     cameraPosition = cameraPosition,
                     mapPositionLatitude = 48.0,

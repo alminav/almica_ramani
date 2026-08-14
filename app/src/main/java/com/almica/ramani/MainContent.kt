@@ -75,7 +75,7 @@ fun MainContent(
 
     LaunchedEffect(Unit) {
         viewModel?.setMvtPath(preferences.getString(Const.PREF_MVT_FILEPATH, null))
-        //viewModel.setPrefMaptypeKey(preferences.getInt(Const.PREF_MAPTYPE_KEY, 0))
+        viewModel?.setCameraPosition(CameraPosition(target = startLatLng, zoom = 13.0))
     }
 
     Scaffold { innerPadding ->
@@ -224,6 +224,10 @@ fun MainScaffoldContent(
                 mapPositionLatitude = latLng.latitude
                 mapPositionLongitude = latLng.longitude
                 mapPositionZoom.value = zoom
+                // We don't re-assign cameraPosition.value here to avoid a feedback loop
+                // that cancels ongoing camera animations (like zooming).
+                // The properties of the existing cameraPosition.value object are 
+                // already being updated by MapLibre's internal listeners.
             },
             onMapReady = { maplibreMap ->
                 viewModel?.setProgress(null)
@@ -275,7 +279,7 @@ fun MainScaffoldContent(
 
         if (uiState.mainSnackbarData != null) {
             MainMoboSnack(uiState.mainSnackbarData) { action ->
-                handleSnackbarAction(context, action, viewModel, uiState, cameraPosition, preferences)
+                handleSnackbarAction(context, action, viewModel, uiState, cameraPosition, preferences, reComposition)
             }
         }
 
@@ -351,9 +355,7 @@ fun MainScaffoldContent(
                     }
                 },
                 onRestart = {
-                    val resultIntent = Intent()
-                    (context as Activity).setResult(Activity.RESULT_OK, resultIntent)
-                    context.finish()
+                    reComposition(false, uiState.mvtPath, cameraPosition.value.target)
                 }
             )
             HairCrossOverlay(
@@ -416,7 +418,8 @@ private fun handleSnackbarAction(
     viewModel: MainViewModel?,
     uiState: MainUiState,
     cameraPosition: MutableState<CameraPosition>,
-    preferences: android.content.SharedPreferences
+    preferences: android.content.SharedPreferences,
+    reComposition: (Boolean, String?, LatLng?) -> Unit
 ) {
     when (action) {
         RouteCalculation -> {
@@ -458,9 +461,7 @@ private fun handleSnackbarAction(
         RouteSideBar -> { viewModel?.setOverlay(OverlayType.ROUTE_MONITOR); viewModel?.setSnackbar(null) }
         Nothing -> viewModel?.setSnackbar(null)
         AppRestart -> {
-            val resultIntent = Intent()
-            (context as Activity).setResult(Activity.RESULT_OK, resultIntent)
-            context.finish()
+            reComposition(true, uiState.mvtPath, cameraPosition.value.target)
         }
 
         ToggleTracking -> {

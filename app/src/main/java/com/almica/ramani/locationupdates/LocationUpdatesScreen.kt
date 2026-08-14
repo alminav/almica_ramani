@@ -156,7 +156,7 @@ fun LocationUpdatesContent() {
                 GpsViewModel.loadTime(currentLocation.time)
                 GpsViewModel.loadSpeed(currentLocation.speed)
                 GpsViewModel.loadBearing(currentLocation.bearing)
-                GpsViewModel.loadDistance(distM?.plus(deltaDist) ?: deltaDist)
+                GpsViewModel.loadDistance(distM.plus(deltaDist) ?: deltaDist)
                 //Timber.i("GpsViewModel.distance: ${GpsViewModel.distance.value} deltaDist: $deltaDist")
                 GpsViewModel.loadLatitude(currentLocation.latitude)
                 GpsViewModel.loadLongitude(currentLocation.longitude)

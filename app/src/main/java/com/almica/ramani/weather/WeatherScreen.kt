@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
@@ -73,7 +74,7 @@ fun WeatherScreenContent(
     onRefresh: () -> Unit
 ) {
     Box(
-        modifier = modifier.padding(16.dp),
+        modifier = modifier.padding(0.dp),
         contentAlignment = Alignment.Center
     ) {
         when (val state = uiState) {
@@ -102,13 +103,14 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
     val weatherInfo = mapWmoCodeToWeather(current.weather_code)
 
     Card(
-        modifier = modifier.fillMaxWidth().wrapContentHeight().padding(6.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = 6.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             IconButton(
                 onClick = onRefresh,
-                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
+                modifier = Modifier.align(Alignment.TopEnd).padding(vertical = 4.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,

@@ -159,25 +159,25 @@ fun MainMapView(
                 onMapChange(maplibreMap)
                 maplibreMap.addOnMoveListener(object : MapLibreMap.OnMoveListener {
                     override fun onMoveBegin(p0: MoveGestureDetector) {
-                        cameraPosition.value.target?.let { onMapMove(it, cameraPosition.value.zoom!!) }
+                        maplibreMap.cameraPosition.target?.let { onMapMove(it, maplibreMap.cameraPosition.zoom) }
                     }
                     override fun onMove(p0: MoveGestureDetector) {
-                        cameraPosition.value.target?.let { onMapMove(it, cameraPosition.value.zoom!!) }
+                        maplibreMap.cameraPosition.target?.let { onMapMove(it, maplibreMap.cameraPosition.zoom) }
                     }
                     override fun onMoveEnd(p0: MoveGestureDetector) {
-                        cameraPosition.value.target?.let { onMapMove(it, cameraPosition.value.zoom!!) }
+                        maplibreMap.cameraPosition.target?.let { onMapMove(it, maplibreMap.cameraPosition.zoom) }
                     }
                 })
                 maplibreMap.addOnCameraIdleListener {
-                    cameraPosition.value.target?.let { onMapMove(it, cameraPosition.value.zoom!!) }
+                    maplibreMap.cameraPosition.target?.let { onMapMove(it, maplibreMap.cameraPosition.zoom) }
                 }
                 maplibreMap.addOnCameraMoveListener {
-                    cameraPosition.value.target?.let { onMapMove(it, cameraPosition.value.zoom!!) }
+                    maplibreMap.cameraPosition.target?.let { onMapMove(it, maplibreMap.cameraPosition.zoom) }
                 }
                 maplibreMap.addOnScaleListener(object : MapLibreMap.OnScaleListener {
                     override fun onScaleBegin(p0: org.maplibre.android.gestures.StandardScaleGestureDetector) {}
                     override fun onScale(p0: org.maplibre.android.gestures.StandardScaleGestureDetector) {
-                        cameraPosition.value.target?.let { onMapMove(it, cameraPosition.value.zoom!!) }
+                        maplibreMap.cameraPosition.target?.let { onMapMove(it, maplibreMap.cameraPosition.zoom) }
                     }
                     override fun onScaleEnd(p0: org.maplibre.android.gestures.StandardScaleGestureDetector) {}
                 })
