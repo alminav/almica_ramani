@@ -11,12 +11,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.google.android.libraries.places.api.Places
-import com.strongtogether.googlemapsjetpackcompose.screens.MapScreen
+import com.strongtogether.googlemapsjetpackcompose.screens.GoogleMapSearchScreen
 import com.strongtogether.googlemapsjetpackcompose.utils.ManifestUtils
 import com.strongtogether.googlemapsjetpackcompose.utils.MyDebugTree
 import com.strongtogether.googlemapsjetpackcompose.viewmodel.MapViewModel
 import timber.log.Timber
 
+/**
+ * 14aug2026 obsolete, MapScreen is called directly from GeoCoderLauncher
+ */
 class PlacesActivity : ComponentActivity() {
 
     private val viewModel: MapViewModel by viewModels()
@@ -42,7 +45,7 @@ class PlacesActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    MapScreen(viewModel, startLat, startLon) { name, latLng ->
+                    GoogleMapSearchScreen(viewModel, startLat, startLon) { name, latLng ->
                         Timber.i("name: $name latLng: $latLng")
                         val resultIntent = Intent()
                         latLng?.let {

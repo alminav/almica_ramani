@@ -57,7 +57,7 @@
         <activity android:name=".ListHgtActivity"/>
         <activity android:name=".ImportGeojsonActivity"/>
         <activity android:name=".TilemakerPreferenceActivity"/>
-        <activity android:name="com.strongtogether.googlemapsjetpackcompose.PlacesActivity"/>
+        <!-- activity android:name="com.strongtogether.googlemapsjetpackcompose.PlacesActivity" -->
         <activity android:name="com.almica.ramani.pdfcreator.MainActivity"/>
         <activity
             android:name=".googlemaps.GoogleMapsActivity"

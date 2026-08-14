@@ -253,7 +253,7 @@ fun HourlyForecastList(hourly: HourlyWeather) {
         }
 
         itemsIndexed(next24HoursIndices.toList()) { _, originalIndex ->
-            Timber.i("originalIndex: $originalIndex")
+            //Timber.i("originalIndex: $originalIndex")
             val timeString = try {
                 val time = LocalDateTime.parse(hourly.time[originalIndex], inputFormatter)
                 time.format(timeFormatter)

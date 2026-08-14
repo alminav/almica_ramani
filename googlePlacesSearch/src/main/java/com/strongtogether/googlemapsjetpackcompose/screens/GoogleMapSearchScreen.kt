@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
@@ -39,26 +38,60 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.strongtogether.googlemapsjetpackcompose.viewmodel.MapViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
-import com.google.maps.android.compose.rememberMarkerState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import com.strongtogether.googlemapsjetpackcompose.R
 import com.strongtogether.googlemapsjetpackcompose.utils.format
+import androidx.compose.ui.tooling.preview.Preview
+import com.strongtogether.googlemapsjetpackcompose.ui.theme.GoogleMapsJetpackComposeTheme
 import timber.log.Timber
-import java.util.Locale
 
 @Composable
-fun MapScreen(
+fun GoogleMapSearchScreen(
     mapViewModel: MapViewModel,
     startLat: Double,
     startLon: Double,
     selectPlace: (String?, LatLng?) -> Unit
+) {
+    val context = LocalContext.current
+    val userLocation by mapViewModel.userLocation
+    val selectedLocation by mapViewModel.selectedLocation
+    val selectedLocationName by mapViewModel.selectedLocationName
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+    MapScreenContent(
+        userLocation = userLocation,
+        selectedLocation = selectedLocation,
+        selectedLocationName = selectedLocationName,
+        startLat = startLat,
+        startLon = startLon,
+        onSearchClick = { cityName, position ->
+            mapViewModel.selectLocation(cityName, position, context)
+        },
+        onInfoWindowClick = { name, pos ->
+            selectPlace(name, pos)
+        },
+        onFetchUserLocation = {
+            mapViewModel.fetchUserLocation(context, fusedLocationClient)
+        }
+    )
+}
+
+@Composable
+fun MapScreenContent(
+    userLocation: LatLng?,
+    selectedLocation: LatLng?,
+    selectedLocationName: String?,
+    startLat: Double,
+    startLon: Double,
+    onSearchClick: (String, LatLng) -> Unit,
+    onInfoWindowClick: (String?, LatLng?) -> Unit,
+    onFetchUserLocation: () -> Unit
 ) {
     // Initialize the camera position state, which controls the camera's position on the map
     val cameraPositionState = rememberCameraPositionState {
@@ -67,12 +100,8 @@ fun MapScreen(
     //val cameraPositionState = rememberCameraPositionState()
     // Obtain the current context
     val context = LocalContext.current
-    // Observe the user's location from the ViewModel
-    val userLocation by mapViewModel.userLocation
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
     // Observe the selected location from the ViewModel
-    val selectedLocation by mapViewModel.selectedLocation
     //val gmo = GoogleMapOptions().mapId("a5ab1e11e4024e9d26df1651")
     val mapOptions = remember {
         GoogleMapOptions()
@@ -103,7 +132,7 @@ fun MapScreen(
     ) { isGranted ->
         if (isGranted) {
             // Fetch the user's location and update the camera if permission is granted
-            mapViewModel.fetchUserLocation(context, fusedLocationClient)
+            onFetchUserLocation()
         } else {
             // Handle the case when permission is denied
             Timber.e("Location permission was denied by the user.")
@@ -116,7 +145,7 @@ fun MapScreen(
             // Check if the location permission is already granted
             ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) -> {
                 // Fetch the user's location and update the camera
-                mapViewModel.fetchUserLocation(context, fusedLocationClient)
+                onFetchUserLocation()
                 Timber.i("fetchUserLocation")
             }
             else -> {
@@ -143,7 +172,7 @@ fun MapScreen(
                     onClick = {
                         Timber.i("cityName: $cityName")
                         val position = cameraPositionState.position.target
-                        position.let { mapViewModel.selectLocation(cityName, it, context) }
+                        onSearchClick(cityName, position)
                         keyboardController?.hide()
                     }
                 ) {
@@ -166,7 +195,7 @@ fun MapScreen(
         */
 
         // Display the Google Map
-        Timber.i("mapId: ${mapOptions.mapId}")
+        //Timber.i("mapId: ${mapOptions.mapId}")
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             googleMapOptionsFactory = { GoogleMapOptions() }, //mapOptions },
@@ -194,13 +223,12 @@ fun MapScreen(
             selectedLocation?.let {
                 Marker(
                     state = rememberUpdatedMarkerState(position = it), // Place the marker at the selected location
-                    title = "lat:${selectedLocation!!.latitude.format(4)}° lon:${selectedLocation!!.longitude.format(4)}°",
+                    title = "lat:${it.latitude.format(4)}° lon:${it.longitude.format(4)}°",
                         //"Select Location", // Set the title for the marker
-                    snippet = mapViewModel.selectedLocationName.value,
+                    snippet = selectedLocationName,
                         //"This is the place you selected." // Set the snippet for the marker
-                    onInfoWindowClick = {
-                        Timber.i(mapViewModel.selectedLocationName.value)
-                        selectPlace(mapViewModel.selectedLocationName.value, mapViewModel.selectedLocation.value)
+                    onInfoWindowClick = { marker ->
+                        onInfoWindowClick(selectedLocationName, marker.position)
                     }
                 )
                 // Move the camera to the selected location with a zoom level of 15f
@@ -216,6 +244,23 @@ fun MapScreen(
         ScaleBar(
             modifier = Modifier.padding(end = 4.dp),
             cameraPositionState = cameraPositionState
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MapScreenPreview() {
+    GoogleMapsJetpackComposeTheme {
+        MapScreenContent(
+            userLocation = LatLng(37.423021, -122.083739),
+            selectedLocation = LatLng(37.4219999, -122.0840575),
+            selectedLocationName = "Googleplex",
+            startLat = 37.423021,
+            startLon = -122.083739,
+            onSearchClick = { _, _ -> },
+            onInfoWindowClick = { _, _ -> },
+            onFetchUserLocation = {}
         )
     }
 }
