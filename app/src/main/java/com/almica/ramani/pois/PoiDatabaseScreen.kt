@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.Height
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -53,7 +54,6 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,9 +65,11 @@ import com.almica.ramani.utils.BackPressHandler
 import com.almica.ramani.utils.format
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.SphericalUtil
+import kotlinx.coroutines.delay
 import timber.log.Timber
 import java.util.Locale
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class PoiNavigationItem {
     ByName,
@@ -125,7 +127,8 @@ fun PoiDatabaseScreen(
                         selectPoi(poi, action)
                     }
                     PoiItemAction.ElevationRefresh -> {
-                        viewModel.refreshElevation(poi, resources.getString(R.string._srtm_refresh_done, "%s"))
+                        viewModel.refreshElevation(poi,
+                            resources.getString(R.string._googleapis_elevation_service, "%s"))
                     }
                 }
             }
@@ -456,36 +459,52 @@ fun AskForPoiNameFilter(onFilter: (String?) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MoboPoiSnack(snackPoiData: SnackPoiData, finished: (action: SnackPoiAction) -> Unit) {
+fun MoboPoiSnack(
+    snackPoiData: SnackPoiData,
+    finished: (action: SnackPoiAction) -> Unit
+) {
     Timber.i("snackPoiData: $snackPoiData")
-    ModalBottomSheet(onDismissRequest = {}) {
+    LaunchedEffect(snackPoiData) {
+        delay(5000L.milliseconds)
+        finished(SnackPoiAction.Nothing)
+    }
+    ModalBottomSheet(
+        onDismissRequest = { finished(SnackPoiAction.Nothing) },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 3.dp, start = 3.dp, end = 3.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = snackPoiData.title,
-                    modifier = Modifier
-                        .weight(0.8f)
-                        .padding(top = 8.dp, bottom = 8.dp),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Blue
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
                 )
+
                 snackPoiData.actionText?.let { text ->
+                    Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
-                        onClick = { finished(snackPoiData.action) },
-                        modifier = Modifier.weight(0.2f)
+                        onClick = { finished(snackPoiData.action) }
                     ) {
                         Text(
                             text = text,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Blue
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

@@ -255,7 +255,9 @@ fun MainScaffoldContent(
                 viewModel?.setSnackbar(MainSnackbarData("${poi.name} - ${poi.category}", resources.getString(R.string.set_stop), SetStop, LatLng(poi.latitude, poi.longitude)))
                 cameraPosition.value = CameraPosition(cameraPosition.value).apply { target = LatLng(poi.latitude, poi.longitude) }
             },
-            onLogCountChange = { viewModel?.setLogCount(it) },
+            onLogCountChange = { count ->
+                viewModel?.setLogCount(count)
+            },
             context = context
         )
 

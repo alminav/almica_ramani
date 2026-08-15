@@ -4,10 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.almica.ramani.googlemaps.MapUtils.gmsElevationService
+import com.almica.ramani.utils.formatAlti
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.SphericalUtil
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.util.*
 import java.util.concurrent.Executors
 
@@ -22,9 +24,9 @@ enum class SnackPoiAction { Nothing, DeleteAll }
 
 data class SnackPoiData(
     val title: String,
-    val action: SnackPoiAction,
-    val actionText: String?,
-    val actionData: String?
+    val action: SnackPoiAction = SnackPoiAction.Nothing,
+    val actionText: String? = null,
+    val actionData: String? = null
 )
 
 enum class PoiSortOrder {
@@ -119,24 +121,22 @@ class PoiViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshElevation(poi: PoiEntity, messageFormat: String) {
-        gmsElevationService(getApplication(), "${poi.latitude},${poi.longitude}") { lllh0 ->
-            val h = lllh0[0].altitude
-            viewModelScope.launch {
-                repository.updatePoiAltitudeSuspend(h, poi.id)
-                _snackPoiData.value = SnackPoiData(
-                    String.format(messageFormat, poi.name),
-                    SnackPoiAction.Nothing,
-                    null, null
-                )
-            }
+        viewModelScope.launch {
+            val lllh0 = gmsElevationService(getApplication(), "${poi.latitude},${poi.longitude}")
+            val h = lllh0.firstOrNull()?.altitude ?: 0.0
+            Timber.i("refreshElevation h: $h")
+            repository.updatePoiAltitudeSuspend(h, poi.id)
+            _snackPoiData.value = SnackPoiData(
+                title = String.format(messageFormat, poi.name) + " " + h.formatAlti(true)
+            )
         }
     }
 
     fun showDeleteAllSnack(title: String, okText: String) {
         _snackPoiData.value = SnackPoiData(
-            title,
-            SnackPoiAction.DeleteAll,
-            okText, null
+            title = title,
+            action = SnackPoiAction.DeleteAll,
+            actionText = okText
         )
     }
 

@@ -155,12 +155,12 @@ fun ArrayList<LatLngH>.lllhToLineLayer(
         org.maplibre.android.geometry.LatLngBounds.Builder()
     regionsBoundsBuilder.include(
         LatLng(
-            bounds.northEast.latitude + latAdjustment,
+            (bounds.northEast.latitude + latAdjustment).coerceIn(-90.0, 90.0),
             bounds.northEast.longitude + lngAdjustment
         )
     ).include(
         LatLng(
-            bounds.southWest.latitude - latAdjustment,
+            (bounds.southWest.latitude - latAdjustment).coerceIn(-90.0, 90.0),
             bounds.southWest.longitude - lngAdjustment
         )
     )

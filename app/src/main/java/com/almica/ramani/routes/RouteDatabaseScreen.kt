@@ -484,20 +484,21 @@ fun RouteDatabaseScreen(mapPos: LatLng?, selectRoute: (RouteEntity?, RouteMenu) 
                     }
 
                     RouteDatabaseMenu.ElevationGmsService -> {
-                        routeEntity?.let {re ->
+                        routeEntity?.let { re ->
                             val lllh = re.kmlString.kmlString2Lllh()
                             if (lllh.size < 512) {
                                 val gmsLatLng: List<LatLng> = List(lllh.size) { i ->
                                     LatLng(lllh[i].latitude, lllh[i].longitude)
                                 }
                                 val encodedPolyline = PolyUtil.encode(gmsLatLng)
-                                MapUtils.gmsElevationService(
-                                    context,
-                                    "enc:${encodedPolyline}"
-                                ) { refreshedLllh ->
-                                    if (refreshedLllh.isNotNull() && refreshedLllh.isNotEmpty()) {
+                                scope.launch {
+                                    val refreshedLllh = MapUtils.gmsElevationService(
+                                        context,
+                                        "enc:${encodedPolyline}"
+                                    )
+                                    if (refreshedLllh.isNotEmpty()) {
                                         val kmlStringUpdated =
-                                            refreshedLllh.lllhToKmlString(re.name)
+                                            ArrayList(refreshedLllh).lllhToKmlString(re.name)
                                         val routeRepository = RouteRepository.getInstance(
                                             context,
                                             Executors.newSingleThreadExecutor()
@@ -506,9 +507,11 @@ fun RouteDatabaseScreen(mapPos: LatLng?, selectRoute: (RouteEntity?, RouteMenu) 
                                         routeRepository.updateRoute(kmlStringUpdated, re.id)
                                         snackDbRoutesData =
                                             SnackDbRoutesData(
-                                                "Route Database Update: ${re.name.replace(Const.GPX_EXT, "")
-                                                    .replace(Const.JPG_EXT, "")
-                                                    .replace(Const.KML_EXT, "")}",
+                                                "Route Database Update: ${
+                                                    re.name.replace(Const.GPX_EXT, "")
+                                                        .replace(Const.JPG_EXT, "")
+                                                        .replace(Const.KML_EXT, "")
+                                                }",
                                                 action = SnackDbRoutesAction.Nothing,
                                                 actionText = null, null
                                             )
@@ -519,14 +522,10 @@ fun RouteDatabaseScreen(mapPos: LatLng?, selectRoute: (RouteEntity?, RouteMenu) 
                                                 action = SnackDbRoutesAction.Nothing,
                                                 actionText = null, null
                                             )
-                                        Timber.i(
-                                            "" +
-                                                    "${context.getString(R.string.gms_elevation_service)} FAILED"
-                                        )
                                     }
                                 }
                             } else {
-                                Timber.i( "route coordinates: ${lllh.size}")
+                                Timber.i("route coordinates: ${lllh.size}")
                                 snackDbRoutesData =
                                     SnackDbRoutesData(
                                         context.getString(R.string.too_many_coordinates_512),

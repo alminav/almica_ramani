@@ -206,8 +206,8 @@ fun getTileRect(tileName: String): LatLngBounds? {
         val sZone = tileName[3].toString()
         if (sZone.equals("w", ignoreCase = true)) lon *= -1
         val latLngBounds = LatLngBounds.Builder()
-        latLngBounds.include(LatLng(lat,lon))
-        latLngBounds.include(LatLng(lat+1,lon+1))
+        latLngBounds.include(LatLng(lat.coerceIn(-90.0, 90.0), lon))
+        latLngBounds.include(LatLng((lat + 1).coerceIn(-90.0, 90.0), lon + 1))
         return latLngBounds.build()
     } catch (e: java.lang.NumberFormatException) {
         Timber.i( "$tileName NumberFormatException + ${e.message}")

@@ -936,11 +936,12 @@ fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
                                     LatLng(lllh[i].latitude, lllh[i].longitude)
                                 }
                                 val encodedPolyline = PolyUtil.encode(gmsLatLng)
-                                MapUtils.gmsElevationService(
-                                    context,
-                                    "enc:${encodedPolyline}"
-                                ) { refreshedLllh ->
-                                    if (refreshedLllh.isNotNull() && refreshedLllh.isNotEmpty()) {
+                                scope.launch {
+                                    val refreshedLllh = MapUtils.gmsElevationService(
+                                        context,
+                                        "enc:${encodedPolyline}"
+                                    )
+                                    if (refreshedLllh.isNotEmpty()) {
                                         val path =
                                             routeFile.path.replace(
                                                 Const.GPX_EXT,
@@ -969,7 +970,8 @@ fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
                                         )
                                     }
                                 }
-                            } else {
+                            }
+else {
                                 Timber.i("route coordinates: ${lllh?.size}")
                                 snackRoutesData =
                                     SnackRoutesData(

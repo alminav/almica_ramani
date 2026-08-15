@@ -6,7 +6,6 @@ import android.net.Uri
 import com.almica.ramani.Const
 import com.almica.ramani.LatLngH
 import com.almica.ramani.R
-import com.almica.ramani.utils.isNotNull
 import com.almica.ramani.utils.ElevationResultsObject
 import com.almica.ramani.utils.ManifestUtils
 import com.almica.ramani.utils.RoutesObject
@@ -144,7 +143,7 @@ object MapUtils {
 
     // does not run on doogee 24dez2025
     fun fetchPlaceRequest(context: Context, placeId: String, result: (Place?) -> Unit) {
-        Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: placeId: $placeId")
+        Timber.i( "placeId: $placeId")
     // Specify the fields to return.
         val placeFields = listOf(
             Place.Field.ID,
@@ -168,34 +167,35 @@ object MapUtils {
                 //val iconMaskUrl = place.iconMaskUrl
                 //val websiteUri = place.websiteUri
 
-                Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: name: $name")
-                Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: address: $address")
-                Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: GOOGLE_MAPS_URI: $gmsUri")
-                //Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: placeTypes: $placeTypes")
-                //Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: iconMaskUrl: $iconMaskUrl")
-                //Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: websiteUri: $websiteUri")
+                Timber.i("name: $name")
+                Timber.i("address: $address")
+                Timber.i("GOOGLE_MAPS_URI: $gmsUri")
+                //Timber.i("placeTypes: $placeTypes")
+                //Timber.i("iconMaskUrl: $iconMaskUrl")
+                //Timber.i("websiteUri: $websiteUri")
                 if (location != null) {
-                    Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: " +
+                    Timber.i(
                             "location: ${location.latitude} ${location.longitude}")
                     result(place)
                 } else {
-                    Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: " +
+                    Timber.i(
                             "location: = null")
                 }
             }.addOnFailureListener { exception: Exception ->
                 if (exception is ApiException) {
                     val message = context.getString(R.string.place_not_found, exception.message)
-                    Timber.e( "${Thread.currentThread().stackTrace[2].lineNumber}: $message" +
-                            " statusCode: ${exception.statusCode}")
+                    Timber.e( "%s", message)
                 }
             }
     }
 
     //maps.googleapis.com/maps/api/elevation/json?locations=enc:gfo}EtohhUxD@bAxJmGF&key=...
     // locations=40.714728,-73.998672
-    fun gmsElevationService(context: Context, locations: String,
-                            finished: (lllh: ArrayList<LatLngH>) -> Unit) {
-        val apiKey = ManifestUtils.getApiKeyFromManifest(context)
+    suspend fun gmsElevationService(
+        context: Context,
+        locations: String
+    ): List<LatLngH> = withContext(Dispatchers.IO) {
+        val apiKey = ManifestUtils.getApiKeyFromManifest(context) ?: return@withContext emptyList()
 
         val uri = Uri.Builder().scheme("https")
             .authority("maps.googleapis.com")
@@ -205,55 +205,26 @@ object MapUtils {
             .appendPath("json")
             .appendQueryParameter("locations", locations)
             .appendQueryParameter("key", apiKey)
-        val elevationUrl = uri.build()
-        Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: elevationUrl: $elevationUrl")
-        val lllh = mutableListOf<LatLngH>()
-        val job = CoroutineScope(Dispatchers.IO).launch {
-            try {
-                //shows something in the UI - progressBar
-                Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: CoroutineScope")
-                withContext(Dispatchers.IO) {
-                    Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: withContext")
-/*
-                    val tempFile = File(context.cacheDir, "${name}_elevation${Const.TXT_EXT}")
-                    Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: tempFile: ${tempFile.path}")
-                    val bytesCount = downloadFile(elevationUrl.toString(), tempFile)
-                    Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: ${tempFile.path} bytesCount: $bytesCount")
-                    val inputStream = tempFile.inputStream()
-                    val size = inputStream.available()
-                    val buffer = ByteArray(size)
-                    inputStream.read(buffer)
-                    inputStream.close()
- */
-                    val jsonBuffer = getUrlContent(elevationUrl.toString())
-                    Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: jsonBuffer: ${jsonBuffer.size}")
-                    val json = String(jsonBuffer, charset = UTF_8)
-                    val gson = Gson()
-                    val eleData = gson.fromJson(json, ElevationResultsObject::class.java)
-                    if (eleData.isNotNull()) {
-                        val elevationResults = eleData.elevationResults
-                        Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: elevationResults: ${elevationResults?.size} ")
-                        elevationResults?.forEach { elevationResult ->
-                            val location = elevationResult.location
-                            if (location != null) {
-                                lllh.add(
-                                    LatLngH(
-                                        location.latitude ?: 0.0,
-                                        location.longitude ?: 0.0,
-                                        elevationResult.elevation ?: 0.0
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-                finished(lllh as ArrayList)
-            } catch (e: IOException) {
-                finished(arrayListOf())
-                e.message?.let {
-                    Timber.e("${Thread.currentThread().stackTrace[2].lineNumber} $it")
-                }
-            }
+            .build()
+        
+        Timber.i("elevationUrl: $uri")
+        
+        try {
+            val jsonBuffer = getUrlContent(uri.toString())
+            val json = String(jsonBuffer, UTF_8)
+            val eleData = Gson().fromJson(json, ElevationResultsObject::class.java)
+            
+            eleData?.elevationResults?.mapNotNull { result ->
+                val location = result.location ?: return@mapNotNull null
+                LatLngH(
+                    location.latitude ?: 0.0,
+                    location.longitude ?: 0.0,
+                    result.elevation ?: 0.0
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            Timber.e(e, "Error in gmsElevationService")
+            emptyList()
         }
     }
     /*
@@ -281,60 +252,40 @@ object MapUtils {
             .appendQueryParameter("alternatives", alternatives.toString())
             .appendQueryParameter("key", apiKey)
         val directionsUrl = uri.build()
-        Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: directionsUrl: $directionsUrl")
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        Timber.i("directionsUrl: $directionsUrl")
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                //shows something in the UI - progressBar
-                Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: CoroutineScope")
-                withContext(Dispatchers.IO) {
-                    Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: withContext")
-                    val tempFile = File(context.cacheDir, "$name${Const.TXT_EXT}")
-                    Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: tempFile: ${tempFile.path}")
-                    val bytesCount = downloadFile(directionsUrl.toString(), tempFile)
-                    //tempFile.writeBytes(bytes)
-                    Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: ${tempFile.path} bytesCount: $bytesCount")
-                    val inputStream = tempFile.inputStream()
-                    val size = inputStream.available()
-                    val buffer = ByteArray(size)
-                    inputStream.read(buffer)
-                    inputStream.close()
-                    val json = String(buffer, charset = UTF_8)
-                    val gson = Gson()
-
-                    val routeData = gson.fromJson(json, RoutesObject::class.java)
-                    val routes = routeData.routes
-                    Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: routeData.routes size: ${routes?.size}")
-                    if (!routes.isNullOrEmpty()) {
-                        if (routes.size > 1) {
-                            val encodedPolyline0 = routes[0].overview_polyline?.points
-                            var lllhResult0: List<LatLngH>
-                            gmsElevationService(context, "enc:${encodedPolyline0}") { lllh0 ->
-                                lllhResult0 = lllh0
-                                val encodedPolyline1 = routes[1].overview_polyline?.points
-                                var lllhResult1: List<LatLngH>
-                                gmsElevationService(context, "enc:${encodedPolyline1}") { lllh1 ->
-                                    lllhResult1 = lllh1.reversed()
-                                    val lllhResult = List(lllhResult0.size + lllhResult1.size) { i ->
-                                        if (i < lllhResult0.size)
-                                            lllhResult0[i] else lllhResult1[i - lllhResult0.size]
-                                    }
-                                    Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: lllhResult size: ${lllhResult.size}")
-                                    finished(lllhResult, name, true)
-                                }
-                            }
-                        } else {
-                            val encodedPolyline0 = routes[0].overview_polyline?.points
-                            gmsElevationService(context, "enc:${encodedPolyline0}") { lllh ->
-                                Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: lllh size: ${lllh.size}")
-                                finished(lllh, name, true)
-                            }
-                        }
+                val tempFile = File(context.cacheDir, "$name${Const.TXT_EXT}")
+                downloadFile(directionsUrl.toString(), tempFile)
+                
+                val json = tempFile.readText(UTF_8)
+                val routeData = Gson().fromJson(json, RoutesObject::class.java)
+                val routes = routeData.routes
+                Timber.i("routeData.routes size: ${routes?.size}")
+                
+                if (!routes.isNullOrEmpty()) {
+                    val lllhResult = if (routes.size > 1) {
+                        val encoded0 = routes[0].overview_polyline?.points
+                        val lllh0 = gmsElevationService(context, "enc:$encoded0")
+                        
+                        val encoded1 = routes[1].overview_polyline?.points
+                        val lllh1 = gmsElevationService(context, "enc:$encoded1").reversed()
+                        
+                        lllh0 + lllh1
+                    } else {
+                        val encoded0 = routes[0].overview_polyline?.points
+                        gmsElevationService(context, "enc:$encoded0")
+                    }
+                    
+                    withContext(Dispatchers.Main) {
+                        Timber.i("lllhResult size: ${lllhResult.size}")
+                        finished(lllhResult, name, true)
                     }
                 }
-            } catch (e: IOException) {
-                finished(listOf(), "", false)
-                e.message?.let {
-                    Timber.e("${Thread.currentThread().stackTrace[2].lineNumber} $it")
+            } catch (e: Exception) {
+                Timber.e(e, "Error in gmsDirectionsService")
+                withContext(Dispatchers.Main) {
+                    finished(emptyList(), "", false)
                 }
             }
         }
@@ -372,17 +323,17 @@ object MapUtils {
             .appendQueryParameter("fields", "id,displayName,location,formattedAddress,photos")
             .appendQueryParameter("key", apiKey)
         val placesUrl = uri.build()
-        Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: placesUrl: $placesUrl")
-        val job = CoroutineScope(Dispatchers.IO).launch {
+        Timber.i("placesUrl: $placesUrl")
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 //shows something in the UI - progressBar
-                Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: CoroutineScope")
+                Timber.i( "CoroutineScope")
                 withContext(Dispatchers.IO) {
-                    Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: withContext")
+                    Timber.i( "withContext")
                     val tempFile = File(context.cacheDir, "$placeId${Const.TXT_EXT}")
                     val bytesCount = downloadFile(placesUrl.toString(), tempFile)
                     //tempFile.writeBytes(bytes)
-                    Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: ${tempFile.path} bytesCount: $bytesCount")
+                    Timber.i( "${tempFile.path} bytesCount: $bytesCount")
                     val inputStream = tempFile.inputStream()
                     val size = inputStream.available()
                     val buffer = ByteArray(size)
@@ -392,22 +343,26 @@ object MapUtils {
                     val gson = Gson()
                     val data = gson.fromJson(json, PlaceObject::class.java)
                     if (data != null) {
-                        Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: formattedAddress: ${data.formattedAddress}")
+                        Timber.i("formattedAddress: ${data.formattedAddress}")
                         // To get requestData
                         val photos = data.photos
                         photos?.forEach { photo ->
-                            Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: ${photo.googleMapsUri}")
+                            Timber.i("${photo.googleMapsUri}")
                         }
-                        result(
-                            PoiInfo(
-                                name,
-                                latLng,
-                                data.formattedAddress ?: "",
-                                data.photos?.getOrNull(0)?.googleMapsUri ?: ""
+                        withContext(Dispatchers.Main) {
+                            result(
+                                PoiInfo(
+                                    name,
+                                    latLng,
+                                    data.formattedAddress ?: "",
+                                    data.photos?.getOrNull(0)?.googleMapsUri ?: ""
+                                )
                             )
-                        )
+                        }
                     } else {
-                        result(null)
+                        withContext(Dispatchers.Main) {
+                            result(null)
+                        }
                     }
                 }
             } catch (e: IOException) {
@@ -431,14 +386,14 @@ object MapUtils {
 
     // // works on doogee WITH connection.connectTimeout = 700 24sez2024
     private fun downloadFile(urlString: String, tempFile: File): Long {
-        Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: tempFile: ${tempFile.path}")
+        Timber.i("tempFile: ${tempFile.path}")
         val url = URL(urlString)
         val connection = url.openConnection() as HttpURLConnection
         connection.connectTimeout = 700 // important for doogee
-        Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: connection.connectTimeout: ${connection.connectTimeout}")
-        Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: launched connection.connect")
+        Timber.i("connection.connectTimeout: ${connection.connectTimeout}")
+        Timber.i("launched connection.connect")
         connection.connect()
-        Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: finished connection.connect")
+        Timber.i("finished connection.connect")
 
         var total: Long = 0
         try {
@@ -458,7 +413,7 @@ object MapUtils {
         } finally {
             connection.disconnect()
         }
-        Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: bytes: $total")
+        Timber.i( "bytes: $total")
         return total
     }
 

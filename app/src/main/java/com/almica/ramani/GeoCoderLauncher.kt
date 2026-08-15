@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,7 @@ import com.almica.ramani.utils.addPoiDao
 import com.strongtogether.googlemapsjetpackcompose.screens.GoogleMapSearchScreen
 import com.strongtogether.googlemapsjetpackcompose.viewmodel.MapViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.maplibre.android.geometry.LatLng
 import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
@@ -52,6 +54,7 @@ fun GeoCoderLauncher(
 ) {
     Timber.i("GeoCoderLauncher")
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val viewModel: MapViewModel = viewModel()
     var showPoiCatDialog: ResultData? by remember { mutableStateOf(null) }
     var placeAddedSheetData by remember { mutableStateOf<PlaceAddedSheetData?>(null) }
@@ -139,9 +142,11 @@ fun GeoCoderLauncher(
                             showPoiCatDialog = null
                         } else {
                             val locationsParam = "${dialogLatLng.latitude},${dialogLatLng.longitude}"
-                            gmsElevationService(context, locationsParam) { lllh0 ->
+                            scope.launch {
+                                val lllh0 = gmsElevationService(context, locationsParam)
                                 val h = lllh0.firstOrNull()?.altitude ?: 0.0
-                                val addedToDatabaseMsg = context.resources.getString(R.string.added_to_database, name)
+                                val addedToDatabaseMsg =
+                                    context.resources.getString(R.string.added_to_database, name)
                                 addPoiDao(
                                     context,
                                     name,

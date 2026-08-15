@@ -735,8 +735,8 @@ fun checkGeojsonMaps(map: MapLibreMap, context: Context) {
 
 fun GeojsonMapEntity.getBounds(): LatLngBounds {
     val bounds = LatLngBounds.Builder()
-    bounds.include(LatLng(north, west))
-    bounds.include(LatLng(south, east))
+    bounds.include(LatLng(north.coerceIn(-90.0, 90.0), west))
+    bounds.include(LatLng(south.coerceIn(-90.0, 90.0), east))
     return bounds.build()
 }
 

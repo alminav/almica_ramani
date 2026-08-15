@@ -110,7 +110,7 @@ fun WeatherScreenContent(
                 is WeatherUiState.Success -> {
                     Box {
                         WeatherDisplay(weather = state.weather, onRefresh = onRefresh)
-
+                        Timber.i("WeatherUiState: isLoading: ${state.isLoading} weather: ${state.weather}")
                         // Smoothly fade in/out the background loading indicator
                         val loadingDesc = stringResource(R.string.loading_weather)
                         AnimatedVisibility(

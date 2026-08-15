@@ -321,6 +321,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setLogCount(count: Int) {
         //Timber.i("setLogCount: $count")
         _uiState.update { it.copy(logCount = count) }
+        if (count == 1) {
+            GpsViewModel.loadDistance(0.0)
+        }
     }
 
     fun onHairCrossClicked() {

@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +66,7 @@ import com.almica.ramani.utils.BackPressHandler
 import com.almica.ramani.utils.TimePagerDialog
 import com.almica.ramani.utils.addPoiDao
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.maplibre.android.geometry.LatLng
 import timber.log.Timber
 import java.io.File
@@ -172,6 +174,7 @@ class LauncherActivity : ComponentActivity() {
         onActivityClick: (KClass<out ComponentActivity>, ArrayList<Pair<String, String>>, ArrayList<Pair<String, Double>>, MaptypeKey) -> Unit
     ) {
         val context = LocalContext.current
+        val scope = rememberCoroutineScope()
 
         LauncherContentUI(
             uiState = uiState,
@@ -183,9 +186,19 @@ class LauncherActivity : ComponentActivity() {
             },
             onAddPoi = { name, latLng, category, onResult ->
                 val locationsParm = "${latLng.latitude},${latLng.longitude}"
-                gmsElevationService(context, locationsParm) { lllh0 ->
-                    val h = lllh0[0].altitude
-                    addPoiDao(context, name, com.google.android.gms.maps.model.LatLng(latLng.latitude, latLng.longitude), h, category) { _ ->
+                scope.launch {
+                    val lllh0 = gmsElevationService(context, locationsParm)
+                    val h = lllh0.firstOrNull()?.altitude ?: 0.0
+                    addPoiDao(
+                        context,
+                        name,
+                        com.google.android.gms.maps.model.LatLng(
+                            latLng.latitude,
+                            latLng.longitude
+                        ),
+                        h,
+                        category
+                    ) { _ ->
                         onResult(name)
                     }
                 }

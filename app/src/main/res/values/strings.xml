@@ -382,6 +382,8 @@
     <string name="srtm_refresh_done">Srtm Refresh ready</string>
     <string name="_srtm_refresh_done">%1$s Srtm Refresh ready</string>
     <string name="srtm_refresh_failed">Srtm Refresh failed</string>
+    <string name="googleapis_elevation_service">Google Elevation Service successful</string>
+    <string name="_googleapis_elevation_service">%1$s Google Elevation Service successful</string>
     <string name="region">Region</string>
     <string name="google_maps_title">Google Maps</string>
     <string name="google_maps_cloud_style">Google Maps Cloud Style</string>

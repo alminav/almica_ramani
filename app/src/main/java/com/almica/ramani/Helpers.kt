@@ -184,8 +184,8 @@ class Helpers {
 
             return org.maplibre.android.geometry.LatLngBounds
                 .Builder()
-                .include(LatLng(boundsStr[1].toDouble(), boundsStr[0].toDouble()))
-                .include(LatLng(boundsStr[3].toDouble(), boundsStr[2].toDouble()))
+                .include(LatLng(boundsStr[1].toDouble().coerceIn(-90.0, 90.0), boundsStr[0].toDouble()))
+                .include(LatLng(boundsStr[3].toDouble().coerceIn(-90.0, 90.0), boundsStr[2].toDouble()))
                 .build()
         }
 
@@ -1431,12 +1431,12 @@ class Helpers {
             val regionBoundsBuilder: LatLngBounds.Builder = LatLngBounds.Builder()
             regionBoundsBuilder.include(
                 LatLng(
-                    bounds.northEast.latitude + latAdjustment,
+                    (bounds.northEast.latitude + latAdjustment).coerceIn(-90.0, 90.0),
                     bounds.northEast.longitude + lngAdjustment
                 )
             ).include(
                 LatLng(
-                    bounds.southWest.latitude - latAdjustment,
+                    (bounds.southWest.latitude - latAdjustment).coerceIn(-90.0, 90.0),
                     bounds.southWest.longitude - lngAdjustment
                 )
             )
