@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="wind_directions">
+        <item>N</item>
+        <item>NNO</item>
+        <item>NO</item>
+        <item>ONO</item>
+        <item>O</item>
+        <item>OSO</item>
+        <item>SO</item>
+        <item>SSO</item>
+        <item>S</item>
+        <item>SSW</item>
+        <item>SW</item>
+        <item>WSW</item>
+        <item>W</item>
+        <item>WNW</item>
+        <item>NW</item>
+        <item>NNW</item>
+    </string-array>
+    <string name="weather_error_prefix">Fehler: %1$s</string>
+    <string name="refresh">Aktualisieren</string>
+    <string name="current_weather">Aktuelles Wetter</string>
+    <string name="humidity">Feuchtigkeit</string>
+    <string name="wind">Wind</string>
+    <string name="direction">Richtung</string>
+    <string name="sunrise">Sonnenaufgang</string>
+    <string name="sunset">Sonnenuntergang</string>
+    <string name="loading_weather">Lade Wetterdaten&#8230;</string>
+    <string name="unknown_error">Unbekannter Fehler</string>
+    <string name="weather_clear">Klarer Himmel</string>
+    <string name="weather_partly_cloudy_desc">Leicht bewölkt</string>
+    <string name="weather_foggy">Nebelig</string>
+    <string name="weather_drizzle">Nieselregen</string>
+    <string name="weather_rain">Regen</string>
+    <string name="weather_snow">Schneefall</string>
+    <string name="weather_rain_showers">Regenschauer</string>
+    <string name="weather_snow_showers">Schneeschauer</string>
+    <string name="weather_thunderstorm">Gewitter</string>
+    <string name="weather_unknown">Unbekannt</string>
+</resources>

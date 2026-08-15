@@ -519,4 +519,42 @@
     <string name="toggle">Toggle</string>
     <string name="activity_wheel_select">Start</string>
     <string name="weather">Weather</string>
+    <string name="weather_error_prefix">Error: %1$s</string>
+    <string name="current_weather">Current Weather</string>
+    <string name="humidity">Humidity</string>
+    <string name="wind">Wind</string>
+    <string name="direction">Direction</string>
+    <string name="sunrise">Sunrise</string>
+    <string name="sunset">Sunset</string>
+    <string name="loading_weather">Loading weather data&#8230;</string>
+    <string name="unknown_error">Unknown error</string>
+    <string name="weather_clear">Clear sky</string>
+    <string name="weather_partly_cloudy_desc">Partly cloudy</string>
+    <string name="weather_foggy">Foggy</string>
+    <string name="weather_drizzle">Drizzle</string>
+    <string name="weather_rain">Rain</string>
+    <string name="weather_snow">Snowfall</string>
+    <string name="weather_rain_showers">Rain showers</string>
+    <string name="weather_snow_showers">Snow showers</string>
+    <string name="weather_thunderstorm">Thunderstorm</string>
+    <string name="weather_unknown">Unknown</string>
+
+    <string-array name="wind_directions">
+        <item>N</item>
+        <item>NNE</item>
+        <item>NE</item>
+        <item>ENE</item>
+        <item>E</item>
+        <item>ESE</item>
+        <item>SE</item>
+        <item>SSE</item>
+        <item>S</item>
+        <item>SSW</item>
+        <item>SW</item>
+        <item>WSW</item>
+        <item>W</item>
+        <item>WNW</item>
+        <item>NW</item>
+        <item>NNW</item>
+    </string-array>
 </resources>
