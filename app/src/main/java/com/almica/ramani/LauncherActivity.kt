@@ -49,7 +49,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
-import androidx.navigation.NavController
 import com.almica.ramani.Const.Companion.EXTRA_ACTIVITY
 import com.almica.ramani.Const.Companion.EXTRA_LATLNG
 import com.almica.ramani.Helpers.Companion.saveLocations
@@ -119,6 +118,7 @@ class LauncherActivity : ComponentActivity() {
                     putExtra(Const.EXTRA_ROUTE_DIALOG_MODE, RouteDialogMode.Admin.ordinal)
                 }
                 launcher.launch(intent)
+                Timber.i("launch ${activityKClass.simpleName}")
             },
             viewModel = viewModel
         )
@@ -144,7 +144,7 @@ class LauncherActivity : ComponentActivity() {
             else -> return
         }
 
-        viewModel.updateCoordinates(lat, lon)
+        viewModel.updatePrefCoordinates(lat, lon)
     }
 
     private fun handleImportResults(data: Intent) {

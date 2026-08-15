@@ -111,8 +111,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun updateCoordinates(lat: Double, lon: Double) {
-        Timber.i("updateCoordinates: lat=$lat lon=$lon")
+    fun updatePrefCoordinates(lat: Double, lon: Double) {
+        Timber.i("updatePrefCoordinates: lat=$lat lon=$lon")
         // This is where the preference is written.
         // It uses toRawBits() to store the Double as a Long in SharedPreferences.
         prefs.edit {

@@ -150,7 +150,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun handleRecomposition(recompose: Boolean, mvtMapPath: String?, latLng: LatLng?) {
-        Timber.i("recompose $recompose")
+        Timber.i("recompose $recompose $latLng")
         val resultIntent = Intent().apply {
             putExtra(EXTRA_RESTART, recompose)
             putExtra(EXTRA_ACTIVITY, this@MainActivity::class.java.simpleName)

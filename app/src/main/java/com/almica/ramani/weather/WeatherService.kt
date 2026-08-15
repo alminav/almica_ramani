@@ -21,6 +21,10 @@ import kotlinx.serialization.json.Json
 // Der Aufruf geschieht in der Methode loadWeather() innerhalb der Datei WeatherViewModel.kt:
 @Serializable
 data class WeatherResponse(
+    // This value is written by the JSON parser when it receives the response
+    // from https://api.open-meteo.com/v1/forecast
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
     val current: CurrentWeather,
     val daily: DailyWeather? = null,
     val hourly: HourlyWeather? = null
@@ -64,6 +68,7 @@ class WeatherRepository {
         val url = "https://api.open-meteo.com/v1/forecast"
         return httpClient.get(url) {
             parameter("latitude", lat)
+            // The API response will contain the 'latitude' key which maps to the data class
             parameter("longitude", lon)
             parameter("current", "temperature_2m,wind_speed_10m,wind_direction_10m,weather_code,relative_humidity_2m")
             parameter("daily", "sunrise,sunset")

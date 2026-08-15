@@ -1,6 +1,10 @@
 package com.almica.ramani.weather
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -17,6 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -24,11 +30,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.almica.ramani.ui.theme.RamaniTheme
 import timber.log.Timber
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
+import com.almica.ramani.R
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.ui.platform.LocalLocale
+import com.almica.ramani.Const
 
 @Composable
 fun WeatherScreen(
@@ -52,19 +62,12 @@ fun WeatherScreen(
     )
 }
 
-private fun getCardinalDirection(degrees: Double): String {
-    val directions = arrayOf(
-        "N", "NNO", "NO", "ONO",
-        "O", "OSO", "SO", "SSO",
-        "S", "SSW", "SW", "WSW",
-        "W", "WNW", "NW", "NNW"
-    )
+private fun getCardinalDirectionIndex(degrees: Double): Int {
     // Normalize degrees to [0, 360)
     val normalizedDegrees = (degrees % 360 + 360) % 360
     // Divide into 16 sectors (22.5 degrees each)
     // Adding 11.25 shifts the sectors so that N is centered around 0
-    val index = (((normalizedDegrees + 11.25) % 360) / 22.5).toInt()
-    return directions[index % 16]
+    return (((normalizedDegrees + 11.25) % 360) / 22.5).toInt() % 16
 }
 
 @Composable
@@ -74,23 +77,57 @@ fun WeatherScreenContent(
     onRefresh: () -> Unit
 ) {
     Box(
-        modifier = modifier.padding(0.dp),
-        contentAlignment = Alignment.Center
+        modifier = modifier.padding(0.dp)
     ) {
-        when (val state = uiState) {
-            is WeatherUiState.Loading -> CircularProgressIndicator()
-            is WeatherUiState.Error -> {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "Fehler: ${state.message}", color = MaterialTheme.colorScheme.error)
-                    Timber.e("Error: ${state.message}")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = onRefresh) {
-                        Text("Erneut versuchen")
+        Crossfade(targetState = uiState, label = "WeatherStateTransition") { state ->
+            when (state) {
+                is WeatherUiState.Loading -> {
+                    // Show a placeholder shell with a spinner when loading for the first time
+                    val loadingDesc = stringResource(R.string.loading_weather)
+                    Box(contentAlignment = Alignment.Center) {
+                        WeatherPlaceholder(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                        )
+                        CircularProgressIndicator(
+                            modifier = Modifier.semantics { contentDescription = loadingDesc },
+                            strokeWidth = 3.dp
+                        )
                     }
                 }
-            }
-            is WeatherUiState.Success -> {
-                WeatherDisplay(weather = state.weather, onRefresh = onRefresh)
+
+                is WeatherUiState.Error -> {
+                    val errorMessage =
+                        state.message ?: state.messageResId?.let { stringResource(it) } ?: ""
+                    Text(
+                        text = stringResource(R.string.weather_error_prefix, errorMessage),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+
+                is WeatherUiState.Success -> {
+                    Box {
+                        WeatherDisplay(weather = state.weather, onRefresh = onRefresh)
+
+                        // Smoothly fade in/out the background loading indicator
+                        val loadingDesc = stringResource(R.string.loading_weather)
+                        AnimatedVisibility(
+                            visible = state.isLoading,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier.align(Alignment.TopStart)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .semantics { contentDescription = loadingDesc },
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -114,7 +151,7 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refresh",
+                    contentDescription = stringResource(R.string.refresh),
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
@@ -126,7 +163,7 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
             Text(
-                text = "Aktuelles Wetter",
+                text = stringResource(R.string.current_weather),
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
             )
@@ -145,8 +182,9 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
                 }
             }
 
+            val coordinates = String.format(Locale.ENGLISH, " %s %.2f° %.2f°", Const.UC_POSITION, weather.latitude, weather.longitude)
             Text(
-                text = formattedTime,
+                text = "$formattedTime $coordinates",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
             )
@@ -156,7 +194,7 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
             // Wetter-Icon groß anzeigen
             Icon(
                 imageVector = weatherInfo.icon,
-                contentDescription = weatherInfo.description,
+                contentDescription = stringResource(weatherInfo.descriptionResId),
                 modifier = Modifier.size(36.dp),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -165,7 +203,7 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
 
             // Textbeschreibung (z. B. "Leicht bewölkt")
             Text(
-                text = weatherInfo.description,
+                text = stringResource(weatherInfo.descriptionResId),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -186,9 +224,11 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                WeatherDetailItem(label = "Feuchtigkeit", value = "${current.humidity}%")
-                WeatherDetailItem(label = "Wind", value = "${current.wind_speed_10m} km/h")
-                WeatherDetailItem(label = "Richtung", value = getCardinalDirection(current.wind_direction_10m))
+                WeatherDetailItem(label = stringResource(R.string.humidity), value = "${current.humidity}%")
+                WeatherDetailItem(label = stringResource(R.string.wind), value = "${current.wind_speed_10m} km/h")
+                val directionIndex = getCardinalDirectionIndex(current.wind_direction_10m)
+                val directions = stringArrayResource(id = R.array.wind_directions)
+                WeatherDetailItem(label = stringResource(R.string.direction), value = directions[directionIndex])
             }
 
             weather.hourly?.let { hourly ->
@@ -224,11 +264,11 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         WeatherDetailItem(
-                            label = "Sonnenaufgang",
+                            label = stringResource(R.string.sunrise),
                             value = daily.sunrise[0].split("T").lastOrNull() ?: "--:--"
                         )
                         WeatherDetailItem(
-                            label = "Sonnenuntergang",
+                            label = stringResource(R.string.sunset),
                             value = daily.sunset[0].split("T").lastOrNull() ?: "--:--"
                         )
                     }
@@ -303,7 +343,7 @@ fun HourlyForecastItem(time: String, temperature: Double, weatherCode: Int) {
         Spacer(modifier = Modifier.height(4.dp))
         Icon(
             imageVector = weatherInfo.icon,
-            contentDescription = weatherInfo.description,
+            contentDescription = stringResource(weatherInfo.descriptionResId),
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.onPrimaryContainer
         )
@@ -314,6 +354,55 @@ fun HourlyForecastItem(time: String, temperature: Double, weatherCode: Int) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )
+    }
+}
+
+@Composable
+fun WeatherPlaceholder(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.loading_weather),
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            // Large Icon Placeholder
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .padding(4.dp)
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            // Temperature Placeholder
+            Box(
+                modifier = Modifier
+                    .width(60.dp)
+                    .height(24.dp)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                repeat(3) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(modifier = Modifier.size(40.dp, 12.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(modifier = Modifier.size(30.dp, 14.dp))
+                    }
+                }
+            }
+        }
     }
 }
 
