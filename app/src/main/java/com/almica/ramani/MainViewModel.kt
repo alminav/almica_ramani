@@ -231,6 +231,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         when {
             state.activeOverlay == OverlayType.LOCATION_STATISTIC -> closeOverlay()
+            state.activeOverlay == OverlayType.WEATHER -> closeOverlay()
             state.gradientRouteEntity != null -> setGradientRoute(null)
             state.chartRouteEntity != null -> setChartRoute(null)
             state.polygonState.lllh.isNotEmpty() -> {

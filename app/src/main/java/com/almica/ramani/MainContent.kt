@@ -320,6 +320,7 @@ fun MainScaffoldContent(
             && uiState.activeOverlay != OverlayType.ROUTE_FILES
             && uiState.activeOverlay != OverlayType.ADDITIONAL_MAPS
             && uiState.activeOverlay != OverlayType.PREFERENCES
+            && uiState.activeOverlay != OverlayType.WEATHER
             && uiState.activeOverlay != OverlayType.SAT_STATUS) {
             MapControlsLayer(
                 viewModel = viewModel,

@@ -32,8 +32,12 @@ data class WeatherResponse(
 
 @Serializable
 data class DailyWeather(
+    val time: List<String>,
     val sunrise: List<String>,
-    val sunset: List<String>
+    val sunset: List<String>,
+    val temperature_2m_max: List<Double>? = null,
+    val temperature_2m_min: List<Double>? = null,
+    val weather_code: List<Int>? = null
 )
 
 @Serializable
@@ -71,10 +75,10 @@ class WeatherRepository {
             // The API response will contain the 'latitude' key which maps to the data class
             parameter("longitude", lon)
             parameter("current", "temperature_2m,wind_speed_10m,wind_direction_10m,weather_code,relative_humidity_2m")
-            parameter("daily", "sunrise,sunset")
+            parameter("daily", "temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset")
             parameter("hourly", "temperature_2m,weather_code")
             parameter("timezone", "auto")
-            parameter("forecast_days", 1)
+            parameter("forecast_days", 7)
         }.body()
     }
 }

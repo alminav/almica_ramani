@@ -250,6 +250,7 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
                  */
                 HourlyForecastList(hourly = hourly)
             }
+
             weather.daily?.let { daily ->
                 if (daily.sunrise.isNotEmpty() && daily.sunset.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -273,6 +274,14 @@ fun WeatherDisplay(weather: WeatherResponse, modifier: Modifier = Modifier, onRe
                         )
                     }
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                )
+
+                DailyForecastList(daily = daily)
             }
             }
         }
@@ -323,6 +332,81 @@ fun HourlyForecastList(hourly: HourlyWeather) {
                 time = timeString,
                 temperature = hourly.temperature_2m[originalIndex],
                 weatherCode = hourly.weather_code[originalIndex]
+            )
+        }
+    }
+}
+
+@Composable
+fun DailyForecastList(daily: DailyWeather) {
+    val locale = LocalLocale.current.platformLocale
+    val dayFormatter = remember(locale) { DateTimeFormatter.ofPattern("EEE", locale) }
+    val inputFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        daily.time.forEachIndexed { index, dateString ->
+            val dayName = try {
+                val date = java.time.LocalDate.parse(dateString, inputFormatter)
+                date.format(dayFormatter)
+            } catch (e: Exception) {
+                dateString
+            }
+
+            DailyForecastItem(
+                day = dayName,
+                maxTemp = daily.temperature_2m_max?.getOrNull(index),
+                minTemp = daily.temperature_2m_min?.getOrNull(index),
+                weatherCode = daily.weather_code?.getOrNull(index) ?: 0
+            )
+        }
+    }
+}
+
+@Composable
+fun DailyForecastItem(day: String, maxTemp: Double?, minTemp: Double?, weatherCode: Int) {
+    val weatherInfo = mapWmoCodeToWeather(weatherCode)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp, horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = day,
+            modifier = Modifier.weight(1f),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+
+        Icon(
+            imageVector = weatherInfo.icon,
+            contentDescription = stringResource(weatherInfo.descriptionResId),
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+
+        Row(
+            modifier = Modifier.weight(1.5f),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                text = "${maxTemp?.toInt() ?: "--"}°",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "${minTemp?.toInt() ?: "--"}°",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
             )
         }
     }
