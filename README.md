@@ -86,7 +86,6 @@ alt.micha@gmail.com
 ## 📸 Screenshots
 
 <div style="text-align: center;">
-
-  <img src="https://github.com/user-attachments/assets/380e453d-d530-45de-b3b7-eb1264d5b728" width="28%" alt="Main map and navigation interface" />
+  <img src="https://github.com/alminav/almica_ramani/blob/master/pictures/Screenshot_20260815-164637.png?raw=true" width="28%" alt="Route elevation and speed charts" />
   <img src="https://github.com/alminav/almica_ramani/blob/master/pictures/Screenshot_20260801-181922.png?raw=true" width="28%" alt="Route elevation and speed charts" />
 </div>
