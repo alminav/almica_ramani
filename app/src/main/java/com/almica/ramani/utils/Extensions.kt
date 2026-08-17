@@ -478,7 +478,7 @@ fun Double.formatDistM(bMetric: Boolean): String {
     else String.format(Locale.ENGLISH, "%.0f%s", value / 1000, sUnit)
 }
 
-fun Double.formatDistValueUnit(bMetric: Boolean): Pair<String, String> {
+fun Double.formatDistValueUnit(bMetric: Boolean): FormattedDistance {
     var value = this
     var sUnit = "km"
     if (!bMetric) {
@@ -486,12 +486,12 @@ fun Double.formatDistValueUnit(bMetric: Boolean): Pair<String, String> {
         sUnit = "mi"
     }
 
-    return if (abs(value) < 1000) Pair(String.format(getDefault(), "%.0f", this), "m")
+    return if (abs(value) < 1000) FormattedDistance(String.format(getDefault(), "%.0f", this), "m")
     else if (abs(value) < 10000)
-        Pair(String.format(Locale.ENGLISH, "%.1f",value / 1000),sUnit)
+        FormattedDistance(String.format(Locale.ENGLISH, "%.1f",value / 1000),sUnit)
     else if (abs(value) < 100000)
-        Pair(String.format(Locale.ENGLISH, "%.1f", value / 1000),    sUnit)
-    else Pair(String.format(Locale.ENGLISH, "%.0f", value / 1000), sUnit)
+        FormattedDistance(String.format(Locale.ENGLISH, "%.1f", value / 1000),    sUnit)
+    else FormattedDistance(String.format(Locale.ENGLISH, "%.0f", value / 1000), sUnit)
 }
 fun Double.format(digits: Int) = "%.${digits}f".format(Locale.ENGLISH, this)
 fun Float.format(digits: Int) = "%.${digits}f".format(Locale.ENGLISH,this)

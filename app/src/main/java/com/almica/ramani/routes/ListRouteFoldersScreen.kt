@@ -96,7 +96,9 @@ import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import com.almica.ramani.BuildConfig
 import com.almica.ramani.Const
+import com.almica.ramani.FolderReference
 import com.almica.ramani.R
+import com.almica.ramani.RouteFolder
 import com.almica.ramani.filepicker.FileImportActivity
 import com.almica.ramani.filepicker.FileType
 import com.almica.ramani.pdfcreator.MainActivity
@@ -141,12 +143,13 @@ private fun createNewFolder(context: Context, folderName: String): Pair<String, 
 @Composable
 fun ListRouteFoldersScreen(
     marginTopDp: Float,
-    selectRouteFolder: (routeFolder: Triple<String, String, Int>) -> Unit,
-    routeFoldersIn: List<Pair<String, String>>? = null,
+    selectRouteFolder: (routeFolder: RouteFolder) -> Unit,
+    routeFoldersIn: List<FolderReference>? = null,
     routeFolderNameIn: String? = null,
     withSearch: Boolean = true,
     finished: (String?) -> Unit,
     route: (File) -> Unit,
+    routeSnapshot: (RouteFileBundle) -> Unit,
     routeInfo: (File) -> Unit,
     createSnapshots: (String?) -> Unit,
     dialogMode: Int
@@ -206,7 +209,7 @@ fun ListRouteFoldersScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(
-                        onClick = { selectRouteFolder(Triple("", "", 0))
+                        onClick = { selectRouteFolder(RouteFolder("", "", 0))
                             //ScreenRouter.navigateHome()
                             val prefs = PreferenceManager.getDefaultSharedPreferences(context)
                             val prefRouteFolderPath = prefs.getString(Const.PREF_ROUTEFOLDER_FILEPATH, "")
@@ -329,6 +332,9 @@ fun ListRouteFoldersScreen(
                 route = {routeFile ->
                     route(routeFile)
                     //routeFilesState = false
+                },
+                routeSnapshot = {
+                    routeSnapshot(it)
                 },
                 filterChanged = {
                     //popupSnackMsg = resources.getString(R.string.filter_changed_, it)
@@ -494,6 +500,10 @@ fun ListRouteFoldersScreen(
                     route(routeFile)
                     //routeFilesState = false
                 },
+                routeSnapshot = {
+                    Timber.i("routeSnapshot: $it")
+                    routeSnapshot(it)
+                },
                 filterChanged = {
                     //popupSnackMsg = resources.getString(R.string.filter_changed_, it)
                 }, menu = { file ->
@@ -502,9 +512,9 @@ fun ListRouteFoldersScreen(
             )
         }
         ListRouteFoldersContent(Modifier.padding(paddingValues), routeFolderName, routeFolders,
-            selectRouteFolder = { routeFolderFeedbackTriple ->
-                selectRouteFolder(routeFolderFeedbackTriple)
-                routeFolderName = routeFolderFeedbackTriple.first.also { prefs.edit { putString(Const.PREF_ROUTEFOLDER_FILEPATH, it) } }
+            selectRouteFolder = { routeFolderFeedback ->
+                selectRouteFolder(routeFolderFeedback)
+                routeFolderName = routeFolderFeedback.name.also { prefs.edit { putString(Const.PREF_ROUTEFOLDER_FILEPATH, it) } }
                 newRouteFolderMode = false
                 Timber.i("routeFolderName: $routeFolderName")
                 routeFilesState = true
@@ -519,14 +529,14 @@ fun ListRouteFoldersScreen(
     }
 }
 
-fun createRouteFolderList(context: Context): List<Pair<String, String>> {
+fun createRouteFolderList(context: Context): List<FolderReference> {
     val routesRootFolder = File(context.filesDir, Const.ROUTEFOLDER).apply { mkdirs() }
     val fileFilter = FileFilter { file: File? -> file?.isDirectory == true }
     val files = (routesRootFolder.listFiles(fileFilter) ?: emptyArray<File>()).sortedBy { it.name }
     Timber.i("route folders: ${files.size}")
-    val routeFolderList = mutableListOf<Pair<String, String>>()
+    val routeFolderList = mutableListOf<FolderReference>()
     for (file in files) {
-        routeFolderList.add(Pair(file.name, file.path))
+        routeFolderList.add(FolderReference(file.name, file.path))
     }
     return routeFolderList
 }
@@ -588,8 +598,8 @@ fun removeRouteFolderContent(context: Context, routeFolderName: String?, onFinis
 fun ListRouteFoldersContent(
     modifier: Modifier,
     prefRouteFolderName: String?,
-    routeFolders: List<Pair<String, String>>,
-    selectRouteFolder: (routeFolder: Triple<String, String, Int>) -> Unit,
+    routeFolders: List<FolderReference>,
+    selectRouteFolder: (routeFolder: RouteFolder) -> Unit,
     menuRouteFolder: (folderName: String) -> Unit,
     prefRouteFolderChanged: (String?) -> Unit
 ) {
@@ -604,10 +614,16 @@ fun ListRouteFoldersContent(
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         items(routeFolders) { routeFolder ->
-            RouteFolderItem(prefRouteFolderName, routeFolderName = routeFolder.first, onItemClick = {
-                val folderFile = File(File(context.filesDir, Const.ROUTEFOLDER), routeFolder.first)
+            RouteFolderItem(prefRouteFolderName, routeFolderName = routeFolder.name, onItemClick = {
+                val folderFile = File(File(context.filesDir, Const.ROUTEFOLDER), routeFolder.name)
                 val routeFiles = folderFile.listFiles()
-                selectRouteFolder(Triple(folderFile.name, folderFile.path, routeFiles?.size ?: 0))
+                selectRouteFolder(
+                    RouteFolder(
+                        name = folderFile.name,
+                        path = folderFile.path,
+                        fileCount = routeFiles?.size ?: 0
+                    )
+                )
             }, menu = { folderName ->
                 Timber.i("menu: $folderName")
                 menuRouteFolder(folderName)
@@ -669,6 +685,7 @@ fun RouteFilesListPreview() {
             routeFolderName = "Sample Folder",
             finish = {},
             route = {},
+            routeSnapshot = {},
             menu = {},
             filterChanged = {}
         )
@@ -681,6 +698,7 @@ fun RouteFilesList(context: Context,
                    routeFolderName: String?,
                    finish:() -> Unit,
                    route:(File) -> Unit,
+                   routeSnapshot:(RouteFileBundle) -> Unit,
                    menu:(File) -> Unit,
                    filterChanged:(String?) -> Unit
 ) {
@@ -757,8 +775,11 @@ fun RouteFilesList(context: Context,
         routeFiles = displayFiles,
         filter = routeNameFilter ?: "",
         onRouteClick = { routeFile ->
-            Timber.i("route: $routeFile")
+            Timber.i("onRouteClick route: $routeFile")
             route(routeFile)
+        }, onSnapshotClick = { routeFileBundle ->
+            Timber.i("onSnapshotClick routeFileBundle: $routeFileBundle")
+            routeSnapshot(routeFileBundle)
         }, onMenuClick = { file ->
             Timber.i("menu: $file")
             menu(file)
@@ -779,6 +800,7 @@ private fun RoutesDialog(
     routeFiles: List<File>,
     filter: String, // Pass the filter value directly
     onRouteClick: (File) -> Unit,
+    onSnapshotClick: (RouteFileBundle) -> Unit,
     onMenuClick: (File) -> Unit,
     onFilterChange: (String) -> Unit
 ) {
@@ -864,7 +886,7 @@ private fun RoutesDialog(
                         RouteFilesItem(
                             routeFile = routeFile,
                             onItemClick = onRouteClick,
-                            onSnapshotClick = onRouteClick,
+                            onSnapshotClick = onSnapshotClick,
                             fileMenu = onMenuClick
                         )
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
@@ -899,11 +921,16 @@ private fun AskForNameFilter(onFilter: (String?) -> Unit) {
     }
 }
 
+data class RouteFileBundle (
+    val routeFile: File,
+    val thumbnailFile: File
+)
+
 @Composable
 fun RouteFilesItem(
     routeFile: File,
     onItemClick: (File) -> Unit,
-    onSnapshotClick: (File) -> Unit,
+    onSnapshotClick: (RouteFileBundle) -> Unit,
     fileMenu: (File) -> Unit
 ) {
     val context = LocalContext.current
@@ -937,7 +964,7 @@ fun RouteFilesItem(
                     .size(84.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
-                        if (thumbnailFile.exists()) onSnapshotClick(thumbnailFile)
+                        if (thumbnailFile.exists()) onSnapshotClick(RouteFileBundle(routeFile, thumbnailFile))
                         else onItemClick(routeFile)
                     },
             ) {
@@ -1224,9 +1251,9 @@ fun shareRouteFile(context: Context, routeFile: File) {
 @Composable
 fun ListRouteFoldersScreenPreview() {
     val sampleFolders = listOf(
-        Pair("Sample Folder 1", "/sample/1"),
-        Pair("Sample Folder 2", "/sample/2"),
-        Pair("Sample Folder 3", "/sample/3")
+        FolderReference("Sample Folder 1", "/sample/1"),
+        FolderReference("Sample Folder 2", "/sample/2"),
+        FolderReference("Sample Folder 3", "/sample/3")
     )
     RamaniTheme {
         ListRouteFoldersScreen(
@@ -1236,6 +1263,7 @@ fun ListRouteFoldersScreenPreview() {
             routeFolderNameIn = "Sample Folder 1",
             finished = {},
             route = {},
+            routeSnapshot = {},
             routeInfo = {},
             createSnapshots = {},
             dialogMode = RouteDialogMode.Admin.ordinal
@@ -1247,8 +1275,8 @@ fun ListRouteFoldersScreenPreview() {
 @Composable
 fun ListRouteFoldersContentPreview() {
     val sampleFolders = listOf(
-        Pair("Folder A", "/path/A"),
-        Pair("Folder B", "/path/B")
+        FolderReference("Folder A", "/path/A"),
+        FolderReference("Folder B", "/path/B")
     )
     RamaniTheme {
         ListRouteFoldersContent(

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.utils.format
+import com.almica.ramani.utils.FormattedDistance
 import com.almica.ramani.utils.formatDistValueUnit
 import timber.log.Timber
 
@@ -131,7 +132,7 @@ fun MainTopButtonBarContent(
                         setMapLongClickMenu(true)
                     }) {
                         Text(
-                            text = textValueUnit.first,
+                            text = textValueUnit.value,
                             textDecoration = TextDecoration.Underline,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
@@ -141,7 +142,7 @@ fun MainTopButtonBarContent(
                             style = responsiveTitleStyle
                         )
                         Text(
-                            text = textValueUnit.second,
+                            text = textValueUnit.unit,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(0.4f),

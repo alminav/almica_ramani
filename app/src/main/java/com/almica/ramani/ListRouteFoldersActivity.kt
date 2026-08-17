@@ -14,18 +14,23 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,8 +57,10 @@ import androidx.exifinterface.media.ExifInterface
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.Helpers.Companion.addLineToSnapshotWithGradient
 import com.almica.ramani.navigation.RamaniApp
+import com.almica.ramani.RouteFolder
 import com.almica.ramani.RouteInfo
 import com.almica.ramani.pdfcreator.createOverviewSnapshot
+import com.almica.ramani.routes.ElevationScreen
 import com.almica.ramani.routes.RouteDialogMode
 import com.almica.ramani.routes.RouteEntity
 import com.almica.ramani.routes.drawRouteName
@@ -65,6 +72,7 @@ import kotlinx.coroutines.delay
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
+import kotlinx.coroutines.launch
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
 import java.util.zip.GZIPInputStream
@@ -87,6 +95,7 @@ class ListRouteFoldersActivity : ComponentActivity() {
 
     private val viewModel: ListRouteFoldersViewModel by viewModels()
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -96,6 +105,7 @@ class ListRouteFoldersActivity : ComponentActivity() {
             Timber.i("dialogModeOrdinal: $dialogModeOrdinal")
 
             val routeFile by viewModel.routeFile.collectAsState()
+            val routeSnapshot by viewModel.routeSnapshot.collectAsState()
             val snapshotFeedback by viewModel.snapshotFeedback.collectAsState()
             val routeInfoFeedback by viewModel.routeInfoFeedback.collectAsState()
             val popupSnackMsg by viewModel.popupSnackMsg.collectAsState()
@@ -164,6 +174,31 @@ class ListRouteFoldersActivity : ComponentActivity() {
                         }
                     })
             }
+            routeSnapshot?.let { selectedFile ->
+                Timber.i("routeSnapshot: $selectedFile")
+                val sheetState = rememberModalBottomSheetState(
+                    skipPartiallyExpanded = true
+                )
+                val scope = rememberCoroutineScope()
+                val onDismiss: () -> Unit = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        if (!sheetState.isVisible) {
+                            viewModel.setRouteSnapshot(null)
+                        }
+                    }
+                }
+
+                ModalBottomSheet(
+                    onDismissRequest = { viewModel.setRouteSnapshot(null) },
+                    sheetState = sheetState,
+                    dragHandle = null
+                ) {
+                    ElevationScreen(
+                        file = selectedFile,
+                        onClose = onDismiss
+                    )
+                }
+            }
             routeFile?.let { selectedFile ->
                 RouteDialog(filesDir, selectedFile, finish = {
                     viewModel.setRouteFile(null)
@@ -210,8 +245,8 @@ class ListRouteFoldersActivity : ComponentActivity() {
                         }
                     }
                 },
-                onRouteFolderSelected = {folderTriple -> // Triple(routeFolder.name, routeFolder.path, routeFiles?.size ?: 0))
-                    Timber.i("onRouteFolderSelected: $folderTriple")
+                onRouteFolderSelected = { routeFolder ->
+                    Timber.i("onRouteFolderSelected: $routeFolder")
                 },
                 onRouteFolderFinished = { prefRouteFolderName ->
                     prefRouteFolderName?.let {
@@ -233,7 +268,19 @@ class ListRouteFoldersActivity : ComponentActivity() {
                             viewModel.setPopupSnackMsg("routeFile not found: ${file.path}")
                         }
                     }
-                }, onRouteInfoSelected = { file ->
+                },
+                onRouteSnapshotSelected = { routeFileBundle ->
+                    Timber.i("onRouteSnapshotSelected routeFile: ${routeFileBundle.routeFile.name}")
+                    routeFileBundle.routeFile.let {file ->
+                        if (file.exists())
+                            viewModel.setRouteSnapshot(file)
+                        else {
+                            Timber.e("routeFile not found: ${file.path}")
+                            viewModel.setPopupSnackMsg("routeFile not found: ${file.path}")
+                        }
+                    }
+                },
+                onRouteInfoSelected = { file ->
                     Timber.i("onRouteInfoSelected: $file")
                     file.let {
                         if (file.exists())

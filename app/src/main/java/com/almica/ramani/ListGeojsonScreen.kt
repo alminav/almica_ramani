@@ -58,6 +58,7 @@ import androidx.core.content.edit
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.preference.PreferenceManager
 import com.almica.ramani.Helpers.Companion.getGeojsonFolders
+import com.almica.ramani.GeojsonFolderSelection
 import com.almica.ramani.filepicker.FileImportActivity
 import com.almica.ramani.filepicker.FileType
 import com.almica.ramani.ui.theme.Margin
@@ -90,7 +91,7 @@ private const val logtag = "ListGeojsonScreen"
 @SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListGeojsonScreen(selectGeojsonFolder: (name: Triple<String, String, Boolean>) -> Unit) {
+fun ListGeojsonScreen(selectGeojsonFolder: (selection: GeojsonFolderSelection) -> Unit) {
     val context = LocalContext.current
     val prefs = PreferenceManager.getDefaultSharedPreferences(LocalContext.current)
     val liveSharedPreferences = remember { LiveSharedPreferences(prefs) }
@@ -113,7 +114,7 @@ fun ListGeojsonScreen(selectGeojsonFolder: (name: Triple<String, String, Boolean
         showDriveEntries = showDriveEntries,
         showGoogleMap = showGoogleMap,
         liveSharedPreferences = liveSharedPreferences,
-        onBack = { selectGeojsonFolder(Triple("", "", true)) },
+        onBack = { selectGeojsonFolder(GeojsonFolderSelection("", "", true)) },
         onClear = {
             liveSharedPreferences.preferences.edit { remove(Const.PREF_GEOJSON_FILEPATH) }
             createDefaultGeojsonOfflineStyle(context)
@@ -136,7 +137,7 @@ fun ListGeojsonScreen(selectGeojsonFolder: (name: Triple<String, String, Boolean
                     val geojsonRootFolder = File(rootFolder, Const.GEOJSON_ROOT_FOLDER)
                     val geojsonFolder = File(geojsonRootFolder, name)
 
-                    selectGeojsonFolder(Triple(geojsonFolder.path, name, false))
+                    selectGeojsonFolder(GeojsonFolderSelection(geojsonFolder.path, name, false))
                     prefGeojsonFolderPath = geojsonFolder.path
                     prefGeojsonFolderPath?.let {
                         liveSharedPreferences.preferences.edit {

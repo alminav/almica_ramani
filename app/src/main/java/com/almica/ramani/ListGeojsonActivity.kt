@@ -10,15 +10,15 @@ class ListGeojsonActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ListGeojsonScreen { resultTriple ->
-                Timber.i("resultPair: ${resultTriple.first} ${resultTriple.second}")
+            ListGeojsonScreen { selection ->
+                Timber.i("resultPair: ${selection.path} ${selection.name}")
                 val resultIntent = Intent()
-                if (resultTriple.first.isNotEmpty()) {
-                    resultIntent.putExtra(Const.RESULT_GEOJSON_FOLDERNAME, resultTriple.first)
-                    resultIntent.putExtra(Const.RESULT_GEOJSON_FILENAME, resultTriple.second)
+                if (selection.path.isNotEmpty()) {
+                    resultIntent.putExtra(Const.RESULT_GEOJSON_FOLDERNAME, selection.path)
+                    resultIntent.putExtra(Const.RESULT_GEOJSON_FILENAME, selection.name)
                 }
                 setResult(RESULT_OK, resultIntent)
-                if (resultTriple.third)
+                if (selection.isBack)
                     finish()
             }
         }

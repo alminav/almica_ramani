@@ -38,6 +38,9 @@ class ListRouteFoldersViewModel(application: Application) : AndroidViewModel(app
     private val _routeFile = MutableStateFlow<File?>(null)
     val routeFile = _routeFile.asStateFlow()
 
+    private val _routeSnapshot = MutableStateFlow<File?>(null)
+    val routeSnapshot = _routeSnapshot.asStateFlow()
+
     private val _snapshotFeedback = MutableStateFlow<SnapshotFeedback?>(null)
     val snapshotFeedback = _snapshotFeedback.asStateFlow()
 
@@ -52,6 +55,11 @@ class ListRouteFoldersViewModel(application: Application) : AndroidViewModel(app
 
     fun setRouteFile(file: File?) {
         _routeFile.value = file
+    }
+
+    fun setRouteSnapshot(file: File?) {
+        Timber.i("setRouteSnapshot: $file")
+        _routeSnapshot.value = file
     }
 
     fun clearSnapshotFeedback() {

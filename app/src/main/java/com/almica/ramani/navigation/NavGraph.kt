@@ -32,11 +32,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.Const
+import com.almica.ramani.RouteFolder
 import com.almica.ramani.RouteInfo
 import com.almica.ramani.routes.ListRouteFoldersScreen
 import com.almica.ramani.utils.DocumentViewer
 import androidx.compose.ui.tooling.preview.Preview
 import com.almica.ramani.routes.RouteDialogMode
+import com.almica.ramani.routes.RouteFileBundle
 import com.almica.ramani.ui.theme.RamaniTheme
 import timber.log.Timber
 import java.io.File
@@ -126,9 +128,10 @@ fun RamaniNavigationBarContent(
 fun RamaniApp(
     onDocumentViewerFinish: () -> Unit,
     onDocumentViewerResult: (RouteInfo) -> Unit,
-    onRouteFolderSelected: (Triple<String, String, Int>) -> Unit,
+    onRouteFolderSelected: (RouteFolder) -> Unit,
     onRouteFolderFinished: (String?) -> Unit,
     onRouteSelected: (File) -> Unit,
+    onRouteSnapshotSelected: (RouteFileBundle) -> Unit,
     onRouteInfoSelected: (File) -> Unit,
     createSnapshots: (String?) -> Unit,
     dialogMode: Int
@@ -147,6 +150,7 @@ fun RamaniApp(
             onRouteFolderSelected = onRouteFolderSelected,
             onRouteFolderFinished = onRouteFolderFinished,
             onRouteSelected = onRouteSelected,
+            onRouteSnapshotSelected = onRouteSnapshotSelected,
             onRouteInfoSelected = onRouteInfoSelected,
             createSnapshots = createSnapshots,
             dialogMode = dialogMode
@@ -160,9 +164,10 @@ fun RamaniNavHost(
     modifier: Modifier = Modifier,
     onDocumentViewerFinish: () -> Unit,
     onDocumentViewerResult: (RouteInfo) -> Unit,
-    onRouteFolderSelected: (Triple<String, String, Int>) -> Unit,
+    onRouteFolderSelected: (RouteFolder) -> Unit,
     onRouteFolderFinished: (String?) -> Unit,
     onRouteSelected: (File) -> Unit,
+    onRouteSnapshotSelected: (RouteFileBundle) -> Unit,
     onRouteInfoSelected: (File) -> Unit,
     createSnapshots: (String?) -> Unit,
     dialogMode: Int
@@ -193,6 +198,7 @@ fun RamaniNavHost(
                 selectRouteFolder = onRouteFolderSelected,
                 finished = onRouteFolderFinished,
                 route = onRouteSelected,
+                routeSnapshot = onRouteSnapshotSelected,
                 routeInfo = onRouteInfoSelected,
                 createSnapshots = createSnapshots,
                 dialogMode = dialogMode

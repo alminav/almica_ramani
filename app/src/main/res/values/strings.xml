@@ -540,6 +540,11 @@
     <string name="weather_snow_showers">Snow showers</string>
     <string name="weather_thunderstorm">Thunderstorm</string>
     <string name="weather_unknown">Unknown</string>
+    <string name="elevation_chart_min">Min %1$d m</string>
+    <string name="elevation_chart_max">Max %1$d m</string>
+    <string name="elevation_chart_total">Total %1$.1f km</string>
+    <string name="elevation_chart_no_data">no valid data for chart</string>
+    <string name="elevation_chart_title">Elevation chart</string>
 
     <string-array name="wind_directions">
         <item>N</item>

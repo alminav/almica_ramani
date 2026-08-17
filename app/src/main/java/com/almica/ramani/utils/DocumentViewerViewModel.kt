@@ -46,7 +46,7 @@ class DocumentViewerViewModel : ViewModel() {
     var routeInfo by mutableStateOf<RouteInfo?>(null)
     var menuExpanded by mutableStateOf(false)
     var progressMsg by mutableStateOf<String?>(null)
-    var routeMap = mutableStateMapOf<Int, Pair<String, ArrayList<LatLngH>>>()
+    var routeMap = mutableStateMapOf<Int, NamedRoute>()
     var routeMapIsReady by mutableLongStateOf(0L)
     var geojsonText by mutableStateOf("")
     var pdfDocument by mutableStateOf<PdfDocument?>(null)
@@ -318,24 +318,24 @@ class DocumentViewerViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.Default) {
             val featureCollection = getFeatureCollectionFromString(geojsonText)
             val features = featureCollection?.features() ?: return@launch
-            val routePairList = arrayListOf<Pair<String, ArrayList<LatLngH>>>()
+            val routeList = arrayListOf<NamedRoute>()
 
             features.forEachIndexed { index, feature ->
                 val lllh = GeoJsonUtils.getLllhFromGeometry(feature.geometry())
                 if (lllh.isNotEmpty()) {
                     val name = feature.getProperty(NAME)?.asString
                     if (name != null) {
-                        routePairList.add(Pair(name, lllh))
+                        routeList.add(NamedRoute(name, lllh))
                         progressMsg = "Page ${index + 1} of ${features.size}"
                         delay(20.milliseconds)
                     }
                 }
             }
-            routePairList.sortBy { it.first }
+            routeList.sortBy { it.name }
             routeMap.clear()
-            routePairList.forEachIndexed { index, pair ->
-                routeMap[2 * index] = pair
-                routeMap[2 * index + 1] = pair
+            routeList.forEachIndexed { index, namedRoute ->
+                routeMap[2 * index] = namedRoute
+                routeMap[2 * index + 1] = namedRoute
             }
             
             withContext(Dispatchers.Main) {

@@ -256,12 +256,12 @@ fun PdfViewerContainer(
     LaunchedEffect(pdfViewerState, viewModel.routeMap) {
         snapshotFlow { pdfViewerState.firstVisiblePage }
             .collectLatest { pageIndex ->
-                viewModel.routeMap[pageIndex]?.let { pair ->
+                viewModel.routeMap[pageIndex]?.let { namedRoute ->
                     onRouteInfoSelected(
                         RouteInfo(
-                            name = pair.first,
-                            formattedDistance = pair.second.getDistanceFromLllh().formatDistM(true),
-                            points = pair.second
+                            name = namedRoute.name,
+                            formattedDistance = namedRoute.points.getDistanceFromLllh().formatDistM(true),
+                            points = namedRoute.points
                         )
                     )
                 }
