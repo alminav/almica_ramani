@@ -64,7 +64,7 @@ object RouteSmoothingUtil {
      * example targetCount = 30, 30 is the minimum, a 40 km distance route will become 40 sections
      */
     fun List<LatLngH>.simplifyToTargetCount(targetCount: Int): List<LatLngH> {
-        val routeDistance = (this as ArrayList<LatLngH>).getDistanceFromLllh()
+        val routeDistance = this.getDistanceFromLllh()
         val modifiedTargetCount = targetCount.coerceAtLeast((0.001 * routeDistance).toInt())
         Timber.i("modifiedTargetCount: $modifiedTargetCount")
         return this.toMercatorPoints().simplifyToTargetCount(modifiedTargetCount).toLllh()

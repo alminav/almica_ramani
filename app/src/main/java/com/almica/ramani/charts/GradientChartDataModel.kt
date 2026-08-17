@@ -24,7 +24,7 @@ private const val logtag = "GradientChartDataModel"
  * Quote: Peasant. Educated. Worker
  */
 class GradientChartDataModel(
-    lllh: ArrayList<LatLngH>,
+    lllh: List<LatLngH>,
     var routePointer: Int,
     routeDistance: Double
 ) {

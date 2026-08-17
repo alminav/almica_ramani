@@ -352,7 +352,7 @@ class Helpers {
 
         fun nearestPointOnPath(
             latLong: com.google.android.gms.maps.model.LatLng,
-            listLatLng: java.util.ArrayList<LatLngH>?
+            listLatLng: List<LatLngH>?
         ): RouteNearestPointResult {
             var deviation = Int.MAX_VALUE
             var route_point_pointer = 0
@@ -425,7 +425,7 @@ class Helpers {
 
         fun locationIndexOnPath(
             latLong: com.google.android.gms.maps.model.LatLng,
-            listLatLng: java.util.ArrayList<LatLngH>?, tolerance: Double
+            listLatLng: List<LatLngH>?, tolerance: Double
         ): Int {
             val gmsListLatLng = java.util.ArrayList<com.google.android.gms.maps.model.LatLng>()
             listLatLng?.forEach {
@@ -569,7 +569,7 @@ class Helpers {
                 e.printStackTrace()
             }
             if (kmlString != null)
-                return kmlString.kmlString2Lllh()
+                return ArrayList(kmlString.kmlString2Lllh())
             else {
                 Timber.e("exif could not get valid coordinates")
                 return ArrayList()
@@ -866,7 +866,7 @@ class Helpers {
         }
 
         fun takeLocationsSnapshot(
-            context: Context, lllhAfter: ArrayList<LatLngH>,
+            context: Context, lllhAfter: List<LatLngH>,
             styleUri: String?,
             size: Int,
             border: Double,
@@ -1053,7 +1053,7 @@ class Helpers {
         }
 
         fun takeSnapshot(
-            context: Context, lllhBounds: ArrayList<LatLngH>,
+            context: Context, lllhBounds: List<LatLngH>,
             name: String?,
             styleUri: String?,
             size: Int,
@@ -1112,7 +1112,7 @@ class Helpers {
 
 
         fun takeRouteSnapshot(
-            context: Context, lllh: ArrayList<LatLngH>,
+            context: Context, lllh: List<LatLngH>,
             name: String?,
             styleUri: String?,
             size: Int,
@@ -1197,7 +1197,7 @@ class Helpers {
             context: Context,
             snapshot: MapSnapshot,
             name: String?,
-            lllh: ArrayList<LatLngH>,
+            lllh: List<LatLngH>,
             latLngBounds: LatLngBounds,
             snapshotFile: (File?) -> Unit
         ) {
@@ -1276,7 +1276,7 @@ class Helpers {
 
         fun writeKml2Exif(
             picFile: File,
-            coordinates: java.util.ArrayList<LatLngH>?,
+            coordinates: List<LatLngH>?,
             name: String,
             isNotBoundary: Boolean,
             latLngBounds: LatLngBounds
@@ -1312,7 +1312,7 @@ class Helpers {
                         //Timber.i(tolerance + ": " + reduceWithTolerance.size());
                     }*/
                     Timber.i("reduceWithTolerance.size: ${reduceWithTolerance.size}")
-                    kmlString = (reduceWithTolerance as ArrayList<LatLngH>).lllhToKmlString(name.replace("ä", "ae")
+                    kmlString = reduceWithTolerance.lllhToKmlString(name.replace("ä", "ae")
                         .replace("ö", "oe")
                         .replace("ü", "ue")
                         .replace("Ä", "Ae")
@@ -1341,8 +1341,8 @@ class Helpers {
          * MUST be called on the UI thread as it instantiates MapLibre Source and Layer objects.
          */
         fun lllhLocationsToLineLayer(
-            lllhAfter: ArrayList<LatLngH>,
-            lllhBefore: ArrayList<LatLngH>,
+            lllhAfter: List<LatLngH>,
+            lllhBefore: List<LatLngH>,
             border: Double,
             mvtPath: String?
         ): Triple<List<LineLayer>, List<GeoJsonSource>, LatLngBounds> {
@@ -1416,8 +1416,8 @@ class Helpers {
          * return pair of LatLngBounds first: normal seconds: with border
          */
         fun getLocationsBoundsPair(
-            lllhAfter: ArrayList<LatLngH>,
-            lllhBefore: ArrayList<LatLngH>,
+            lllhAfter: List<LatLngH>,
+            lllhBefore: List<LatLngH>,
             border: Double,
         ) : Pair<LatLngBounds, LatLngBounds> {
             val llboundsBuilder: LatLngBounds.Builder = LatLngBounds.Builder()
@@ -1445,7 +1445,7 @@ class Helpers {
 
         fun createInstructionsFromLllh(
             context: Context?,
-            lllhOriginal: ArrayList<LatLngH>,
+            lllhOriginal: List<LatLngH>,
             name: String?
         ): java.util.ArrayList<AlminavInstruction?> {
             val lllh = lllhOriginal.reduceWithTolerance(200.0)
@@ -1518,7 +1518,7 @@ class Helpers {
 
         /*
                 @SuppressLint("DefaultLocale")
-                fun createSimpleInstructions(context: Context, pointListH: ArrayList<LatLngH>): Int {
+                fun createSimpleInstructions(context: Context, pointListH: List<LatLngH>): Int {
                     val ghManager = GhHelper.getGhManager(context)
                     var distRatio = 0.1
                     val distRoute = getDistanceFromLllh(pointListH)

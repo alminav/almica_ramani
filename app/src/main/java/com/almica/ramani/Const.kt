@@ -20,6 +20,10 @@ class Const {
         val DP40 = 40.dp
         val DP42 = 42.dp
 
+        val ELEVATION_CHART_PEEK_HEIGHT = 300.dp
+        val GRADIENT_CHART_PEEK_HEIGHT = 200.dp
+        val HIDDEN_PEEK_HEIGHT = 0.dp
+
         /**
          * In MapLibre Android, the rendering sequence of style layers is determined by their order in the style JSON,
          * which is typically rendered from the bottom up (first layer in the list is rendered first, last layer last).

@@ -964,8 +964,9 @@ fun RouteFilesItem(
                     .size(84.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
-                        if (thumbnailFile.exists()) onSnapshotClick(RouteFileBundle(routeFile, thumbnailFile))
-                        else onItemClick(routeFile)
+                        //if (thumbnailFile.exists())
+                        onSnapshotClick(RouteFileBundle(routeFile, thumbnailFile))
+                        //else onItemClick(routeFile)
                     },
             ) {
                 if (thumbnailFile.exists()) {

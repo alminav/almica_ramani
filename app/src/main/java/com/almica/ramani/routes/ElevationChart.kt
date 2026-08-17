@@ -44,7 +44,8 @@ fun ElevationChart(
     gridColor: Color = Color.LightGray.copy(alpha = 0.3f),
     labelColor: Color = Color.Gray,
     indicatorColor: Color = MaterialTheme.colorScheme.secondary,
-    onClose: () -> Unit = {}
+    onClose: () -> Unit = {},
+    onPointSelected: (DataPoint?) -> Unit = {}
 ) {
     Timber.i("ElevationChart: ${dataPoints.size}")
     if (dataPoints.isEmpty()) {
@@ -91,6 +92,7 @@ fun ElevationChart(
 
         // Finde den Eintrag mit der geringsten Distanzdifferenz
         selectedPoint = dataPoints.minByOrNull { abs(it.distanceKm - targetKm) }
+        onPointSelected(selectedPoint)
     }
 
     Column(modifier = modifier.padding(16.dp)) {
@@ -134,6 +136,7 @@ fun ElevationChart(
                             updateSelectedPoint(offset.x, chartWidth, yAxisWidth)
                             tryAwaitRelease()
                             selectedPoint = null // Tooltip beim Loslassen ausblenden
+                            onPointSelected(null)
                         }
                     )
                 }
@@ -156,8 +159,14 @@ fun ElevationChart(
                                 yAxisWidth
                             )
                         },
-                        onDragEnd = { selectedPoint = null },
-                        onDragCancel = { selectedPoint = null }
+                        onDragEnd = {
+                            selectedPoint = null
+                            onPointSelected(null)
+                        },
+                        onDragCancel = {
+                            selectedPoint = null
+                            onPointSelected(null)
+                        }
                     )
                 }
         ) {
@@ -328,17 +337,17 @@ fun ElevationChart(
 @Composable
 fun ElevationChartPreview() {
     val sampleDataPoints = listOf(
-        DataPoint(0f, 100f),
-        DataPoint(1f, 150f),
-        DataPoint(2f, 120f),
-        DataPoint(3f, 180f),
-        DataPoint(4f, 140f),
-        DataPoint(5f, 160f),
-        DataPoint(6f, 110f),
-        DataPoint(7f, 130f),
-        DataPoint(8f, 170f),
-        DataPoint(9f, 190f),
-        DataPoint(10f, 150f)
+        DataPoint(0f, 100f, 0.0, 0.0),
+        DataPoint(1f, 150f, 0.0, 0.0),
+        DataPoint(2f, 120f, 0.0, 0.0),
+        DataPoint(3f, 180f, 0.0, 0.0),
+        DataPoint(4f, 140f, 0.0, 0.0),
+        DataPoint(5f, 160f, 0.0, 0.0),
+        DataPoint(6f, 110f, 0.0, 0.0),
+        DataPoint(7f, 130f, 0.0, 0.0),
+        DataPoint(8f, 170f, 0.0, 0.0),
+        DataPoint(9f, 190f, 0.0, 0.0),
+        DataPoint(10f, 150f, 0.0, 0.0)
     )
     RamaniTheme {
         ElevationChart(

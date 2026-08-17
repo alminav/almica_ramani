@@ -69,7 +69,7 @@ private const val logtag = "LineYGraphLllh"
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 internal fun LineYGraphLllh(
-    lllhSource: java.util.ArrayList<LatLngH>?,
+    lllhSource: List<LatLngH>?,
     name: String,
     offsetYByPercent: Float,
     finish: (LatLng?) -> Unit,
@@ -79,7 +79,7 @@ internal fun LineYGraphLllh(
     //val context = LocalContext.current
     //val lllhSmooth = lllhSource?.let { RouteSmoothingUtil.smoothRoute(it) as ArrayList<LatLngH>? }
     val dist = lllhSource?.getDistanceFromLllh()
-    val lllh = (lllhSource as List<LatLngH>).simplifyToTargetCount(42) as ArrayList<LatLngH>?
+    val lllh = lllhSource?.simplifyToTargetCount(42)
     var routePointer by remember { mutableIntStateOf(-1) }
     var viewModel: RouteEleChartViewModel by remember {
         mutableStateOf(
@@ -173,7 +173,7 @@ internal fun RouteAltiChartWithGridLines(
 }
 
 class RouteEleChartViewModel(
-    lllh: java.util.ArrayList<LatLngH>?
+    lllh: List<LatLngH>?
 ) : ViewModel() {
     lateinit var routeChartData: RouteChartData
     val isLoading = MutableStateFlow(true)

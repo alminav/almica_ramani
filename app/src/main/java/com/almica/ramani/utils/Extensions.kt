@@ -31,9 +31,9 @@ import kotlin.math.abs
 import kotlin.math.hypot
 
 @Throws(IOException::class)
-fun String.kmlString2Lllh(): java.util.ArrayList<LatLngH> {
+fun String.kmlString2Lllh(): List<LatLngH> {
     val kmlReader: StringReader
-    val lllh = java.util.ArrayList<LatLngH>()
+    val lllh = mutableListOf<LatLngH>()
     try {
         kmlReader = StringReader(this)
         val factory = XmlPullParserFactory.newInstance()
@@ -96,13 +96,13 @@ fun String.kmlString2Lllh(): java.util.ArrayList<LatLngH> {
         xppe.printStackTrace()
         Timber.e("readKml Exception reading KML data")
         // fall through
-        return ArrayList()
+        return emptyList()
     }
     //Timber.i("$name lllh: ${lllh.size}")
     return lllh
 }
 
-fun ArrayList<LatLngH>.getDistanceFromLllh(): Double {
+fun List<LatLngH>.getDistanceFromLllh(): Double {
     var dist = 0.0
     for (i in 1 until this.size) dist += SphericalUtil.computeDistanceBetween(
         this[i - 1].latLng,
@@ -111,7 +111,7 @@ fun ArrayList<LatLngH>.getDistanceFromLllh(): Double {
     return dist
 }
 
-fun ArrayList<LatLngH>.getCenter(): com.google.android.gms.maps.model.LatLng {
+fun List<LatLngH>.getCenter(): com.google.android.gms.maps.model.LatLng {
     val llboundsBuilder: LatLngBounds.Builder = LatLngBounds.Builder()
     for (latLngH: LatLngH in this)
         llboundsBuilder.include(latLngH.latLngGms)
@@ -119,7 +119,7 @@ fun ArrayList<LatLngH>.getCenter(): com.google.android.gms.maps.model.LatLng {
     return bounds.center
 }
 
-fun ArrayList<LatLngH>.getGmsBounds(): LatLngBounds {
+fun List<LatLngH>.getGmsBounds(): LatLngBounds {
     val llboundsBuilder: LatLngBounds.Builder = LatLngBounds.Builder()
     for (latLngH: LatLngH in this)
         llboundsBuilder.include(latLngH.latLngGms)
@@ -127,7 +127,7 @@ fun ArrayList<LatLngH>.getGmsBounds(): LatLngBounds {
     return bounds
 }
 
-fun ArrayList<LatLngH>.getMaplibreBounds(): org.maplibre.android.geometry.LatLngBounds {
+fun List<LatLngH>.getMaplibreBounds(): org.maplibre.android.geometry.LatLngBounds {
     val llboundsBuilder: org.maplibre.android.geometry.LatLngBounds.Builder = org.maplibre.android.geometry.LatLngBounds.Builder()
     for (latLngH: LatLngH in this)
         llboundsBuilder.include(latLngH.latLngMapLibre)
@@ -139,7 +139,7 @@ fun ArrayList<LatLngH>.getMaplibreBounds(): org.maplibre.android.geometry.LatLng
  * Converts a list of LatLngH to a MapLibre LineLayer and GeoJsonSource.
  * MUST be called on the UI thread as it instantiates MapLibre Source and Layer objects.
  */
-fun ArrayList<LatLngH>.lllhToLineLayer(
+fun List<LatLngH>.lllhToLineLayer(
     name: String?,
     border: Double
 ): Triple<LineLayer, GeoJsonSource, org.maplibre.android.geometry.LatLngBounds> {
@@ -180,9 +180,9 @@ fun ArrayList<LatLngH>.lllhToLineLayer(
     return Triple(lineLayer, source, regionsBoundsBuilder.build())
 }
 
-fun ArrayList<LatLngH>.reduceWithTolerance(
+fun List<LatLngH>.reduceWithTolerance(
     tolerance: Double
-): java.util.ArrayList<LatLngH> {
+): List<LatLngH> {
     val n: Int = this.size
 
     // if a shape has 2 or fewer points it cannot be reduced
@@ -211,7 +211,7 @@ fun ArrayList<LatLngH>.reduceWithTolerance(
 
 
     // all done, return the reduced shape
-    val newShape = java.util.ArrayList<LatLngH>(n) // the new shape to return
+    val newShape = mutableListOf<LatLngH>() // the new shape to return
     for (i in 0 until n) {
         if (marked[i]) {
             newShape.add(this[i])
@@ -220,7 +220,7 @@ fun ArrayList<LatLngH>.reduceWithTolerance(
     return newShape
 }
 
-fun ArrayList<LatLngH>.createFeatureString(name: String?,
+fun List<LatLngH>.createFeatureString(name: String?,
                                            mapType: String?,
                                            bounds: org.maplibre.android.geometry.LatLngBounds): String {
     val textLat = String.format(Locale.ENGLISH, "%.4f", bounds.center.latitude)
@@ -263,7 +263,7 @@ fun ArrayList<LatLngH>.createFeatureString(name: String?,
     return jsonBuilder.toString()
 }
 
-fun ArrayList<LatLngH>.getEquidistantPoints(interval: Double): List<LatLngH> {
+fun List<LatLngH>.getEquidistantPoints(interval: Double): List<LatLngH> {
     val newPoints = mutableListOf<LatLngH>()
     newPoints.add(this.first()) // Add start point
     var p1 = LatLngH(this[0].latitude, this[0].longitude)
@@ -290,7 +290,7 @@ fun ArrayList<LatLngH>.getEquidistantPoints(interval: Double): List<LatLngH> {
     return newPoints
 }
 
-fun ArrayList<LatLngH>.lllhToKmlString(name: String?): String {
+fun List<LatLngH>.lllhToKmlString(name: String?): String {
     val df = DecimalFormat("#0.00000")
     val dfele = DecimalFormat("#0")
     val symbols = DecimalFormatSymbols()
@@ -348,7 +348,7 @@ fun ArrayList<LatLngH>.lllhToKmlString(name: String?): String {
 }
 
 private fun douglasPeuckerReduction(
-    shape: java.util.ArrayList<LatLngH>,
+    shape: List<LatLngH>,
     marked: BooleanArray,
     tolerance: Double,
     firstIdx: Int,

@@ -85,7 +85,7 @@ class LocationsSnapshotViewModel(application: Application) : AndroidViewModel(ap
 
     private suspend fun resolveStyle(locations: List<LatLngH>) {
         withContext(Dispatchers.IO) {
-            val locCenter = (locations as ArrayList<LatLngH>).getCenter()
+            val locCenter = locations.getCenter()
             val mvtTileMatch = GeoJsonUtils.pointToTile(locCenter.longitude, locCenter.latitude, 9.0)
             val mvtMatchingMap = "${Const.MVT_PREFIX}${mvtTileMatch.x}_${mvtTileMatch.y}_${mvtTileMatch.z}"
             val mvtMatchingFile = File(mvtFolder, mvtMatchingMap.plus(Const.MBTILES_EXT))
@@ -151,7 +151,7 @@ class LocationsSnapshotViewModel(application: Application) : AndroidViewModel(ap
         if (lllh.isEmpty()) return
 
         Helpers.takeLocationsSnapshot(
-            getApplication(), lllh as ArrayList<LatLngH>,
+            getApplication(), lllh,
             styleUri,
             512, 0.2
         ) { snap, _ ->

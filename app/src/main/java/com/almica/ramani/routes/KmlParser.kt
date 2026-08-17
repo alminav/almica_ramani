@@ -4,11 +4,10 @@ import android.util.Xml
 import org.xmlpull.v1.XmlPullParser
 import timber.log.Timber
 import java.io.InputStream
-
-data class DataPoint(
-    val distanceKm: Float,
-    val elevationMeters: Float
-)
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 object KmlParser {
     fun parseInputStream(inputStream: InputStream): List<DataPoint> {
@@ -54,7 +53,7 @@ object KmlParser {
                     totalDistance += calculateDistance(lastLat, lastLon, lat, lon)
                 }
 
-                points.add(DataPoint(totalDistance, elev))
+                points.add(DataPoint(totalDistance, elev, lat, lon))
                 lastLat = lat
                 lastLon = lon
             }
@@ -68,10 +67,10 @@ object KmlParser {
         val r = 6371 // Erdradius in km
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
-        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2)
-        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2) * sin(dLon / 2)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return (r * c).toFloat()
     }
 }

@@ -1139,7 +1139,7 @@ fun RouteFilesGroupedListPreview() {
 }
 
 fun takeSnapshot(
-    context: Context, lllh: ArrayList<LatLngH>,
+    context: Context, lllh: List<LatLngH>,
     region: String,
     name: String,
     routeFolder: File?,

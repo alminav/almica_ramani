@@ -125,7 +125,7 @@ fun reverseRoute(
     currentEntity: RouteEntity?,
     onSuccess: (PolygonState, RouteEntity, MainSnackbarData) -> Unit
 ) {
-    val lllhReversed = currentState.lllh.reversed() as ArrayList<LatLngH>
+    val lllhReversed = currentState.lllh.reversed()
     val routeName = currentState.name
     val routeDist = currentState.distance
 
@@ -175,9 +175,9 @@ fun refreshRouteElevation(
 
     if (hgtFile.exists()) {
         val hgtReader = HgtReader(context, hgtFile)
-        val lllhRefreshed = hgtReader.refreshRouteElevationFromSrtm(currentState.lllh).lllh as ArrayList<LatLngH>
+        val lllhRefreshed = hgtReader.refreshRouteElevationFromSrtm(currentState.lllh).lllh
 
-        if (lllhRefreshed.isNotNull()) {
+        if (lllhRefreshed != null) {
             val routeName = currentState.name
             val routeDist = currentState.distance
             val startLat = lllhRefreshed[0].latitude
@@ -295,16 +295,16 @@ fun loadRouteFromFile(
 }
 
 fun loadRouteFromLllh(
-    lllh: ArrayList<LatLngH>,
+    lllh: List<LatLngH>,
     name: String,
     context: Context,
     cameraMode: MutableState<Int>,
     cameraPosition: MutableState<CameraPosition>,
     onLoaded: (RouteEntity, PolygonState) -> Unit
 ) {
-    val lllhReduced = lllh.simplifyToTargetCount(200) as? ArrayList<LatLngH>
+    val lllhReduced = lllh.simplifyToTargetCount(200)
 
-    lllhReduced?.let { lllh ->
+    lllhReduced.let { lllh ->
         if (lllh.isNotEmpty()) {
             val routeCenter = lllh.getCenter()
             val dist = lllh.getDistanceFromLllh()

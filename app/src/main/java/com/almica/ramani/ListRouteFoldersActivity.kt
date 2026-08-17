@@ -174,8 +174,8 @@ class ListRouteFoldersActivity : ComponentActivity() {
                         }
                     })
             }
-            routeSnapshot?.let { selectedFile ->
-                Timber.i("routeSnapshot: $selectedFile")
+            routeFile?.let { selectedFile ->
+                Timber.i("routeFile: $selectedFile")
                 val sheetState = rememberModalBottomSheetState(
                     skipPartiallyExpanded = true
                 )
@@ -183,37 +183,39 @@ class ListRouteFoldersActivity : ComponentActivity() {
                 val onDismiss: () -> Unit = {
                     scope.launch { sheetState.hide() }.invokeOnCompletion {
                         if (!sheetState.isVisible) {
-                            viewModel.setRouteSnapshot(null)
+                            viewModel.setRouteFile(null)
                         }
                     }
                 }
 
                 ModalBottomSheet(
-                    onDismissRequest = { viewModel.setRouteSnapshot(null) },
+                    onDismissRequest = { viewModel.setRouteFile(null) },
                     sheetState = sheetState,
                     dragHandle = null
                 ) {
                     ElevationScreen(
                         file = selectedFile,
-                        onClose = onDismiss
+                        onClose = onDismiss,
+                        onPointSelected = {}
                     )
                 }
             }
-            routeFile?.let { selectedFile ->
+            routeSnapshot?.let { selectedFile ->
+                Timber.i("routeSnapshot: ${selectedFile.name}")
                 RouteDialog(filesDir, selectedFile, finish = {
-                    viewModel.setRouteFile(null)
-                    Timber.i("finish routeFile = null")
+                    viewModel.setRouteSnapshot(null)
+                    Timber.i("finish snapshot = null")
                 }, alert = { msg ->
                     viewModel.showRouteInfoAlert(msg, selectedFile)
                 }, share = {
                     shareRouteSnapshot(context, selectedFile)
-                    viewModel.setRouteFile(null)
+                    viewModel.setRouteSnapshot(null)
                 }, refresh = {
-                    Timber.i("routeFileForSnapshot: $selectedFile")
+                    Timber.i("routeSnapshot: $selectedFile")
                     routeFileForSnapshot = selectedFile
-                    viewModel.setRouteFile(null)
+                    viewModel.setRouteSnapshot(null)
                 }, select = {
-                    viewModel.setRouteFile(null)
+                    viewModel.setRouteSnapshot(null)
                 }, dialogModeOrdinal = dialogModeOrdinal)
             }
             val prefs = remember { getDefaultSharedPreferences(context) }

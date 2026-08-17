@@ -409,7 +409,7 @@ class Thumbnailer(
         return tileName.substring(4, 7).isDigitsOnly()
     }
 }
-class Track(val arrayLlh: java.util.ArrayList<LatLngH>?) {
+class Track(val arrayLlh: List<LatLngH>?) {
     private val points = ArrayList<Point>()
     val altitudes = ArrayList<Double>()
 

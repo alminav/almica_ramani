@@ -23,7 +23,7 @@ import java.util.UUID
 import kotlin.math.abs
 
 data class RouteData(
-    var lllh: ArrayList<LatLngH>,
+    var lllh: List<LatLngH>,
     val name: String,
     val distance: Double,
     var state: Boolean,
@@ -52,7 +52,7 @@ fun RouteData.createRouteMarkers(context: Context, _hMax: Double): Double {
                     val lllhRefreshed =
                         hgtReader.refreshRouteElevationFromSrtm(this.lllh)
                     if (lllhRefreshed.isNotNull() && lllhRefreshed.lllh.isNotNull()) {
-                        this.lllh = lllhRefreshed.lllh!! as ArrayList<LatLngH>
+                        this.lllh = lllhRefreshed.lllh!!
                         this.state = true
                         hMax = hMax.coerceAtLeast(lllhRefreshed.hMax)
                     }
@@ -109,9 +109,9 @@ fun RouteData.createRouteMarkers(context: Context, _hMax: Double): Double {
             if (hgtFile.exists()) {
                 val hgtReader = HgtReader(context, hgtFile)
                 val lllhRefreshed =
-                    hgtReader.refreshRouteElevationFromSrtm(this.lllh).lllh as ArrayList<LatLngH>
+                    hgtReader.refreshRouteElevationFromSrtm(this.lllh).lllh
                 if (lllhRefreshed.isNotNull()) {
-                    this.lllh = lllhRefreshed
+                    this.lllh = lllhRefreshed!!
                     this.state = true
                 }
             }
@@ -146,9 +146,9 @@ fun RouteEntity.getRouteData(context: Context) : RouteData {
     if (hgtFile.exists()) {
         val hgtReader = HgtReader(context, hgtFile)
         val lllhRefreshed =
-            hgtReader.refreshRouteElevationFromSrtm(lllh).lllh as ArrayList<LatLngH>
+            hgtReader.refreshRouteElevationFromSrtm(lllh).lllh
         if (lllhRefreshed.isNotNull()) {
-            lllh = lllhRefreshed
+            lllh = lllhRefreshed!!
         }
     }
     val routeData = RouteData(lllh, this.name, this.distance, state = true, null)

@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import androidx.compose.ui.unit.Dp
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import com.almica.ramani.utils.GeoJsonUtils.Companion.pointToTile
@@ -98,7 +99,14 @@ data class MainUiState(
     val mvtPath: String? = null,
     val styleUriToUse: String? = null,
     val isTrackingEnabled: Boolean = true
-)
+) {
+    val sheetPeekHeight: Dp
+        get() = when {
+            chartRouteEntity != null -> Const.ELEVATION_CHART_PEEK_HEIGHT
+            gradientRouteEntity != null -> Const.GRADIENT_CHART_PEEK_HEIGHT
+            else -> Const.HIDDEN_PEEK_HEIGHT
+        }
+}
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     val liveSharedPreferences = LiveSharedPreferences(PreferenceManager.getDefaultSharedPreferences(application))

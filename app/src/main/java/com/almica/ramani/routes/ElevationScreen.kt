@@ -12,30 +12,50 @@ import androidx.compose.ui.unit.dp
 import java.io.File
 
 @Composable
-fun ElevationScreen(file: File, onClose: () -> Unit) {
-    //val context = LocalContext.current
+fun ElevationScreen(file: File, onPointSelected: (DataPoint?) -> Unit, onClose: () -> Unit) {
     var chartData by remember { mutableStateOf<List<DataPoint>>(emptyList()) }
 
-    // Datei asynchron beim Starten laden
     LaunchedEffect(file) {
         try {
-            // Platziere deine Datei in: src/main/assets/route.kml
             val inputStream = file.inputStream()
-            chartData = KmlParser.parseInputStream(inputStream)
+            chartData = when {
+                file.name.endsWith(".kml", ignoreCase = true) -> KmlParser.parseInputStream(inputStream)
+                file.name.endsWith(".gpx", ignoreCase = true) -> GpxParser.parseInputStream(inputStream)
+                else -> emptyList()
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
+    ElevationScreenContent(chartData, onPointSelected, onClose)
+}
+
+@Composable
+fun ElevationScreen(kmlData: String, onPointSelected: (DataPoint?) -> Unit, onClose: () -> Unit) {
+    var chartData by remember { mutableStateOf<List<DataPoint>>(emptyList()) }
+
+    LaunchedEffect(kmlData) {
+        try {
+            chartData = KmlParser.parseInputStream(kmlData.byteInputStream())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    ElevationScreenContent(chartData, onPointSelected, onClose)
+}
+
+@Composable
+private fun ElevationScreenContent(chartData: List<DataPoint>, onPointSelected: (DataPoint?) -> Unit, onClose: () -> Unit) {
     Box(modifier = Modifier.fillMaxWidth()) {
         ElevationChart(
             dataPoints = chartData,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp) // Feste Höhe für die Chart-Box
-        ) {
-            onClose()
-        }
+                .height(300.dp),
+            onPointSelected = onPointSelected,
+            onClose = {onClose()}
+        )
     }
-
 }

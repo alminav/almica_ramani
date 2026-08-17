@@ -10,11 +10,11 @@ import com.almica.ramani.utils.isNotNull
 import timber.log.Timber
 import java.io.File
 
-class PolygonState(var lllh: ArrayList<LatLngH>, val name: String, val distance: Double,
+class PolygonState(var lllh: List<LatLngH>, val name: String, val distance: Double,
                    var polygonData: PolygonData? = null)
 
 data class PolygonData(
-    var lllh: ArrayList<LatLngH>,
+    var lllh: List<LatLngH>,
     val name: String,
     val distance: Double,
     var hgtState: Boolean,
@@ -45,7 +45,7 @@ fun PolygonData.createPolygonMarkers(context: Context, _hMax: Double): Double {
                 val lllhRefreshed =
                     hgtReader.refreshRouteElevationFromSrtm(this.lllh)
                 if (lllhRefreshed.isNotNull() && lllhRefreshed.lllh.isNotNull()) {
-                    this.lllh = lllhRefreshed.lllh!! as ArrayList<LatLngH>
+                    this.lllh = lllhRefreshed.lllh!!
                     this.hgtState = true
                     hMax = hMax.coerceAtLeast(lllhRefreshed.hMax)
                 }

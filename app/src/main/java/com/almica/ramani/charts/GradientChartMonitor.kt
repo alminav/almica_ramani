@@ -95,30 +95,30 @@ fun GradientChartMonitor(
     }
 
     //var lllhReduced = ArrayList<LatLngH>()
-    var lllhReduced by remember {mutableStateOf(arrayListOf<LatLngH>())}
-    var routeDistance by remember { mutableDoubleStateOf(-1.0)}
-    var barChartDataModel by remember { mutableStateOf(GradientChartDataModel(arrayListOf(), -1, 0.0))}
+    var simplifiedPoints by remember { mutableStateOf(emptyList<LatLngH>()) }
+    var routeDistance by remember { mutableDoubleStateOf(-1.0) }
+    var barChartDataModel by remember { mutableStateOf(GradientChartDataModel(emptyList(), -1, 0.0)) }
 
     LaunchedEffect(routeName) {
         val lllh = routeEntity.kmlString.kmlString2Lllh()
         routeDistance = lllh.getDistanceFromLllh()
-        Timber.i( "${routeEntity.name} lllh.size:${lllh.size}")
+        Timber.i("${routeEntity.name} lllh.size:${lllh.size}")
         val stepCount = (0.001 * routeDistance).toInt().coerceAtMost(42)
-        if (lllh.isNotEmpty())
-            lllhReduced = lllh.simplifyToTargetCount(stepCount) as ArrayList<LatLngH>
+        if (lllh.isNotEmpty()) {
+            simplifiedPoints = lllh.simplifyToTargetCount(stepCount)
+        }
 //        if (lllh.isNotEmpty())
-//            lllhReduced = reducedLllhKmSteps(lllh)
-        if (userLocation.isNotNull().and(userLocation.provider.isNotNull())) {
+//            simplifiedPoints = reducedLllhKmSteps(lllh)
+        if (userLocation.isNotNull() && userLocation.provider != null) {
             val gmsLatLng = LatLng(userLocation.latitude, userLocation.longitude)
-            routePointer = Helpers.locationIndexOnPath(gmsLatLng, lllhReduced, routeTolerance)
-            Timber.i( "routePointer: $routePointer $userLocation")
-        } else
-            Timber.i( "userLocation = null")
-        Timber.i(
-            "lllhReduced.size:${lllhReduced.size} routeDistance:${routeDistance.toInt()}")
-        barChartDataModel = GradientChartDataModel(lllhReduced, routePointer, routeDistance)
-        Timber.i( "barChartDataModel bars: " +
-                "${barChartDataModel.barChartData.first?.bars?.size}")
+            routePointer = Helpers.locationIndexOnPath(gmsLatLng, simplifiedPoints, routeTolerance)
+            Timber.i("routePointer: $routePointer $userLocation")
+        } else {
+            Timber.i("userLocation = null")
+        }
+        Timber.i("simplifiedPoints.size:${simplifiedPoints.size} routeDistance:${routeDistance.toInt()}")
+        barChartDataModel = GradientChartDataModel(simplifiedPoints, routePointer, routeDistance)
+        Timber.i("barChartDataModel bars: ${barChartDataModel.barChartData.first?.bars?.size}")
     }
 
     DisposableEffect(LocalLifecycleOwner.current) {
@@ -133,14 +133,14 @@ fun GradientChartMonitor(
         lonModel.value?.let { longitude ->
             val recordedLatLng = LatLng(latitude, longitude)
             recordedLatLng.let {
-                routePointer = Helpers.locationIndexOnPath(it, lllhReduced, routeTolerance)
+                routePointer = Helpers.locationIndexOnPath(it, simplifiedPoints, routeTolerance)
             }
         }
     }
     LaunchedEffect(routePointer) {
         Timber.i("LaunchedEffect routePointer:$routePointer")
         barChartDataModel =
-            GradientChartDataModel(lllhReduced, routePointer, routeDistance)
+            GradientChartDataModel(simplifiedPoints, routePointer, routeDistance)
     }
 
     /*
@@ -189,7 +189,7 @@ fun GradientChartMonitor(
                     IconButton(
                         onClick = {
                             //ScreenRouter.navigateHome()
-                            lllhReduced.clear()
+                            simplifiedPoints = emptyList()
                             routeDistance = -1.0
                             result(null)
                         }
@@ -211,7 +211,7 @@ fun GradientChartMonitor(
                 //Timber.i("lllhReduced.size:${lllhReduced.size}")
 
                 AnimatedVisibility(
-                    visible = lllhReduced.isEmpty().or(barChartDataModel.barChartData.first == null)
+                    visible = simplifiedPoints.isEmpty() || barChartDataModel.barChartData.first == null
                 ) {
                     Timber.i("%s", stringResource(R.string.no_relevant_chart_data))
                     Box(
@@ -227,8 +227,8 @@ fun GradientChartMonitor(
                     }
                 }
                 AnimatedVisibility(
-                    visible = lllhReduced.isNotEmpty()
-                        .and(barChartDataModel.barChartData.first.isNotNull())
+                    visible = simplifiedPoints.isNotEmpty()
+                        && barChartDataModel.barChartData.first.isNotNull()
                 ) {
                     Timber.i("locationTime $locationTime")
                     //barChartDataModel = GradientChartDataModel(lllhReduced, routePointer, routeDistance)

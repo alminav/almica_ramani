@@ -462,7 +462,7 @@ internal fun MonitorGraphLocations(
                                                 if (poiBmp.isNotNull()) poiEntity else null, poiBmp )
                                             CompassViewModel.setHaircrossThumbnail(b)
                                             CompassViewModel.setDestination(lllh[i].latLngGms, lllh[i].altitude.toInt())
-                                            CompassViewModel.setDistance((lllh as ArrayList).getDistanceFromLllh())
+                                            CompassViewModel.setDistance(lllh.getDistanceFromLllh())
                                             highlightRoutePoint(i)
                                             CompassViewModel.setCurrentLocation(latLng, altitude?.toInt())
                                             CompassViewModel.setNearestPoiName(poiEntity?.name)

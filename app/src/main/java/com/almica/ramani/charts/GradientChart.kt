@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Slider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,7 +21,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.almica.ramani.Helpers
 import com.almica.ramani.LatLngH
 import com.almica.ramani.routes.RouteEntity
 import com.almica.ramani.ui.theme.RamaniTheme
@@ -35,43 +33,38 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MbsGradientChart(routeEntity: RouteEntity,
-                     moveMap: (LatLng?) -> Unit,
-                     result: (LatLng?) -> Unit) {
-    var lllhReduced by remember {mutableStateOf(arrayListOf<LatLngH>())}
-    var routeDistance by remember { mutableDoubleStateOf(-1.0)}
-    var barChartDataModel by remember { mutableStateOf(GradientChartDataModel(arrayListOf(), -1, 0.0))}
+fun GradientChart(routeEntity: RouteEntity,
+                  moveMap: (LatLng?) -> Unit,
+                  result: (LatLng?) -> Unit) {
+    var simplifiedPoints by remember { mutableStateOf(emptyList<LatLngH>()) }
+    var routeDistance by remember { mutableDoubleStateOf(-1.0) }
+    var barChartDataModel by remember { mutableStateOf(GradientChartDataModel(emptyList(), -1, 0.0)) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(routeEntity) {
         val lllh = routeEntity.kmlString.kmlString2Lllh()
         routeDistance = lllh.getDistanceFromLllh()
-        Timber.i( "${routeEntity.name} lllh.size:${lllh.size}")
+        Timber.i("${routeEntity.name} lllh.size:${lllh.size}")
         val stepCount = (0.001 * routeDistance).toInt().coerceAtMost(42)
-        if (lllh.isNotEmpty())
-            lllhReduced = lllh.simplifyToTargetCount(stepCount) as ArrayList<LatLngH>
-//        if (lllh.isNotEmpty())
-//            lllhReduced = reducedLllhKmSteps(lllh)
-        Timber.i(
-            "lllhReduced.size:${lllhReduced.size} routeDistance:${routeDistance.toInt()}")
-        barChartDataModel = GradientChartDataModel(lllhReduced, -1, routeDistance)
-        Timber.i( "barChartDataModel bars: " +
-                "${barChartDataModel.barChartData.first?.bars?.size}")
+        if (lllh.isNotEmpty()) {
+            simplifiedPoints = lllh.simplifyToTargetCount(stepCount)
+        }
+        Timber.i("simplifiedPoints.size:${simplifiedPoints.size} routeDistance:${routeDistance.toInt()}")
+        barChartDataModel = GradientChartDataModel(simplifiedPoints, -1, routeDistance)
+        Timber.i("barChartDataModel bars: ${barChartDataModel.barChartData.first?.bars?.size}")
     }
-    ModalBottomSheet(onDismissRequest = { result(null) }) {
-        MbsGradientChartContent(
-            name = routeEntity.name,
-            lllhReduced = lllhReduced,
-            barChartDataModel = barChartDataModel,
-            moveMap = moveMap,
-            result = result
-        )
-    }
+    GradientChartContent(
+        name = routeEntity.name,
+        simplifiedPoints = simplifiedPoints,
+        barChartDataModel = barChartDataModel,
+        moveMap = moveMap,
+        result = result
+    )
 }
 
 @Composable
-fun MbsGradientChartContent(
+fun GradientChartContent(
     name: String,
-    lllhReduced: List<LatLngH>,
+    simplifiedPoints: List<LatLngH>,
     barChartDataModel: GradientChartDataModel,
     moveMap: (LatLng?) -> Unit,
     result: (LatLng?) -> Unit
@@ -91,17 +84,17 @@ fun MbsGradientChartContent(
                 value = sliderPosition,
                 onValueChange = {
                     sliderPosition = it.roundToInt().toFloat()
-                    if (it.roundToInt() < lllhReduced.size) {
-                        val latLng = LatLng(lllhReduced[it.roundToInt()].latitude,
-                            lllhReduced[it.roundToInt()].longitude)
+                    if (it.roundToInt() < simplifiedPoints.size) {
+                        val latLng = LatLng(simplifiedPoints[it.roundToInt()].latitude,
+                            simplifiedPoints[it.roundToInt()].longitude)
                         moveMap(latLng)
                     }
                 },
                 onValueChangeFinished = {
                     Timber.i("sliderPosition: $sliderPosition")
-                    if (sliderPosition.roundToInt() < lllhReduced.size) {
-                        val latLng = LatLng(lllhReduced[sliderPosition.roundToInt()].latitude,
-                            lllhReduced[sliderPosition.roundToInt()].longitude)
+                    if (sliderPosition.roundToInt() < simplifiedPoints.size) {
+                        val latLng = LatLng(simplifiedPoints[sliderPosition.roundToInt()].latitude,
+                            simplifiedPoints[sliderPosition.roundToInt()].longitude)
                         result(latLng)
                     }
                 },
@@ -116,7 +109,7 @@ fun MbsGradientChartContent(
 
 @Preview(showBackground = true)
 @Composable
-fun MbsGradientChartPreview() {
+fun GradientChartPreview() {
     val sampleRoute = RouteEntity(
         name = "Sample Route",
         region = "Sample Region",
@@ -126,7 +119,7 @@ fun MbsGradientChartPreview() {
         kmlString = ""
     )
     RamaniTheme {
-        MbsGradientChart(
+        GradientChart(
             routeEntity = sampleRoute,
             moveMap = {},
             result = {}
@@ -136,8 +129,8 @@ fun MbsGradientChartPreview() {
 
 @Preview(showBackground = true)
 @Composable
-fun MbsGradientChartContentPreview() {
-    val samplePoints = arrayListOf(
+fun GradientChartContentPreview() {
+    val samplePoints = listOf(
         LatLngH(-1.2833, 36.8167, 1600.0),
         LatLngH(-1.2843, 36.8177, 1610.0),
         LatLngH(-1.2853, 36.8187, 1620.0),
@@ -146,9 +139,9 @@ fun MbsGradientChartContentPreview() {
     )
     val sampleDataModel = GradientChartDataModel(samplePoints, -1, 5.0)
     RamaniTheme {
-        MbsGradientChartContent(
+        GradientChartContent(
             name = "Sample Route",
-            lllhReduced = samplePoints,
+            simplifiedPoints = samplePoints,
             barChartDataModel = sampleDataModel,
             moveMap = {},
             result = {}

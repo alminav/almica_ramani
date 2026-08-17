@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.outlined.LocationDisabled
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Navigation
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +35,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,7 +70,7 @@ import com.almica.ramani.R
 import com.almica.ramani.RouteGeojsonList
 import com.almica.ramani.VehicleMenu
 import com.almica.ramani.charts.MbsElevationChart
-import com.almica.ramani.charts.MbsGradientChart
+import com.almica.ramani.charts.GradientChart
 import com.almica.ramani.charts.theme.White
 import com.almica.ramani.compass.CompassViewModel
 import com.almica.ramani.googlemaps.MapUtils.downloadPoiInfo
@@ -632,6 +634,7 @@ private fun MapControls(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MapDialogs(
     uiState: GmsMapUiState,
@@ -742,14 +745,26 @@ private fun MapDialogs(
     }
 
     uiState.gradientRouteData?.let { route ->
-        MbsGradientChart(route.getRouteEntity(context), moveMap = { latLng -> latLng?.let { cameraPositionState.position = CameraPosition.fromLatLngZoom(it, cameraPositionState.position.zoom) } }, result = { latLng ->
-            if (latLng == null) viewModel.updateState { state -> state.copy(gradientRouteData = null) }
-            else { cameraPositionState.position = CameraPosition.fromLatLngZoom(latLng, cameraPositionState.position.zoom); viewModel.updateState { state -> state.copy(tempMarkerLatLng = latLng) } }
-        })
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.updateState { state -> state.copy(gradientRouteData = null) } }
+        ) {
+            GradientChart(route.getRouteEntity(context), moveMap = { latLng -> latLng?.let { cameraPositionState.position = CameraPosition.fromLatLngZoom(it, cameraPositionState.position.zoom) } }, result = { latLng ->
+                if (latLng == null) viewModel.updateState { state -> state.copy(gradientRouteData = null) }
+                else { cameraPositionState.position = CameraPosition.fromLatLngZoom(latLng, cameraPositionState.position.zoom); viewModel.updateState { state -> state.copy(tempMarkerLatLng = latLng) } }
+            })
+        }
     }
 
     uiState.elevationRouteData?.let { route ->
-        MbsElevationChart(routeEntity = route.getRouteEntity(context), onSelectLocation = { latLng -> cameraPositionState.position = CameraPosition.fromLatLngZoom(latLng, cameraPositionState.position.zoom); viewModel.updateState { state -> state.copy(tempMarkerLatLng = latLng) } }, onClose = { viewModel.updateState { state -> state.copy(elevationRouteData = null) } })
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.updateState { state -> state.copy(elevationRouteData = null) } }
+        ) {
+            MbsElevationChart(
+                routeEntity = route.getRouteEntity(context),
+                onSelectLocation = { latLng -> cameraPositionState.position = CameraPosition.fromLatLngZoom(latLng, cameraPositionState.position.zoom); viewModel.updateState { state -> state.copy(tempMarkerLatLng = latLng) } },
+                onClose = { viewModel.updateState { state -> state.copy(elevationRouteData = null) } }
+            )
+        }
     }
 
     if (uiState.showDropDownMenu) {

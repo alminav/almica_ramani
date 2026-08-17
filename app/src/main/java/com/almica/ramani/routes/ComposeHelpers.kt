@@ -93,7 +93,7 @@ class ComposeHelpers {
 
         fun addRouteLine(
             currentComposer: Composer,
-            lllh: java.util.ArrayList<LatLngH>?,
+            lllh: List<LatLngH>?,
             name: String,
             region: String?,
             type: Int,
