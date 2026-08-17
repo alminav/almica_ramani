@@ -141,7 +141,7 @@ fun initMapsGridRaster(
     context: Context,
     visibleProperty: String,
     idTag: String?, // make ids unique
-    finished: (Triple<GeoJsonSource, LineLayer, SymbolLayer>?) -> Unit
+    finished: (MapLayerBundle?) -> Unit
 ) {
     createRasterMapBoundFeatures(context) { featureCollection ->
         val sourceId = if (idTag.isNotNull()) "raster_boundaries${Const.GEOJSON_EXT}_$idTag" else
@@ -197,7 +197,7 @@ fun initMapsGridRaster(
             val fileGeojson = File(context.filesDir, "raster_boundaries${Const.GEOJSON_EXT}")
             fileGeojson.writeText(featureCollection.toJson())
 
-            finished(Triple(geoJsonSource, geoJsonLineLayer, geoJsonSymbolLayer))
+            finished(MapLayerBundle(geoJsonSource, geoJsonLineLayer, geoJsonSymbolLayer))
         }
     }
 }
@@ -224,7 +224,7 @@ fun initLatLngGrid(finished: (Pair<Source, Layer>?) -> Unit) {
  * 14jan2026
  */
 fun initMvtGrid(context: Context,
-                finished: (Triple<GeoJsonSource, LineLayer, SymbolLayer>?) -> Unit) {
+                finished: (MapLayerBundle?) -> Unit) {
     val preferences = getDefaultSharedPreferences(context)
     val prefMaptypeKey = preferences.getInt(Const.PREF_MAPTYPE_KEY, 0)
     if (prefMaptypeKey != MaptypeKey.Raster.ordinal) {
@@ -274,14 +274,14 @@ fun initMvtGrid(context: Context,
 
                 geoJsonSymbolLayer.minZoom = 6f
                 geoJsonLineLayer.minZoom = 4f
-                finished(Triple(geoJsonSource, geoJsonLineLayer, geoJsonSymbolLayer))
+                finished(MapLayerBundle(geoJsonSource, geoJsonLineLayer, geoJsonSymbolLayer))
             }
         }
     } else
         finished(null)
 }
 
-fun initMapsGridGeojson(context: Context, finished: (Pair<GeoJsonSource, List<Layer>>?) -> Unit) {
+fun initMapsGridGeojson(context: Context, finished: (GeoJsonLayerBundle?) -> Unit) {
     createGeojsonMapBoundFeatures(context, null) { featureCollection ->
         CoroutineScope(Dispatchers.Main).launch { // runOnUiThread
             val geoJsonSource =
@@ -348,13 +348,13 @@ fun initMapsGridGeojson(context: Context, finished: (Pair<GeoJsonSource, List<La
             geoJsonSymbolLayerEnabled.minZoom = 8f
             geoJsonLineLayer.minZoom = 8f
             finished(
-                Pair(geoJsonSource, listOf(geoJsonLineLayer, geoJsonSymbolLayerEnabled))
+                GeoJsonLayerBundle(geoJsonSource, listOf(geoJsonLineLayer, geoJsonSymbolLayerEnabled))
             )
         }
     }
 }
 
-fun initRoutesGeojsonLayer(context: Context, file: File): Pair<GeoJsonSource, LineLayer> {
+fun initRoutesGeojsonLayer(context: Context, file: File): MapSourceLayerBundle {
     val prefs = getDefaultSharedPreferences(context)
     val layerVisibility = //Property.VISIBLE
         prefs.getString(context.getString(R.string.pref_routes_geojson_visibility), Property.NONE)
@@ -396,7 +396,7 @@ fun initRoutesGeojsonLayer(context: Context, file: File): Pair<GeoJsonSource, Li
         lineColor(Expression.toColor(Expression.get("color")))
     )
     geoJsonLineLayer.minZoom = 8f // = 3f with "europe_boundary${Const.GEOJSON_EXT}"
-    return Pair(geoJsonSource, geoJsonLineLayer)
+    return MapSourceLayerBundle(geoJsonSource, geoJsonLineLayer)
 }
 
 /**
@@ -404,7 +404,7 @@ fun initRoutesGeojsonLayer(context: Context, file: File): Pair<GeoJsonSource, Li
  * line area to make it easier for users to select/click on a route.
  * opacity = 0.0 does not work
  */
-fun initRoutesHitLayer(context: Context, geoJsonSource: GeoJsonSource): Pair<GeoJsonSource, LineLayer> {
+fun initRoutesHitLayer(context: Context, geoJsonSource: GeoJsonSource): MapSourceLayerBundle {
     val layerId = context.getString(R.string.routes) + FeatureProperties.HITLAYER_TAG
     Timber.i("layerId: $layerId")
     val hitLineLayer = LineLayer(layerId, geoJsonSource.id).withProperties(
@@ -431,10 +431,10 @@ fun initRoutesHitLayer(context: Context, geoJsonSource: GeoJsonSource): Pair<Geo
         lineColor("#ffffff".toColorInt())
     )
     hitLineLayer.minZoom = 8f // = 3f with "europe_boundary${Const.GEOJSON_EXT}"
-    return Pair(geoJsonSource, hitLineLayer)
+    return MapSourceLayerBundle(geoJsonSource, hitLineLayer)
 }
 
-fun initOfflineRegionsGridGeojson(context: Context, finished: (Triple<GeoJsonSource, LineLayer, SymbolLayer>?) -> Unit) {
+fun initOfflineRegionsGridGeojson(context: Context, finished: (MapLayerBundle?) -> Unit) {
     getOfflineRegions(context) { regions ->
         if (regions.isNotNull())
             regions?.let {
@@ -471,7 +471,7 @@ fun initOfflineRegionsGridGeojson(context: Context, finished: (Triple<GeoJsonSou
 
                 geoJsonSymbolLayer.minZoom = 6f
                 geoJsonLineLayer.minZoom = 6f
-                finished(Triple(geoJsonSource, geoJsonLineLayer, geoJsonSymbolLayer))
+                finished(MapLayerBundle(geoJsonSource, geoJsonLineLayer, geoJsonSymbolLayer))
             }
         else
             finished(null)
@@ -873,20 +873,20 @@ fun initMapComponentsLocalStyle(
     initMapsGridRaster(context, Property.NONE, "${System.currentTimeMillis()}") { mapsGridRaster ->  // async
         //Timber.i("initMapsGridRaster success: ${mapsGridRaster.isNotNull()}")
         if (mapsGridRaster != null) {
-            //Timber.i("initMapsGridRaster source: ${mapsGridRaster.first.id}")
-            style?.addSource(mapsGridRaster.first) //mapSources.add(mapsGridRaster.first)
-            style?.addLayer(mapsGridRaster.second) // lines
-            //style?.addLayer(mapsGridRaster.third) // symbols  makes all layers invisible
-            //Timber.i("add layer: ${mapsGridRaster.second.id}")
+            //Timber.i("initMapsGridRaster source: ${mapsGridRaster.source.id}")
+            style?.addSource(mapsGridRaster.source) //mapSources.add(mapsGridRaster.source)
+            style?.addLayer(mapsGridRaster.lineLayer) // lines
+            //style?.addLayer(mapsGridRaster.symbolLayer) // symbols  makes all layers invisible
+            //Timber.i("add layer: ${mapsGridRaster.lineLayer.id}")
         }
     }
 
     initMapsGridGeojson(context) { result -> // async
         //Timber.i( "initMapsGridGeojson success: ${result.isNotNull()}")
         if (result != null) {
-            style?.addSource(result.first) //mapSources.add(result.first)
-            style?.addLayer(result.second[0])
-            //Timber.i("add source: ${result.first.id}")
+            style?.addSource(result.source) //mapSources.add(result.source)
+            style?.addLayer(result.layers[0])
+            //Timber.i("add source: ${result.source.id}")
         }
     }
 
@@ -925,8 +925,8 @@ fun initMapComponentsLocalStyle(
         initMvtGrid(context) { result ->
             result?.let { it1 ->
 //                Timber.i( "map layers: ${style?.layers?.size}")
-                style?.addSource(it1.first)
-                style?.addLayer(it1.second)
+                style?.addSource(it1.source)
+                style?.addLayer(it1.lineLayer)
 //                Timber.i( "map layers: ${style?.layers?.size}")
             }
             initCycleOverlay(context, style, useCyclewayOverlays) {
@@ -969,11 +969,11 @@ fun initMapComponentsMaptypeRaster(
         val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
         val file = File(rootRouteFolder, "routes${Const.GEOJSON_EXT}") // "europe_boundary${Const.GEOJSON_EXT}")
         val routesGeojson = initRoutesGeojsonLayer(context, file)
-        mapSources.add(routesGeojson.first)
-        mapLayers.add(routesGeojson.second)
-        val routesHitLayer = initRoutesHitLayer(context, routesGeojson.first)
-        //mapSources.add(routesHitLayer.first)
-        mapLayers.add(routesHitLayer.second)
+        mapSources.add(routesGeojson.source)
+        mapLayers.add(routesGeojson.layer)
+        val routesHitLayer = initRoutesHitLayer(context, routesGeojson.source)
+        //mapSources.add(routesHitLayer.source)
+        mapLayers.add(routesHitLayer.layer)
         val sourceGrid = CustomGeometrySource(LATLNG_GRID_SOURCE, GridProvider())
         val layerGrid = LineLayer(LATLNG_GRID_LAYER, LATLNG_GRID_SOURCE)
         layerGrid.setProperties(
@@ -994,10 +994,10 @@ fun initMapComponentsMaptypeRaster(
 
         initMapsGridRaster(context, Property.NONE, "${System.currentTimeMillis()}") { mapsGridRaster ->  // async
             if (mapsGridRaster != null) {
-                mapSources.add(mapsGridRaster.first) // source
-                mapLayers.add(mapsGridRaster.second) // lines
-                //mapLayers.add(mapsGridRaster.third) // symbols
-                Timber.i("add layers: ${mapsGridRaster.second.id}") // ${mapsGridRaster.third.id}")
+                mapSources.add(mapsGridRaster.source) // source
+                mapLayers.add(mapsGridRaster.lineLayer) // lines
+                //mapLayers.add(mapsGridRaster.symbolLayer) // symbols
+                Timber.i("add layers: ${mapsGridRaster.lineLayer.id}") // ${mapsGridRaster.symbolLayer.id}")
             } else
                 Timber.i("mapsGridRaster = null")
 
@@ -1026,11 +1026,11 @@ fun initRoutesOverlay(context: Context, style: Style?, file: File,
     val routesGeojson = initRoutesGeojsonLayer(context, file)
     val mapLayers = java.util.ArrayList<Layer>()
     val mapSources = java.util.ArrayList<Source>()
-    mapSources.add(routesGeojson.first)
-    mapLayers.add(routesGeojson.second)
-    val routesHitLayer = initRoutesHitLayer(context, routesGeojson.first)
-    //mapSources.add(routesHitLayer.first)
-    mapLayers.add(routesHitLayer.second)
+    mapSources.add(routesGeojson.source)
+    mapLayers.add(routesGeojson.layer)
+    val routesHitLayer = initRoutesHitLayer(context, routesGeojson.source)
+    //mapSources.add(routesHitLayer.source)
+    mapLayers.add(routesHitLayer.layer)
 
     mapSources.iterator().forEach { source ->
         style?.addSource(source)
@@ -1038,7 +1038,7 @@ fun initRoutesOverlay(context: Context, style: Style?, file: File,
     mapLayers.iterator().forEach { layer ->
         style?.addLayerBelow(layer, LocationComponentConstants.ACCURACY_LAYER)
     }
-    finished(routesGeojson.second.id)
+    finished(routesGeojson.layer.id)
 }
 
 fun initCycleOverlay(

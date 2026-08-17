@@ -118,6 +118,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.ibrahimsn.library.LiveSharedPreferences
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.location.modes.CameraMode
@@ -605,8 +606,8 @@ fun BoxScope.MapOverlayManagerContent(
                 removeLayers(m, resources.getString(R.string.raster_maps_grid))
                 initMapsGridRaster(context, Property.VISIBLE, "${System.currentTimeMillis()}") { mapsGridRaster ->
                     if (mapsGridRaster != null) {
-                        m.style?.addSource(mapsGridRaster.first)
-                        m.style?.addLayer(mapsGridRaster.second)
+                        m.style?.addSource(mapsGridRaster.source)
+                        m.style?.addLayer(mapsGridRaster.lineLayer)
                     }
                 }
             }
@@ -960,39 +961,12 @@ fun BoxScope.MapOverlayManagerContent(
             setRouteInfo(null)
             onPopupSnackMsg(resources.getString(R.string.does_nothing_here))
         }, select = {
-            closeOverlay()
-            setRouteInfo(null)
-            if (routeFile.extension == Const.GEOJSON_EXT.replace(".", "")) {
-                val routesGeojsonSource = map?.style?.getSource("routes${Const.GEOJSON_EXT}") as? GeoJsonSource
-                val geojson = routeFile.readText()
-                onRoutesGeoJsonStringChange(geojson)
-                routesGeojsonSource?.setGeoJson(geojson)
-                val routesHitGeojsonSource = map?.style?.getSource("routes${Const.GEOJSON_EXT}${FeatureProperties.HITLAYER_TAG}") as? GeoJsonSource
-                routesHitGeojsonSource?.setGeoJson(geojson)
-                liveSharedPreferences.preferences.edit {
-                    putString(
-                        resources.getString(R.string.pref_routes_geojson_visibility),
-                        Property.VISIBLE
-                    )
-                }
-                onPopupSnackMsg(resources.getString(R.string.geojson_loaded_, routeFile.nameWithoutExtension))
-            } else {
-                loadRouteFromFile(routeFile, context, cameraMode, cameraPosition, onLoaded = { entity, state ->
-                    setLoadedRoute(entity)
-                    updatePolygon(state)
-                    setHighlightRoutePoint(-1)
-                    setRecalcRequired(false)
-                }, loadFailed = {
-                    if (routeFile.extension == Const.JPG_EXT.replace(".", "")) {
-                        val checkGeojson = com.almica.ramani.Helpers.getImageDescriptionFromExif(routeFile)
-                        if (checkGeojson?.startsWith(Const.GEOJSON_ROOT_FOLDER) == true) {
-                            val pair = getGeojsonFromSnapshot(routeFile, map, liveSharedPreferences, context)
-                            onPopupSnackMsg(pair.first)
-                            onRoutesGeoJsonStringChange(pair.second)
-                        }
-                    } else onPopupSnackMsg(resources.getString(R.string.route_load_failed_, routeFile.name))
-                })
-            }
+            handleRouteFileSelection(
+                routeFile, map, context, cameraMode, cameraPosition, liveSharedPreferences,
+                resources, lifecycleOwner.lifecycleScope, onRoutesGeoJsonStringChange, onPopupSnackMsg,
+                setLoadedRoute, updatePolygon, setHighlightRoutePoint, setRecalcRequired, setRouteInfo,
+                closeOverlay, clearRouteInfo = true
+            )
         }, dialogModeOrdinal = RouteDialogMode.MapProvider.ordinal)
     }
 
@@ -1008,44 +982,26 @@ fun BoxScope.MapOverlayManagerContent(
                     onPopupSnackMsg(resources.getString(R.string.route_loaded_, resultRouteInfo.name))
                 })
             }
-        }, onRouteFolderSelected = {}, onRouteFolderFinished = { closeOverlay() }, onRouteSelected = { routeFile ->
-            closeOverlay()
-            when {
-                routeFile.extension == Const.JPG_EXT.replace(".", "") && routeFile.path.contains(Const.THUMBNAILS) -> setRouteInfo(routeFile)
-                routeFile.extension == Const.GEOJSON_EXT.replace(".", "") -> {
-                    val routesGeojsonSource = map?.style?.getSource("routes${Const.GEOJSON_EXT}") as? GeoJsonSource
-                    val geojson = routeFile.readText()
-                    onRoutesGeoJsonStringChange(geojson)
-                    routesGeojsonSource?.setGeoJson(geojson)
-                    val routesHitGeojsonSource = map?.style?.getSource("routes${Const.GEOJSON_EXT}${FeatureProperties.HITLAYER_TAG}") as? GeoJsonSource
-                    routesHitGeojsonSource?.setGeoJson(geojson)
-                    liveSharedPreferences.preferences.edit {
-                        putString(
-                            resources.getString(R.string.pref_routes_geojson_visibility),
-                            Property.VISIBLE
-                        )
-                    }
-                    onPopupSnackMsg(resources.getString(R.string.geojson_loaded_, routeFile.nameWithoutExtension))
-                }
-                else -> {
-                    loadRouteFromFile(routeFile, context, cameraMode, cameraPosition, onLoaded = { entity, state ->
-                        setLoadedRoute(entity)
-                        updatePolygon(state)
-                        setHighlightRoutePoint(-1)
-                        setRecalcRequired(false)
-                    }, loadFailed = {
-                        if (routeFile.extension == Const.JPG_EXT.replace(".", "")) {
-                            val checkGeojson = com.almica.ramani.Helpers.getImageDescriptionFromExif(routeFile)
-                            if (checkGeojson?.startsWith(Const.GEOJSON_ROOT_FOLDER) == true) {
-                                val pair = getGeojsonFromSnapshot(routeFile, map, liveSharedPreferences, context)
-                                onPopupSnackMsg(pair.first)
-                                onRoutesGeoJsonStringChange(pair.second)
-                            }
-                        } else onPopupSnackMsg(resources.getString(R.string.route_load_failed_, routeFile.name))
-                    })
-                }
-            }
-        }, onRouteInfoSelected = { setRouteInfo(it) }, createSnapshots = {}, dialogMode = RouteDialogMode.MapProvider.ordinal)
+        }, onRouteFolderSelected = {}, onRouteFolderFinished = { closeOverlay() },
+            onRouteSelected  = { routeFile ->
+                Timber.i("onRouteSelected ${routeFile.name}")
+                handleRouteFileSelection(
+                    routeFile, map, context, cameraMode, cameraPosition, liveSharedPreferences,
+                    resources, lifecycleOwner.lifecycleScope, onRoutesGeoJsonStringChange, onPopupSnackMsg,
+                    setLoadedRoute, updatePolygon, setHighlightRoutePoint, setRecalcRequired, setRouteInfo,
+                    closeOverlay
+                )
+            },
+            onRouteSnapshotSelected  = { routeFileBundle ->
+                Timber.i("onRouteSnapshotSelected ${routeFileBundle.routeFile.name}")
+                handleRouteFileSelection(
+                    routeFileBundle.routeFile, map, context, cameraMode, cameraPosition, liveSharedPreferences,
+                    resources, lifecycleOwner.lifecycleScope, onRoutesGeoJsonStringChange, onPopupSnackMsg,
+                    setLoadedRoute, updatePolygon, setHighlightRoutePoint, setRecalcRequired, setRouteInfo,
+                    closeOverlay
+                )
+            },
+            onRouteInfoSelected = { setRouteInfo(it) }, createSnapshots = {}, dialogMode = RouteDialogMode.MapProvider.ordinal)
     }
 
     // Render WeatherScreen last among overlays to ensure it is on top
@@ -1143,6 +1099,78 @@ private fun calculateGhRoute(
         }
     } else setSnackbar(MainSnackbarData(resources.getString(R.string.no_stop_marker), null, null, null))
     closeOverlay()
+}
+
+/**
+ * Handles the selection of a route file, including thumbnails, GeoJSON, and other route formats.
+ * Extracts common logic to avoid duplication and ensures IO operations are performed on a background thread.
+ */
+private fun handleRouteFileSelection(
+    routeFile: File,
+    map: MapLibreMap?,
+    context: android.content.Context,
+    cameraMode: MutableState<Int>,
+    cameraPosition: MutableState<CameraPosition>,
+    liveSharedPreferences: LiveSharedPreferences,
+    resources: android.content.res.Resources,
+    scope: kotlinx.coroutines.CoroutineScope,
+    onRoutesGeoJsonStringChange: (String?) -> Unit,
+    onPopupSnackMsg: (String?) -> Unit,
+    setLoadedRoute: (RouteEntity?) -> Unit,
+    updatePolygon: (PolygonState) -> Unit,
+    setHighlightRoutePoint: (Int) -> Unit,
+    setRecalcRequired: (Boolean) -> Unit,
+    setRouteInfo: (File?) -> Unit,
+    closeOverlay: () -> Unit,
+    clearRouteInfo: Boolean = false
+) {
+    if (clearRouteInfo) setRouteInfo(null)
+    closeOverlay()
+
+    val extension = routeFile.extension.lowercase(java.util.Locale.ROOT)
+    val jpgExt = Const.JPG_EXT.removePrefix(".")
+    val geojsonExt = Const.GEOJSON_EXT.removePrefix(".")
+
+    when (extension) {
+        jpgExt if routeFile.path.contains(Const.THUMBNAILS) -> {
+            setRouteInfo(routeFile)
+        }
+        geojsonExt -> {
+            scope.launch(Dispatchers.IO) {
+                val geojson = try { routeFile.readText() } catch (e: Exception) { "" }
+                withContext(Dispatchers.Main) {
+                    onRoutesGeoJsonStringChange(geojson)
+                    map?.style?.let { style ->
+                        (style.getSource("routes${Const.GEOJSON_EXT}") as? GeoJsonSource)?.setGeoJson(geojson)
+                        (style.getSource("routes${Const.GEOJSON_EXT}${FeatureProperties.HITLAYER_TAG}") as? GeoJsonSource)?.setGeoJson(geojson)
+                    }
+                    liveSharedPreferences.preferences.edit {
+                        putString(resources.getString(R.string.pref_routes_geojson_visibility), Property.VISIBLE)
+                    }
+                    onPopupSnackMsg(resources.getString(R.string.geojson_loaded_, routeFile.nameWithoutExtension))
+                }
+            }
+        }
+        else -> {
+            loadRouteFromFile(routeFile, context, cameraMode, cameraPosition, onLoaded = { entity, state ->
+                setLoadedRoute(entity)
+                updatePolygon(state)
+                setHighlightRoutePoint(-1)
+                setRecalcRequired(false)
+            }, loadFailed = {
+                if (extension == jpgExt) {
+                    val checkGeojson = Helpers.getImageDescriptionFromExif(routeFile)
+                    if (checkGeojson?.startsWith(Const.GEOJSON_ROOT_FOLDER) == true) {
+                        val pair = getGeojsonFromSnapshot(routeFile, map, liveSharedPreferences, context)
+                        onPopupSnackMsg(pair.first)
+                        onRoutesGeoJsonStringChange(pair.second)
+                    }
+                } else {
+                    onPopupSnackMsg(resources.getString(R.string.route_load_failed_, routeFile.name))
+                }
+            })
+        }
+    }
 }
 
 @ComposePreview(showBackground = true)
