@@ -91,7 +91,7 @@ fun CompassScreenContent(
 
     Scaffold(containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface) {paddingValues -> // MaterialTheme.colorScheme.onSurface
-        Timber.i("CompassScreenContent paddingValues: $paddingValues")
+        //Timber.i("CompassScreenContent paddingValues: $paddingValues")
         Column(
             modifier = Modifier
                 .fillMaxSize()

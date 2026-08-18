@@ -2,7 +2,23 @@
 
 All notable changes to the **Ramani** project will be documented in this file.
 
+## [Unreleased] - 2026-08-18
+
+### ✨ Features & Improvements
+- **Location Monitoring**: Enhanced `MonitorGraphLocations` with multi-mode visualization:
+    - **Graphs**: Interactive Altitude and Speed graphs with inverse X-axis support.
+    - **Speedometer**: Real-time speed display with adaptive scales based on locomotion type.
+    - **Compass**: Enhanced direction view integrated with route tracking and nearest POI discovery.
+- **Route Visualization**: Integrated `KiThumbnailer` for dynamic route thumbnail generation with POI icons and current position markers.
+
+### 🏗️ Refactoring & UI
+- **Map Controls**: Optimized Latitude/Longitude grid coordinate display in `MapControlsLayer`.
+    - **Performance**: Cached layer visibility checks to reduce map engine overhead during navigation.
+    - **Layout**: Simplified positioning logic using `Modifier.align` and extracted reusable `GridCoordinateLabel` component.
+- **Theming**: Centralized semi-transparent grid label colors in `Color.kt`.
+
 ## [Unreleased] - 2026-08-06
+    ...
 
 ### 🏗️ Refactoring & Architecture
 - **DocumentViewer Refactor**: Major architectural overhaul of the document viewing system.

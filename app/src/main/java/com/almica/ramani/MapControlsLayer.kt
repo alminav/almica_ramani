@@ -129,7 +129,7 @@ fun BoxScope.MapControlsLayerContent(
         }
     }
 
-    Timber.i("activeOverlay: ${activeOverlay.name} isGridVisible: $isGridVisible")
+    //Timber.i("activeOverlay: ${activeOverlay.name} isGridVisible: $isGridVisible")
     if (isGridVisible && mapPositionLatitude != 0.0) {
         GridCoordinateLabel(
             text = "${mapPositionLatitude.format(4)}° ${Const.UC_RIGHT_ARROW}",
