@@ -341,7 +341,13 @@ fun BoxScope.MapOverlayManagerContent(
             }
         }
     }
-
+    if (dimmerState) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+        )
+    }
     if (showHaircrossMenu) {
         HairCrossBottomMenu(cameraPosition.value.target, stopPosition) { action ->
             when (action) {

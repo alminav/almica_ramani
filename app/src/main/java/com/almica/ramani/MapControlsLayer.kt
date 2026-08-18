@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.almica.ramani.routes.RouteEntity
+import com.almica.ramani.ui.theme.GridLabelBackground
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.format
 import com.almica.ramani.utils.getLayerVisibility
@@ -116,41 +116,37 @@ fun BoxScope.MapControlsLayerContent(
     val showRouteFolders = activeOverlay == OverlayType.ROUTE_FOLDERS
     val showPreferenceScreen = activeOverlay == OverlayType.PREFERENCES
 
-    if (map != null && mapPositionLatitude != 0.0 && getLayerVisibility(map, LATLNG_GRID_LAYER)) {
-        Row(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(start = 3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "${mapPositionLatitude.format(4)}° ${Const.UC_RIGHT_ARROW}",
-                Modifier
-                    .fillMaxWidth(0.25f)
-                    .background(color = Color(0xA0CCCCCC)),
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
-            )
+    // The visibility of the grid layer can change independently of the map object instance.
+    // We use a local state that is updated whenever the UI recomposes or when the map is initially set.
+    var isGridVisible by remember(map) {
+        mutableStateOf(map?.let { getLayerVisibility(it, LATLNG_GRID_LAYER) } ?: false)
+    }
+
+    // Periodically sync or sync on effect to ensure visibility reflects the actual map state
+    LaunchedEffect(map, activeOverlay) {
+        map?.let {
+            isGridVisible = getLayerVisibility(it, LATLNG_GRID_LAYER)
         }
     }
 
-    if (map != null && mapPositionLongitude != 0.0 && getLayerVisibility(map, LATLNG_GRID_LAYER)) {
-        Column(
+    Timber.i("activeOverlay: ${activeOverlay.name} isGridVisible: $isGridVisible")
+    if (isGridVisible && mapPositionLatitude != 0.0) {
+        GridCoordinateLabel(
+            text = "${mapPositionLatitude.format(4)}° ${Const.UC_RIGHT_ARROW}",
             modifier = Modifier
-                .fillMaxWidth()
-                .align(alignment = Alignment.BottomCenter)
-                .padding(bottom = 60.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "${Const.UC_UP_ARROW}\n${mapPositionLongitude.format(4)}°",
-                Modifier
-                    .fillMaxWidth(0.2f)
-                    .background(color = Color(0xA0CCCCCC)),
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
-            )
-        }
+                .align(Alignment.CenterStart)
+                .padding(start = 3.dp)
+        )
+    }
+
+    if (isGridVisible && mapPositionLongitude != 0.0) {
+        GridCoordinateLabel(
+            text = "${Const.UC_UP_ARROW}\n${mapPositionLongitude.format(4)}°",
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 0.dp),
+            maxWidthFraction = 0.2f
+        )
     }
 
     Box(
@@ -220,25 +216,23 @@ fun BoxScope.MapControlsLayerContent(
         setButtonsBottomBar = onToggleButtonsBottomBarChange,
         setRenderMode = onRenderModeMapChange
     )
-    //Timber.i("logCount: $logCount")
-    /*MainBottomButtonBar(
-        showRouteFiles.not().and(toggleButtonsBottomBar)
-            .and(gradientRouteEntity == null)
-            .and(chartRouteEntity == null).and(!showGhFolders)
-            .and(!showLocationStatistic)
-            .and(!showPoiDatabase).and(!showAdditionalMapsManager)
-            .and(!showMvtList)
-            .and(!showPreferenceScreen),
-        loadedRouteEntity,
-        logCount,
-        setRouteMonitorMenu = { setOverlay(if (it) OverlayType.ROUTE_MONITOR else OverlayType.NONE) },
-        setHaircrossMenu = { setOverlay(if (it) OverlayType.HAIRCROSS else OverlayType.NONE) },
-        setMapMenu = { setOverlay(if (it) OverlayType.MAP_MENU else OverlayType.NONE) },
-        setPoiDatabase = { setOverlay(if (it) OverlayType.POI_DATABASE else OverlayType.NONE) },
-        setRouteFiles = { setOverlay(if (it) OverlayType.ROUTE_FILES else OverlayType.NONE) },
-        setLocationsMenu = { setOverlay(if (it) OverlayType.LOCATIONS else OverlayType.NONE) },
-        dimmerState = { setDimmer(it) }
-    )*/
+}
+
+@Composable
+private fun GridCoordinateLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxWidthFraction: Float = 0.25f
+) {
+    Text(
+        text = text,
+        modifier = modifier
+            .fillMaxWidth(maxWidthFraction)
+            .background(color = GridLabelBackground)
+            .padding(vertical = 4.dp),
+        style = MaterialTheme.typography.titleMedium,
+        textAlign = TextAlign.Center
+    )
 }
 
 @Preview(showBackground = true)

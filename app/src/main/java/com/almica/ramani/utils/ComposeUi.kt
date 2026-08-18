@@ -202,6 +202,7 @@ fun initMapsGridRaster(
     }
 }
 
+/*
 fun initLatLngGrid(finished: (Pair<Source, Layer>?) -> Unit) {
     val sourceGrid = CustomGeometrySource(LATLNG_GRID_SOURCE, GridProvider())
     val layerGrid = LineLayer(LATLNG_GRID_LAYER, LATLNG_GRID_SOURCE)
@@ -220,6 +221,8 @@ fun initLatLngGrid(finished: (Pair<Source, Layer>?) -> Unit) {
     finished(Pair(sourceGrid, symbolLayer))
     return
 }
+*/
+
 /**
  * 14jan2026
  */

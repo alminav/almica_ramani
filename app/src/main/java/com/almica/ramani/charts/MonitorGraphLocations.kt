@@ -86,31 +86,21 @@ import com.almica.ramani.utils.toBitmap
 import com.almica.room.data.location.LocationEntity
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.SphericalUtil
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.almica.ramani.utils.toBitmap
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import timber.log.Timber
-import java.text.DateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.concurrent.Executors
 
-/**
- * 17apr2026
- * liveSharedPreferences replaced by GpsViewModel Observer for time
- */
-// Source - https://stackoverflow.com/a/69685893
-// Posted by Nasib
-// Retrieved 2026-04-23, License - CC BY-SA 4.0
-
 private const val logtag = "MonitorGraphLocations"
-val df: DateFormat = DateFormat.getDateTimeInstance(
-    DateFormat.DEFAULT,
-    DateFormat.DEFAULT,
-    Locale.GERMAN
-)
-enum class MonitorGraphType {
-    ALTITUDE, SPEED, SPEEDOMETER, COMPASS
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,589 +110,426 @@ internal fun MonitorGraphLocations(
     startTime: Long,
     result: (LatLng?) -> Unit,
     map: (LatLng?) -> Unit,
+    highlightRoutePoint: (Int) -> Unit,
+    viewModel: MonitorViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    
+    LaunchedEffect(startTime, _plotResult) {
+        viewModel.initialize(startTime, _plotResult)
+    }
+
+    MonitorGraphLocationsContent(
+        uiState = uiState,
+        lllh = lllh,
+        onChartTypeChange = { viewModel.setChartType(it) },
+        onScaffoldHeightChange = { viewModel.setScaffoldHeight(it) },
+        onTitleValueChange = { viewModel.setTitleValue(it) },
+        updateNearestPoi = { pos, callback -> viewModel.updateNearestPoi(pos, callback) },
+        result = result,
+        map = map,
+        highlightRoutePoint = highlightRoutePoint
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun MonitorGraphLocationsContent(
+    uiState: MonitorUiState,
+    lllh: List<LatLngH>?,
+    onChartTypeChange: (MonitorGraphType) -> Unit,
+    onScaffoldHeightChange: (Dp) -> Unit,
+    onTitleValueChange: (String) -> Unit,
+    updateNearestPoi: (LatLng, (PoiEntity?, Bitmap?) -> Unit) -> Unit,
+    result: (LatLng?) -> Unit,
+    map: (LatLng?) -> Unit,
     highlightRoutePoint: (Int) -> Unit
 ) {
-    //val marginTopDp = TopAppBarDefaults.TopAppBarExpandedHeight.value
-    var chartType by remember { mutableIntStateOf(MonitorGraphType.ALTITUDE.ordinal) }
-    var titleValue by remember { mutableStateOf("") }
-    var titleUnit by remember { mutableStateOf("") }
-    //var locTime by remember { mutableLongStateOf(0L) }
-    var latLng by remember { mutableStateOf<LatLng?>(null) }
-    var altitude by remember { mutableStateOf<Double?>(null) }
     val context = LocalContext.current
     val density = LocalDensity.current.density
     val posBmp = Icons.Outlined.Navigation.toBitmap(width = 30.dp, height = 30.dp, layoutDirection = LayoutDirection.Ltr)
-    val locationRepository = LocationRepository.getInstance(context, Executors.newSingleThreadExecutor())
-    val poiRepository = PoiRepository.getInstance(context, Executors.newSingleThreadExecutor())
-    val poiCategoryMap = produceState(initialValue = mapOf()) {  value = Helpers.getPoiDrawableMap(context) }
-    var locationTime: Long by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    var locationSpeed: Float by remember { mutableFloatStateOf(0F) }
-    var locationBearing: Float by remember { mutableFloatStateOf(0F) }
-    var locationAltitude: Double by remember { mutableDoubleStateOf(0.0) }
-    var plotResult by remember { mutableStateOf(PlotResult(
-        lines = GraphDataPoints(arrayListOf(), arrayListOf(),
-            arrayListOf(), arrayListOf()),
-        distKM = 0F))}    //createPlotDataResult(locationRepository, startTime)
-    if (_plotResult != null)
-        plotResult = _plotResult
-    else if (plotResult.lines.dataPointsAlti.isEmpty()) {
-        plotResult = createPlotDataResult(locationRepository, startTime)
-    }
-    //var nearestRoutePoint by remember { mutableIntStateOf(-1) }
-    //val lines by remember { mutableStateOf(plotResult.lines)}
-    //var distKM by remember { mutableFloatStateOf(plotResult.distKM) }
-    // 16apr2026
-    val latitudeModel = GpsViewModel.latitude.collectAsState()
-    val longitudeModel = GpsViewModel.longitude.collectAsState()
-    val speedModel = GpsViewModel.speed.collectAsState()
-    //Timber.i("speedModel.value: ${speedModel.value} ${GpsViewModel.time}")
-    locationSpeed = speedModel.value.times(3.6f)
-    //Timber.i("locationSpeed: $locationSpeed")
-    val timeModel = GpsViewModel.time.collectAsState()
-    locationTime = timeModel.value
-    val bearingModel = GpsViewModel.bearing.collectAsState()
-    locationBearing = bearingModel.value
-    val directionCardinal by remember(locationBearing) {
-        derivedStateOf { CardinalDirection.getDirectionFromAzimuthShort(locationBearing) }
-    }
-    val altitudeModel = GpsViewModel.altitude.collectAsState()
-    locationAltitude = altitudeModel.value
-    var scaffoldHeight by remember { mutableStateOf(240.dp) }
-    val locEntity = LocationEntity(latitude = latitudeModel.value, longitude = longitudeModel.value,
-        altitude = locationAltitude, bearing = locationBearing, speed = locationSpeed,
-        time = locationTime)
-    val dataPointResult =
-        addDatapoint(
-            pointsGps = plotResult.lines.dataPointsAlti as? MutableList<DataPointWithDist>,
-            pointsSpeed = plotResult.lines.dataPointsSpeed as? MutableList<DataPointWithDist>,
-            pointsSpeedAvg = plotResult.lines.dataPointsSpeedAvg as? MutableList<DataPointWithDist>,
-            startTime,
-            lastLatLng = latLng,
-            locationEntity = locEntity,
-            plotResult.distKM
-        )
-    latLng = LatLng(locEntity.latitude, locEntity.longitude)
-    altitude = locationAltitude
-    plotResult.distKM = dataPointResult.second
 
     Scaffold(
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.height(scaffoldHeight),
-        //Modifier.padding(paddingValues).fillMaxHeight(heightFraction), //1f-heightFraction),
+        modifier = Modifier.height(uiState.scaffoldHeight),
         topBar = {
-            TopAppBar(
-                navigationIcon = {
-                },
-                title = {},
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                actions = {
-                    Row {
-                        IconButton(modifier = Modifier.weight(0.15f),
-                            onClick = {
-                                if (latLng != null)
-                                    latLng?.let { result(it) }
-                                else
-                                    result(null)
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Go back home"
-                            )
-                        }
-                        OutlinedButton(modifier = Modifier.weight(0.2f),
-                            onClick = { chartType = MonitorGraphType.ALTITUDE.ordinal },
-                            colors = ButtonColors(
-                                contentColor = Color.Black, disabledContentColor = Color.Transparent,
-                                containerColor = Color.Cyan .takeIf { chartType == MonitorGraphType.ALTITUDE.ordinal } ?: Color.Transparent,
-                                disabledContainerColor = Color.Transparent
-                            ),
-
-                            shape = MaterialTheme.shapes.small,
-                            border = ButtonDefaults.outlinedButtonBorder()
-                                .takeIf { chartType == MonitorGraphType.ALTITUDE.ordinal }
-                        ) {
-                            Column {
-                                Box(modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
-                                    Icon(Icons.Outlined.AreaChart, null, modifier = Modifier.scale(1.5f))
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    modifier = Modifier.align(alignment = Alignment.CenterHorizontally),
-                                    text = stringResource(R.string.elevation_short),
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            }
-                        }
-                        OutlinedButton(
-                            modifier = Modifier.weight(0.2f),
-                            onClick = { chartType = MonitorGraphType.SPEED.ordinal },
-                            shape = MaterialTheme.shapes.small,
-                            colors = ButtonColors(
-                                contentColor = Color.Black,
-                                disabledContentColor = Color.Transparent,
-                                containerColor = Color.Cyan.takeIf { chartType == MonitorGraphType.SPEED.ordinal }
-                                    ?: Color.Transparent,
-                                disabledContainerColor = Color.Transparent
-                            ),
-
-                            border = ButtonDefaults.outlinedButtonBorder()
-                                .takeIf { chartType == MonitorGraphType.SPEED.ordinal },
-                        ) {
-                            Column {
-                                Box(modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
-                                    Icon(Icons.Outlined.AreaChart, null, modifier = Modifier.scale(1.5f))
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    modifier = Modifier.align(alignment = Alignment.CenterHorizontally),
-                                    text = stringResource(R.string.speed_short),
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            }
-                        }
-                        OutlinedButton(
-                            modifier = Modifier.weight(0.2f),
-                            onClick = { chartType = MonitorGraphType.SPEEDOMETER.ordinal },
-                            shape = MaterialTheme.shapes.small,
-                            colors = ButtonColors(
-                                contentColor = Color.Black,
-                                disabledContentColor = Color.Transparent,
-                                containerColor = Color.Cyan.takeIf { chartType == MonitorGraphType.SPEEDOMETER.ordinal }
-                                    ?: Color.Transparent,
-                                disabledContainerColor = Color.Transparent
-                            ),
-                            border = ButtonDefaults.outlinedButtonBorder()
-                                .takeIf { chartType == MonitorGraphType.SPEEDOMETER.ordinal },
-                        ) {
-                            Column {
-                                Box(modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
-                                    Icon(Icons.Outlined.Speed, null, modifier = Modifier.scale(1.5f))
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    modifier = Modifier.align(alignment = Alignment.CenterHorizontally),
-                                    text = stringResource(R.string.speed_short),
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            }
-                        }
-                        OutlinedButton(
-                            modifier = Modifier.weight(0.2f),
-                            onClick = { chartType = MonitorGraphType.COMPASS.ordinal },
-                            shape = MaterialTheme.shapes.small,
-                            colors = ButtonColors(
-                                contentColor = Color.Black,
-                                disabledContentColor = Color.Transparent,
-                                containerColor = Color.Cyan.takeIf { chartType == MonitorGraphType.COMPASS.ordinal }
-                                    ?: Color.Transparent,
-                                disabledContainerColor = Color.Transparent
-                            ),
-
-                            border = ButtonDefaults.outlinedButtonBorder()
-                                .takeIf { chartType == MonitorGraphType.COMPASS.ordinal },
-                        ) {
-                            Column {
-                                Box(modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
-                                    Icon(Icons.Outlined.Directions, null, modifier = Modifier.scale(1.5f))
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    modifier = Modifier.align(alignment = Alignment.CenterHorizontally),
-                                    text = stringResource(R.string.directions_short),
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            }
-                        }
-                        Column(modifier = Modifier.padding(start = 4.dp).weight(0.25f).align(alignment = Alignment.CenterVertically)) {
-                            Text(
-                                modifier = Modifier.align(alignment = Alignment.CenterHorizontally),
-                                text = titleValue,
-                                //fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            if (chartType != MonitorGraphType.COMPASS.ordinal) {
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Text(
-                                    modifier = Modifier.align(alignment = Alignment.CenterHorizontally),
-                                    text = titleUnit,
-                                    //fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            //fontFamily = FontFamily.Monospace)
-                        }
-                    }
+            MonitorTopBar(
+                chartType = uiState.chartType,
+                titleValue = uiState.titleValue,
+                titleUnit = uiState.titleUnit,
+                onChartTypeChange = onChartTypeChange,
+                onBack = {
+                    if (uiState.latLng != null)
+                        uiState.latLng?.let { result(it) }
+                    else
+                        result(null)
                 }
             )
-        })
-    { paddingValues ->
-        if (plotResult.distKM > 0) {
+        }
+    ) { paddingValues ->
+        if (uiState.plotResult.distKM > 0) {
             val currentBearing by animateFloatAsState(
-                targetValue = locationBearing,
-                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
+                targetValue = uiState.locationBearing,
+                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                label = "bearing"
             )
             val currentSpeed by animateFloatAsState(
-                targetValue = locationSpeed,
-                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
+                targetValue = uiState.locationSpeed,
+                animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                label = "speed"
             )
-            val sections: ImmutableList<Section> = persistentListOf(
-                Section(0f, 1f, Color(0xFFFF0000.toInt()), width = 20.dp),
-            )
-            Column(modifier = Modifier.padding(start = 5.dp, end = 5.dp, bottom = 5.dp,
-                top = paddingValues.calculateTopPadding())) {
-                when(chartType) {
-                    MonitorGraphType.ALTITUDE.ordinal -> {
-                        scaffoldHeight = 240.dp
-                        titleValue = locationAltitude.format(0)
-                        titleUnit = "m"
-                        val pointsAltiReversed = ArrayList<DataPointWithDist>()
-                        plotResult.lines.dataPointsAlti.forEachIndexed { i, dp ->
-                            pointsAltiReversed.add(
-                                DataPointWithDist(
-                                    plotResult.distKM - dp.x,
-                                    dp.y,
-                                    dp.geoLocation,
-                                    System.currentTimeMillis(),
-                                    0.0
-                                )
-                            )
-                        }
-                        val pointsSrtmReversed = ArrayList<DataPointWithDist>()
-                        plotResult.lines.dataPointsSrtm.forEachIndexed { i, dp ->
-                            pointsSrtmReversed.add(
-                                DataPointWithDist(
-                                    plotResult.distKM - dp.x,
-                                    dp.y,
-                                    dp.geoLocation,
-                                    System.currentTimeMillis(),
-                                    0.0
-                                )
-                            )
-                        }
 
-                        LineGraphAlti(
-                            Pair(pointsAltiReversed, pointsSrtmReversed),
-                            inverseXAxis = true,
-                            //Pair(plotResult.lines.first, plotResult.lines.second),
-                            onSelect = { alti, ll, time ->
-                                titleValue = alti
+            Column(
+                modifier = Modifier
+                    .padding(
+                        start = 5.dp, end = 5.dp, bottom = 5.dp,
+                        top = paddingValues.calculateTopPadding()
+                    )
+            ) {
+                when (uiState.chartType) {
+                    MonitorGraphType.ALTITUDE -> {
+                        onScaffoldHeightChange(240.dp)
+                        AltitudeGraphSection(
+                            plotResult = uiState.plotResult,
+                            onSelect = { alti, ll ->
+                                onTitleValueChange(alti)
                                 map(ll)
-                            })
-                    }
-                    MonitorGraphType.SPEED.ordinal -> {
-                        scaffoldHeight = 240.dp
-                        titleValue = currentSpeed.format(0)
-                        titleUnit = "KmH"
-                        val pointsSpeedReversed = ArrayList<DataPointWithDist>()
-                        val pointsSpeedAvgReversed = ArrayList<DataPointWithDist>()
-                        plotResult.lines.dataPointsSpeed.forEachIndexed { i, dp ->
-                            pointsSpeedReversed.add(
-                                DataPointWithDist(
-                                    plotResult.distKM - dp.x,
-                                    dp.y,
-                                    dp.geoLocation,
-                                    System.currentTimeMillis(),
-                                    0.0
-                                )
-                            )
-                        }
-                        plotResult.lines.dataPointsSpeedAvg.forEachIndexed { i, dp ->
-                            pointsSpeedAvgReversed.add(
-                                DataPointWithDist(
-                                    plotResult.distKM - dp.x,
-                                    dp.y,
-                                    dp.geoLocation,
-                                    System.currentTimeMillis(),
-                                    0.0
-                                )
-                            )
-                        }
-                        LineGraphSpeed(
-                            Pair(pointsSpeedReversed, pointsSpeedAvgReversed),
-                            inverseXAxis = true,
-                            onSelect = { speed, ll, _ ->
-                                titleValue = speed
-                                //locTime = time
-                                map(ll)
-                            })
-                    }
-                    MonitorGraphType.COMPASS.ordinal -> {
-                        val destinationLatLng: LatLng? = CompassViewModel.destination.collectAsState().value
-                        scaffoldHeight = if (lllh.isNullOrEmpty() && destinationLatLng == null) 240.dp else 300.dp
-                        titleValue = stringResource(id = directionCardinal.dirName)//currentBearing.format(0)
-                        titleUnit = ""
-                        if (lllh.isNullOrEmpty())
-                            CompassViewModel.setCurrentLocation(latLng, altitude?.toInt())
-                        Box(modifier = Modifier.fillMaxWidth().align(alignment = Alignment.CenterHorizontally)) {
-                            lllh?.let {
-                                // lllh in km steps, no further simplification necessary
-                                val i = nearestRoutePoint(locationBearing.toDouble(), latLng!!, lllh)
-                                var poiEntity: PoiEntity? = null
-                                if (lllh.isNotEmpty()) {
-                                    var poiBmp : Bitmap? = null
-                                    latLng?.let { currentPos ->
-                                        poiRepository.getNearestPoi(currentPos.latitude, currentPos.longitude, 20000.0) { nearest ->
-                                            if (nearest != null) {
-                                                //Timber.i("Nearest: ${nearest.name} (${nearest.category})")
-                                                val imageId = poiCategoryMap.value[nearest.category]?.first
-                                                imageId?.let { id ->
-                                                    poiBmp = Helpers.getBitmapFromVectorDrawable(context, id)
-                                                            //BitmapFactory.decodeResource(resources, id)
-                                                    //Timber.i("poiBmp: $poiBmp")
-                                                    poiEntity = nearest
-                                                    //Timber.i("nearest: $nearest")
-                                                }?: Timber.e("imageId is null")
-                                            }
-                                            //val flagBmp = Icons.Filled.Flag.toBitmap(width = 24.dp, height = 24.dp, layoutDirection = LayoutDirection.Ltr)
-                                            val b = createRouteBitmap(lllh, LatLng(latitudeModel.value, longitudeModel.value),
-                                                (160 * density).toInt(),
-                                                (160 * density).toInt(), posBmp, i, currentBearing,
-                                                if (poiBmp.isNotNull()) poiEntity else null, poiBmp )
-                                            CompassViewModel.setHaircrossThumbnail(b)
-                                            CompassViewModel.setDestination(lllh[i].latLngGms, lllh[i].altitude.toInt())
-                                            CompassViewModel.setDistance(lllh.getDistanceFromLllh())
-                                            highlightRoutePoint(i)
-                                            CompassViewModel.setCurrentLocation(latLng, altitude?.toInt())
-                                            CompassViewModel.setNearestPoiName(poiEntity?.name)
-                                            CompassViewModel.setpoiBmp(poiBmp)
-                                        }
-                                    }
-
-                                    CompassScreen(
-                                        currentBearing.toInt(),
-                                        if (it.isNotEmpty()) i.toDouble() / lllh.size.toDouble() else 0.0
-                                    )
-                                } else {
-                                    //Text(text = stringResource(R.string.no_route_loaded))
-                                    CompassViewModel.setCurrentLocation(latLng, altitude?.toInt())
-                                    CompassScreen(currentBearing.toInt(), 0.0)
-                                }
-                            } ?: CompassScreen(currentBearing.toInt(), 0.0)
-                            //DrawLine()
-                        }
-                    }
-                    MonitorGraphType.SPEEDOMETER.ordinal -> {
-                        //scaffoldHeight = 260.dp
-                        titleValue = currentSpeed.format(0)
-                        titleUnit = "KmH"
-                        val sharedPreferences = getDefaultSharedPreferences(context)
-                        val s1s2 = sharedPreferences.getString(
-                            stringResource(R.string.setting_locomotion),
-                            Const.DEFAULT_LOCOMOTION
+                            }
                         )
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            SpeedView(
-                                maxSpeed = when (s1s2) {
-                                    "0.0" -> 10f
-                                    "0.1" -> 10f
-                                    "1.1" -> 50f
-                                    "1.0" -> 50f
-                                    "2.1" -> 200f
-                                    "2.0" -> 200f
-                                    "3.1" -> 1200f
-                                    "3.0" -> 1200f
-                                    else -> 100f
-                                }, marksCount = when (s1s2) {
-                                    "0.0" -> 4
-                                    "0.1" -> 4
-                                    "1.1" -> 4
-                                    "1.0" -> 4
-                                    "2.1" -> 9
-                                    "2.0" -> 9
-                                    "3.1" -> 9
-                                    "3.0" -> 9
-                                    else -> 9
-                                },
-                                modifier = Modifier.padding(top = 4.dp)
-                                    .size(150.dp).align(alignment = Alignment.Center),
-                                unitUnderSpeed = true,
-                                sections = sections,
-                                speed = currentSpeed
-                            )
-                        }
+                    }
+
+                    MonitorGraphType.SPEED -> {
+                        onScaffoldHeightChange(240.dp)
+                        SpeedGraphSection(
+                            plotResult = uiState.plotResult,
+                            onSelect = { speed, ll ->
+                                onTitleValueChange(speed)
+                                map(ll)
+                            }
+                        )
+                    }
+
+                    MonitorGraphType.COMPASS -> {
+                        val destinationLatLng by CompassViewModel.destination.collectAsState()
+                        onScaffoldHeightChange(if (lllh.isNullOrEmpty() && destinationLatLng == null) 240.dp else 300.dp)
+
+                        CompassSectionContent(
+                            lllh = lllh,
+                            currentLatLng = uiState.latLng,
+                            currentAltitude = uiState.locationAltitude,
+                            currentBearing = currentBearing,
+                            posBmp = posBmp,
+                            density = density,
+                            updateNearestPoi = updateNearestPoi,
+                            highlightRoutePoint = highlightRoutePoint
+                        )
+                    }
+
+                    MonitorGraphType.SPEEDOMETER -> {
+                        SpeedometerSection(currentSpeed = currentSpeed)
                     }
                 }
             }
         } else {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Box(
+            EmptyStateCard(paddingValues)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MonitorTopBar(
+    chartType: MonitorGraphType,
+    titleValue: String,
+    titleUnit: String,
+    onChartTypeChange: (MonitorGraphType) -> Unit,
+    onBack: () -> Unit
+) {
+    TopAppBar(
+        title = {},
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+        actions = {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                IconButton(modifier = Modifier.weight(0.15f), onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Go back home"
+                    )
+                }
+                ChartTypeButton(
+                    modifier = Modifier.weight(0.2f),
+                    type = MonitorGraphType.ALTITUDE,
+                    isSelected = chartType == MonitorGraphType.ALTITUDE,
+                    icon = Icons.Outlined.AreaChart,
+                    label = stringResource(R.string.elevation_short),
+                    onClick = { onChartTypeChange(MonitorGraphType.ALTITUDE) }
+                )
+                ChartTypeButton(
+                    modifier = Modifier.weight(0.2f),
+                    type = MonitorGraphType.SPEED,
+                    isSelected = chartType == MonitorGraphType.SPEED,
+                    icon = Icons.Outlined.AreaChart,
+                    label = stringResource(R.string.speed_short),
+                    onClick = { onChartTypeChange(MonitorGraphType.SPEED) }
+                )
+                ChartTypeButton(
+                    modifier = Modifier.weight(0.2f),
+                    type = MonitorGraphType.SPEEDOMETER,
+                    isSelected = chartType == MonitorGraphType.SPEEDOMETER,
+                    icon = Icons.Outlined.Speed,
+                    label = stringResource(R.string.speed_short),
+                    onClick = { onChartTypeChange(MonitorGraphType.SPEEDOMETER) }
+                )
+                ChartTypeButton(
+                    modifier = Modifier.weight(0.2f),
+                    type = MonitorGraphType.COMPASS,
+                    isSelected = chartType == MonitorGraphType.COMPASS,
+                    icon = Icons.Outlined.Directions,
+                    label = stringResource(R.string.directions_short),
+                    onClick = { onChartTypeChange(MonitorGraphType.COMPASS) }
+                )
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = paddingValues.calculateTopPadding())
+                        .padding(start = 4.dp)
+                        .weight(0.25f)
+                        .align(Alignment.CenterVertically)
                 ) {
                     Text(
-                        text = stringResource(R.string.no_locations),
-                        modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        text = titleValue,
+                        style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center
                     )
+                    if (chartType != MonitorGraphType.COMPASS) {
+                        Text(
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            text = titleUnit,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
-    }
+    )
 }
 
-/**
- * Elevation chart for locations
- */
-fun createPlotDataResult(
-    locationRepository: LocationRepository,
-    startTime: Long
-): PlotResult {
-    val date = Date(startTime)
-    val parts  = df.format(date).split(" ").toMutableList()
-    val time = parts.lastOrNull()
-    //Timber.i("startTime: $time")
-    val locationsEntities = locationRepository.getLocationsAscFromTime(startTime) //locationRepository.getLocationsAsc()
-    val pointsGps = ArrayList<DataPointWithDist>()
-    val pointsSrtm = ArrayList<DataPointWithDist>()
-    val pointsSpeed = ArrayList<DataPointWithDist>()
-    val pointsSpeedAvg = ArrayList<DataPointWithDist>()
-    var tileName = ""
-    val lllh = ArrayList<LatLngH>()
-    for (locationEntity in locationsEntities) {
-        val latLng = LatLngH(locationEntity.latitude, locationEntity.longitude)
-        latLng.let {
-            lllh.add(LatLngH(it.latitude, it.longitude, 0.0))
-            if (tileName.isEmpty()) {
-                tileName = Helpers.getTileName(it.latitude, it.longitude)
-            }
-        }
-    }
-    Timber.i("tileName $tileName")
-    var distKM = 0F
-    var lastLatLng: LatLng? = null
-    //for (locationEntity in locationsEntities) {
-    locationsEntities.forEachIndexed { index, locationEntity ->
-        val result =
-            addDatapoint(
-                pointsGps, pointsSpeed, pointsSpeedAvg, startTime,
-                lastLatLng,
-                locationEntity,
-                distKM
+@Composable
+private fun ChartTypeButton(
+    modifier: Modifier = Modifier,
+    type: MonitorGraphType,
+    isSelected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        modifier = modifier,
+        onClick = onClick,
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = Color.Black,
+            containerColor = if (isSelected) Color.Cyan else Color.Transparent
+        ),
+        shape = MaterialTheme.shapes.small,
+        border = if (isSelected) ButtonDefaults.outlinedButtonBorder() else null
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, null, modifier = Modifier.scale(1.5f))
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1
             )
-        lastLatLng = result.first
-        distKM = result.second
-    }
-    val lines = GraphDataPoints(pointsGps, pointsSrtm, pointsSpeed, pointsSpeedAvg)
-    return PlotResult(lines, distKM)
-}
-
-fun nearestRoutePoint(
-    heading: Double,
-    latLong: LatLng,
-    listLatLng: List<LatLngH>
-): Int {
-    var prevDist = Int.MAX_VALUE
-    var routePointer = 0
-    for (i in 0..<listLatLng.size) {
-        val newDist = SphericalUtil.computeDistanceBetween(listLatLng[i].latLngGms, latLong).toInt()
-        var headingPoint = SphericalUtil.computeHeading(latLong, listLatLng[i].latLngGms)
-        if (headingPoint < 0) headingPoint += 360
-        //Timber.i("$i headingPoint: $headingPoint heading: $heading")
-        if (headingPoint > heading - 90 && headingPoint < heading + 90
-            && newDist < prevDist) {
-            prevDist = newDist
-            routePointer = i
         }
     }
-    //Timber.i("nearestRoutePoint route_pointer: $routePointer")
-    return routePointer
 }
 
-data class PlotResult(val lines: GraphDataPoints, var distKM: Float)
-data class GraphDataPoints(val dataPointsAlti: List<DataPointWithDist>,
-                           val dataPointsSrtm: List<DataPointWithDist>,
-                           val dataPointsSpeed: List<DataPointWithDist>,
-                           val dataPointsSpeedAvg: List<DataPointWithDist>)
+@Composable
+private fun AltitudeGraphSection(
+    plotResult: PlotResult,
+    onSelect: (String, LatLng?) -> Unit
+) {
+    val pointsAltiReversed = remember(plotResult.lines.dataPointsAlti, plotResult.distKM) {
+        plotResult.lines.dataPointsAlti.map { dp ->
+            DataPointWithDist(plotResult.distKM - dp.x, dp.y, dp.geoLocation, dp.time, dp.distKm)
+        }
+    }
+    val pointsSrtmReversed = remember(plotResult.lines.dataPointsSrtm, plotResult.distKM) {
+        plotResult.lines.dataPointsSrtm.map { dp ->
+            DataPointWithDist(plotResult.distKM - dp.x, dp.y, dp.geoLocation, dp.time, dp.distKm)
+        }
+    }
 
-fun addDatapoint(
-    pointsGps: MutableList<DataPointWithDist>?,
-    pointsSpeed: MutableList<DataPointWithDist>?,
-    pointsSpeedAvg: MutableList<DataPointWithDist>?,
-    startTime: Long,
-    lastLatLng: LatLng?,
-    locationEntity: LocationEntity,
-    distKM: Float?
-): Triple<LatLng, Float, Double> {
-    val date = Date(startTime)
-    val parts  = df.format(date).split(" ").toMutableList()
-    val time = parts.lastOrNull()
-    //Timber.i("startTime: $time")
-    //Timber.i("pointsGps: ${pointsGps?.size}")
-    var newDistKm = 0.0F
-    if (distKM != null && !distKM.isNaN())
-        newDistKm = distKM
-    val latLng = LatLng(locationEntity.latitude, locationEntity.longitude)
-    if (lastLatLng != null) {
-        newDistKm = newDistKm.plus(
-            0.001F * SphericalUtil.computeDistanceBetween(
-                LatLng(
-                    locationEntity.latitude,
-                    locationEntity.longitude
-                ), lastLatLng
-            ).toFloat()
+    LineGraphAlti(
+        lines = Pair(pointsAltiReversed, pointsSrtmReversed),
+        inverseXAxis = true,
+        onSelect = { alti, ll, _ -> onSelect(alti, ll) }
+    )
+}
+
+@Composable
+private fun SpeedGraphSection(
+    plotResult: PlotResult,
+    onSelect: (String, LatLng?) -> Unit
+) {
+    val pointsSpeedReversed = remember(plotResult.lines.dataPointsSpeed, plotResult.distKM) {
+        plotResult.lines.dataPointsSpeed.map { dp ->
+            DataPointWithDist(plotResult.distKM - dp.x, dp.y, dp.geoLocation, dp.time, dp.distKm)
+        }
+    }
+    val pointsSpeedAvgReversed = remember(plotResult.lines.dataPointsSpeedAvg, plotResult.distKM) {
+        plotResult.lines.dataPointsSpeedAvg.map { dp ->
+            DataPointWithDist(plotResult.distKM - dp.x, dp.y, dp.geoLocation, dp.time, dp.distKm)
+        }
+    }
+
+    LineGraphSpeed(
+        lines = Pair(pointsSpeedReversed, pointsSpeedAvgReversed),
+        inverseXAxis = true,
+        onSelect = { speed, ll, _ -> onSelect(speed, ll) }
+    )
+}
+
+@Composable
+private fun CompassSectionContent(
+    lllh: List<LatLngH>?,
+    currentLatLng: LatLng?,
+    currentAltitude: Double,
+    currentBearing: Float,
+    posBmp: Bitmap,
+    density: Float,
+    updateNearestPoi: (LatLng, (PoiEntity?, Bitmap?) -> Unit) -> Unit,
+    highlightRoutePoint: (Int) -> Unit
+) {
+    if (currentLatLng == null) return
+
+    LaunchedEffect(currentLatLng, lllh, currentBearing) {
+        if (!lllh.isNullOrEmpty()) {
+            val i = nearestRoutePoint(currentBearing.toDouble(), currentLatLng, lllh)
+            updateNearestPoi(currentLatLng) { poiEntity, poiBmp ->
+                val b = createRouteBitmap(
+                    lllh, currentLatLng,
+                    (160 * density).toInt(),
+                    (160 * density).toInt(), posBmp, i, currentBearing,
+                    poiEntity, poiBmp
+                )
+                CompassViewModel.setHaircrossThumbnail(b)
+                CompassViewModel.setDestination(lllh[i].latLngGms, lllh[i].altitude.toInt())
+                CompassViewModel.setDistance(lllh.getDistanceFromLllh())
+                highlightRoutePoint(i)
+                CompassViewModel.setCurrentLocation(currentLatLng, currentAltitude.toInt())
+                CompassViewModel.setNearestPoiName(poiEntity?.name)
+                CompassViewModel.setpoiBmp(poiBmp)
+            }
+        } else {
+            CompassViewModel.setCurrentLocation(currentLatLng, currentAltitude.toInt())
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        val progress = if (!lllh.isNullOrEmpty()) {
+            val i = nearestRoutePoint(currentBearing.toDouble(), currentLatLng, lllh)
+            i.toDouble() / lllh.size.toDouble()
+        } else 0.0
+        
+        CompassScreen(currentBearing.toInt(), progress)
+    }
+}
+
+@Composable
+private fun SpeedometerSection(currentSpeed: Float) {
+    val context = LocalContext.current
+    val sharedPreferences = remember { getDefaultSharedPreferences(context) }
+    val locomotion = sharedPreferences.getString(
+        stringResource(R.string.setting_locomotion),
+        Const.DEFAULT_LOCOMOTION
+    )
+
+    val maxSpeed = when (locomotion) {
+        "0.0", "0.1" -> 10f
+        "1.1", "1.0" -> 50f
+        "2.1", "2.0" -> 200f
+        "3.1", "3.0" -> 1200f
+        else -> 100f
+    }
+    val marksCount = when (locomotion) {
+        "0.0", "0.1", "1.1", "1.0" -> 4
+        else -> 9
+    }
+
+    val sections: ImmutableList<Section> = remember {
+        persistentListOf(Section(0f, 1f, Color.Red, width = 20.dp))
+    }
+
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        SpeedView(
+            maxSpeed = maxSpeed,
+            marksCount = marksCount,
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .size(150.dp),
+            unitUnderSpeed = true,
+            sections = sections,
+            speed = currentSpeed
         )
     }
-    //Timber.i("newDistKm $newDistKm")
-    val dpAltiGps = DataPointWithDist(
-        newDistKm,
-        locationEntity.altitude.toFloat(), latLng, time = locationEntity.time,
-        distKm = newDistKm.toDouble()
-    )
-    pointsGps?.add(dpAltiGps)
-    //    pointsGps?.add(0, dpAltiGps)
-    // val dpAltiSrtm = DataPoint(newDistKm, srtmAlti.toFloat(), latLng, locationEntity.time)
-    // pointsSrtm?.add(dpAltiSrtm)
-//    pointsSrtm?.add(0, dpAltiSrtm)
-
-    val dpSpeed = DataPointWithDist(newDistKm, locationEntity.speed, latLng, locationEntity.time, newDistKm.toDouble())
-    pointsSpeed?.add(dpSpeed)
-    val deltaTime = locationEntity.time - startTime
-    val dpSpeedAvgY = if (deltaTime == 0L) 0f else 3600000f * newDistKm / deltaTime
-    val dpSpeedAvg = DataPointWithDist(newDistKm, dpSpeedAvgY, latLng, locationEntity.time, newDistKm.toDouble())
-    pointsSpeedAvg?.add((dpSpeedAvg))
-    //Timber.i("deltaTime:$deltaTime dpSpeed:${dpSpeed.y} dpSpeedAvg:${dpSpeedAvgY}")
-
-    return Triple(latLng, newDistKm, locationEntity.altitude)
 }
 
-fun createRouteBitmap(
-    lllh: List<LatLngH>,
-    currentLatLng: LatLng,
-    width: Int,
-    height: Int,
-    posBmp: Bitmap,
-    routePoint: Int,
-    currentBearing: Float,
-    poiEntity: PoiEntity?,
-    poiBmp: Bitmap?
-): Bitmap {
-    //val lllh40 = lllh.simplifyToTargetCount(40)
-    val gpsRoute = lllh.map { GPSPoint(it.latitude, it.longitude, it.altitude) }
-    val bitmap = createBitmap(width, height)
-    val canvas = android.graphics.Canvas(bitmap)
+@Composable
+private fun EmptyStateCard(paddingValues: PaddingValues) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = paddingValues.calculateTopPadding(), bottom = 16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.no_locations),
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
 
-    // Optional: Hintergrundfarbe setzen (z.B. transparent oder leichtes Grau)
-    canvas.drawColor("#F5F5F5".toColorInt())
-
-    drawRouteThumbnail(canvas, width, height, gpsRoute,
-        GPSPoint(currentLatLng.latitude, currentLatLng.longitude, 0.0),
-        posBmp, routePoint, currentBearing, poiEntity, poiBmp)
-    return bitmap
+@Composable
+fun DrawLine(modifierWeight: Float, xFraction: Float = 0.5f, yFraction: Float = 0.5f) {
+    Column(
+        modifier = Modifier.fillMaxWidth(modifierWeight),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val canvasWidth = size.width
+            val canvasHeight = size.height
+            drawLine(
+                start = Offset(x = canvasWidth, y = yFraction * canvasHeight),
+                end = Offset(x = 0f, y = yFraction * canvasHeight),
+                color = Color.Red,
+                strokeWidth = 2F
+            )
+            drawLine(
+                start = Offset(x = xFraction * canvasWidth, y = 0f),
+                end = Offset(x = xFraction * canvasWidth, y = canvasHeight),
+                color = Color.Red,
+                strokeWidth = 2F
+            )
+        }
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
 internal fun MonitorGraphLocationsPreview() {
-    val samplePoints = arrayListOf(
+    val samplePoints = listOf(
         DataPointWithDist(0f, 100f, LatLng(0.0, 0.0), 0L, 0.0),
         DataPointWithDist(1f, 110f, LatLng(0.01, 0.01), 1000L, 1.0),
         DataPointWithDist(2f, 105f, LatLng(0.02, 0.02), 2000L, 2.0)
@@ -716,10 +543,23 @@ internal fun MonitorGraphLocationsPreview() {
         ),
         distKM = 2f
     )
+    val uiState = MonitorUiState(
+        plotResult = plotResult,
+        locationAltitude = 100.0,
+        locationSpeed = 10.0f,
+        locationBearing = 45f,
+        latLng = LatLng(0.0, 0.0),
+        titleValue = "100",
+        titleUnit = "m"
+    )
     RamaniTheme {
-        MonitorGraphLocations(null,
-            _plotResult = plotResult,
-            startTime = System.currentTimeMillis(),
+        MonitorGraphLocationsContent(
+            uiState = uiState,
+            lllh = null,
+            onChartTypeChange = {},
+            onScaffoldHeightChange = {},
+            onTitleValueChange = {},
+            updateNearestPoi = { _, _ -> },
             result = {},
             map = {},
             highlightRoutePoint = {}
@@ -730,10 +570,15 @@ internal fun MonitorGraphLocationsPreview() {
 @Preview(showBackground = true, name = "Empty State")
 @Composable
 internal fun MonitorGraphLocationsEmptyPreview() {
+    val uiState = MonitorUiState()
     RamaniTheme {
-        MonitorGraphLocations(null,
-            _plotResult = PlotResult(GraphDataPoints(emptyList(), emptyList(), emptyList(), emptyList()), 0f),
-            startTime = System.currentTimeMillis(),
+        MonitorGraphLocationsContent(
+            uiState = uiState,
+            lllh = null,
+            onChartTypeChange = {},
+            onScaffoldHeightChange = {},
+            onTitleValueChange = {},
+            updateNearestPoi = { _, _ -> },
             result = {},
             map = {},
             highlightRoutePoint = {}
@@ -741,36 +586,3 @@ internal fun MonitorGraphLocationsEmptyPreview() {
     }
 }
 
-@Composable
-fun DrawLine(modifierWeight: Float, xFraction: Float = 0.5f, yFraction: Float = 0.5f) {
-    Column(
-        modifier = Modifier.fillMaxWidth(modifierWeight),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-
-        // Creating a Canvas for drawing a straight
-        // line between two points x and y
-        Canvas(modifier = Modifier.fillMaxSize()) {
-
-            // Fetching width and height for
-            // setting start x and end y
-            val canvasWidth = size.width
-            val canvasHeight = size.height
-
-            // drawing a line between start(x,y) and end(x,y)
-            drawLine(
-                start = Offset(x = canvasWidth, y = yFraction * canvasHeight),
-                end = Offset(x = 0f, y = yFraction * canvasHeight),
-                color = Color.Red,
-                strokeWidth = 2F
-            )
-            drawLine(
-                start = Offset(x = xFraction * canvasWidth, y = 0f),
-                end = Offset(x = xFraction* canvasWidth, y = canvasHeight),
-                color = Color.Red,
-                strokeWidth = 2F
-            )
-        }
-    }
-}

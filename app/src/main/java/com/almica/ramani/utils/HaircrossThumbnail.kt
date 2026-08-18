@@ -52,7 +52,7 @@ class HaircrossThumbnail(
     init {
         val llboundsBuilder: LatLngBounds.Builder =
             LatLngBounds.Builder()
-        if (sites != null && sites.isNotEmpty()) {
+        if (!sites.isNullOrEmpty()) {
             distance = sites.getDistanceFromLllh()
             for (latLngH: LatLngH in sites)
                 llboundsBuilder.include(latLngH.latLng)
@@ -130,8 +130,8 @@ class HaircrossThumbnail(
         val thumbCanvas = Canvas(thumbBitmap)
         thumbCanvas.drawColor(ContextCompat.getColor(context, android.R.color.transparent))
         thumbCanvas.scale(1f, -1f, 0.5f * size, 0.5f * size) // flip
-        GpsViewModel.longitude.value?.let { modelLongitude ->
-            GpsViewModel.latitude.value?.let { modelLatitude ->
+        GpsViewModel.longitude.value.let { modelLongitude ->
+            GpsViewModel.latitude.value.let { modelLatitude ->
                 val hairCrossX =
                     (xOffset + margin + sizeMinusMargins * ((longitudeToX(modelLongitude) - minX) / drawScale)).toFloat()
                 val hairCrossY =
