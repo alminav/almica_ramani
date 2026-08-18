@@ -819,7 +819,7 @@ fun checkLayerVisibility(map: MapLibreMap?, filter: String): Boolean {
 }
 
 fun changeLayerVisibility(map: MapLibreMap?, visibilityProperty: String, filter: String): Boolean {
-    //Timber.i( "filter: $filter $visibilityProperty")
+    Timber.i( "filter: $filter $visibilityProperty")
     var triggerRepaint = false
     map?.style?.layers?.forEach { layer ->
 //        Timber.i( "layer id: ${layer.id}")

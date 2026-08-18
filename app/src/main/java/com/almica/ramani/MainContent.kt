@@ -212,7 +212,29 @@ fun MainScaffoldContent(
                     }, {
                         viewModel?.setChartRoute(null)
                     })
-            } else Box(Modifier.size(1.dp)) // Placeholder
+            } else if (uiState.toggleButtonsBottomBar &&
+                uiState.activeOverlay != OverlayType.ROUTE_FOLDERS
+                && uiState.activeOverlay != OverlayType.POI_DATABASE
+                && uiState.activeOverlay != OverlayType.ROUTE_FILES
+                && uiState.activeOverlay != OverlayType.ADDITIONAL_MAPS
+                && uiState.activeOverlay != OverlayType.PREFERENCES
+                && uiState.activeOverlay != OverlayType.WEATHER
+                && uiState.activeOverlay != OverlayType.SAT_STATUS) {
+                    MainBottomButtonBar(
+                        bottomBarVisibility = true,
+                        loadedRouteEntity = uiState.loadedRouteEntity,
+                        logCount = uiState.logCount,
+                        setRouteMonitorMenu = { viewModel?.setOverlay(OverlayType.ROUTE_MONITOR) },
+                        setHaircrossMenu = { viewModel?.setOverlay(OverlayType.HAIRCROSS) },
+                        setMapMenu = { viewModel?.setOverlay(OverlayType.MAP_MENU) },
+                        setPoiDatabase = { viewModel?.setOverlay(OverlayType.POI_DATABASE) },
+                        setRouteFiles = { viewModel?.setOverlay(OverlayType.ROUTE_FILES) },
+                        setLocationsMenu = { viewModel?.setOverlay(OverlayType.LOCATIONS) },
+                        dimmerState = { viewModel?.setDimmer(it) }
+                    )
+
+            }
+            else Box(Modifier.size(1.dp)) // Placeholder
         },
         sheetPeekHeight = uiState.sheetPeekHeight,
         sheetDragHandle = null,

@@ -52,12 +52,11 @@ fun MainBottomButtonBar(bottomBarVisibility: Boolean,
                         setLocationsMenu: (Boolean) -> Unit,
                         dimmerState: (Boolean) -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.align(alignment = Alignment.BottomCenter)) {
             AnimatedVisibility(
                 visible = bottomBarVisibility,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 50.dp)
+//                modifier = Modifier
+//                    .align(Alignment.BottomCenter)
+//                    .padding(bottom = 50.dp)
             ) {
                 Column {
                     Row(modifier = Modifier.align(Alignment.End)) {
@@ -163,7 +162,7 @@ fun MainBottomButtonBar(bottomBarVisibility: Boolean,
                     }
                 }
             }
-        }
+
     }
 }
 

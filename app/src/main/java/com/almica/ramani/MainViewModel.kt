@@ -102,6 +102,8 @@ data class MainUiState(
 ) {
     val sheetPeekHeight: Dp
         get() = when {
+            toggleButtonsBottomBar ->
+            if (polygonState.polygonData != null) Const.TOGGLE_BUTTONS_PEEK_HEIGHT_LARGE else Const.TOGGLE_BUTTONS_PEEK_HEIGHT_SMALL
             chartRouteEntity != null -> Const.ELEVATION_CHART_PEEK_HEIGHT
             gradientRouteEntity != null -> Const.GRADIENT_CHART_PEEK_HEIGHT
             else -> Const.HIDDEN_PEEK_HEIGHT
@@ -232,6 +234,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 m.triggerRepaint()
             }
         }
+        setToggleButtonsBottomBar(false)
         closeOverlay()
     }
 

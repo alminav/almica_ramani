@@ -221,7 +221,7 @@ fun BoxScope.MapControlsLayerContent(
         setRenderMode = onRenderModeMapChange
     )
     //Timber.i("logCount: $logCount")
-    MainBottomButtonBar(
+    /*MainBottomButtonBar(
         showRouteFiles.not().and(toggleButtonsBottomBar)
             .and(gradientRouteEntity == null)
             .and(chartRouteEntity == null).and(!showGhFolders)
@@ -238,7 +238,7 @@ fun BoxScope.MapControlsLayerContent(
         setRouteFiles = { setOverlay(if (it) OverlayType.ROUTE_FILES else OverlayType.NONE) },
         setLocationsMenu = { setOverlay(if (it) OverlayType.LOCATIONS else OverlayType.NONE) },
         dimmerState = { setDimmer(it) }
-    )
+    )*/
 }
 
 @Preview(showBackground = true)

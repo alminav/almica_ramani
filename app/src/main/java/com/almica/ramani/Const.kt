@@ -22,6 +22,8 @@ class Const {
 
         val ELEVATION_CHART_PEEK_HEIGHT = 300.dp
         val GRADIENT_CHART_PEEK_HEIGHT = 200.dp
+        val TOGGLE_BUTTONS_PEEK_HEIGHT_LARGE = 100.dp
+        val TOGGLE_BUTTONS_PEEK_HEIGHT_SMALL = 60.dp
         val HIDDEN_PEEK_HEIGHT = 0.dp
 
         /**
