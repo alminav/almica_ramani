@@ -2,6 +2,22 @@
 
 All notable changes to the **Ramani** project will be documented in this file.
 
+## [Unreleased] - 2026-08-19
+
+### ✨ Features & Improvements
+- **Elevation Chart Updates**: Integrated current position markers into the `ElevationChart` for real-time tracking.
+- **Adaptive Bottom Sheet**: Migrated `MonitorGraphLocations` to a `BottomSheetScaffold`. Peek height now dynamically adjusts based on the active overlay and graph type.
+- **Haircross Refinement**: Adjusted map center offset (`hairCrossOffsetFraction`) during location statistic viewing for better visibility.
+
+### 🏗️ ViewModel Logic & Optimization
+- **State Atomicity**: Refactored `MainViewModel#updatePolygon` to perform atomic state updates, reducing unnecessary UI recompositions.
+- **Automatic Graph Switching**: Added logic to automatically toggle between `COMPASS` and `COMPASS_THUMBNAIL` modes based on route activity.
+- **Overlay Management**: Improved reset logic for interaction states when switching between UI layers.
+
+### 🐛 Bug Fixes
+- **State Sync**: Fixed synchronization issues between graph types and loaded route data.
+- **UI Layout**: Resolved button overlap issues in the bottom bar during route loading.
+
 ## [Unreleased] - 2026-08-06
 
 ### 🏗️ Refactoring & Architecture
