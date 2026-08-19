@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,14 +16,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AreaChart
 import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -36,18 +35,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -58,47 +49,25 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.toColorInt
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.Const
-import com.almica.ramani.GpsViewModel
-import com.almica.ramani.Helpers
 import com.almica.ramani.LatLngH
 import com.almica.ramani.R
-import com.almica.ramani.compass.CardinalDirection
 import com.almica.ramani.compass.CompassScreen
 import com.almica.ramani.compass.CompassViewModel
-import com.almica.ramani.locations.LocationRepository
 import com.almica.ramani.pois.PoiEntity
-import com.almica.ramani.pois.PoiRepository
 import com.almica.ramani.speedometer.SpeedView
 import com.almica.ramani.speedometer.components.Section
 import com.almica.ramani.ui.theme.RamaniTheme
-import com.almica.ramani.utils.KiThumbnailer.GPSPoint
-import com.almica.ramani.utils.KiThumbnailer.drawRouteThumbnail
-import com.almica.ramani.utils.format
 import com.almica.ramani.utils.getDistanceFromLllh
-import com.almica.ramani.utils.isNotNull
 import com.almica.ramani.utils.toBitmap
-import com.almica.room.data.location.LocationEntity
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.SphericalUtil
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.almica.ramani.utils.toBitmap
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import timber.log.Timber
-import java.util.concurrent.Executors
 
 private const val logtag = "MonitorGraphLocations"
 
@@ -111,6 +80,7 @@ internal fun MonitorGraphLocations(
     result: (LatLng?) -> Unit,
     map: (LatLng?) -> Unit,
     highlightRoutePoint: (Int) -> Unit,
+    onChartTypeChange: (MonitorGraphType) -> Unit = {},
     viewModel: MonitorViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -122,7 +92,10 @@ internal fun MonitorGraphLocations(
     MonitorGraphLocationsContent(
         uiState = uiState,
         lllh = lllh,
-        onChartTypeChange = { viewModel.setChartType(it) },
+        onChartTypeChange = { 
+            viewModel.setChartType(it)
+            onChartTypeChange(it)
+        },
         onScaffoldHeightChange = { viewModel.setScaffoldHeight(it) },
         onTitleValueChange = { viewModel.setTitleValue(it) },
         updateNearestPoi = { pos, callback -> viewModel.updateNearestPoi(pos, callback) },
@@ -158,10 +131,11 @@ internal fun MonitorGraphLocationsContent(
                 chartType = uiState.chartType,
                 titleValue = uiState.titleValue,
                 titleUnit = uiState.titleUnit,
+                lllh = lllh,
                 onChartTypeChange = onChartTypeChange,
                 onBack = {
                     if (uiState.latLng != null)
-                        uiState.latLng?.let { result(it) }
+                        uiState.latLng.let { result(it) }
                     else
                         result(null)
                 }
@@ -210,7 +184,8 @@ internal fun MonitorGraphLocationsContent(
                         )
                     }
 
-                    MonitorGraphType.COMPASS -> {
+                    MonitorGraphType.COMPASS,
+                    MonitorGraphType.COMPASS_THUMBNAIL -> {
                         val destinationLatLng by CompassViewModel.destination.collectAsState()
                         onScaffoldHeightChange(if (lllh.isNullOrEmpty() && destinationLatLng == null) 240.dp else 300.dp)
 
@@ -243,6 +218,7 @@ private fun MonitorTopBar(
     chartType: MonitorGraphType,
     titleValue: String,
     titleUnit: String,
+    lllh: List<LatLngH>?,
     onChartTypeChange: (MonitorGraphType) -> Unit,
     onBack: () -> Unit
 ) {
@@ -284,10 +260,10 @@ private fun MonitorTopBar(
                 ChartTypeButton(
                     modifier = Modifier.weight(0.2f),
                     type = MonitorGraphType.COMPASS,
-                    isSelected = chartType == MonitorGraphType.COMPASS,
+                    isSelected = chartType == MonitorGraphType.COMPASS || chartType == MonitorGraphType.COMPASS_THUMBNAIL,
                     icon = Icons.Outlined.Directions,
                     label = stringResource(R.string.directions_short),
-                    onClick = { onChartTypeChange(MonitorGraphType.COMPASS) }
+                    onClick = { onChartTypeChange(if (lllh.isNullOrEmpty()) MonitorGraphType.COMPASS else MonitorGraphType.COMPASS_THUMBNAIL) }
                 )
                 Column(
                     modifier = Modifier

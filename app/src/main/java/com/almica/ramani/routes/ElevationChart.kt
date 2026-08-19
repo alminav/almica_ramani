@@ -29,8 +29,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import com.almica.ramani.R
+import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.ui.theme.RamaniTheme
+import com.google.android.gms.maps.model.LatLng
 import timber.log.Timber
+import kotlin.math.sqrt
 import kotlin.math.abs
 import kotlin.math.ceil
 
@@ -45,12 +48,28 @@ fun ElevationChart(
     labelColor: Color = Color.Gray,
     indicatorColor: Color = MaterialTheme.colorScheme.secondary,
     onClose: () -> Unit = {},
-    onPointSelected: (DataPoint?) -> Unit = {}
+    onPointSelected: (DataPoint?) -> Unit = {},
+    currentLatLng: LatLng? = null
 ) {
+
     Timber.i("ElevationChart: ${dataPoints.size}")
     if (dataPoints.isEmpty()) {
         Text(stringResource(R.string.elevation_chart_no_data), modifier = modifier.padding(16.dp))
         return
+    }
+
+    // State für die Interaktion (ausgewählter Punkt)
+    var selectedPoint by remember { mutableStateOf<DataPoint?>(null) }
+    // Calculate nearest DataPoint to currentLatLng and notify parent
+    LaunchedEffect(currentLatLng, dataPoints) {
+        if (currentLatLng != null) {
+            val nearest = dataPoints.minByOrNull { point ->
+                MapUtils.calculateHaversineDistance(currentLatLng,
+                    LatLng(point.latitude, point.longitude))
+            }
+            selectedPoint = nearest
+            Timber.i("selectedPoint: ${selectedPoint?.distanceKm}")
+        }
     }
 
     val textMeasurer = rememberTextMeasurer()
@@ -63,9 +82,6 @@ fun ElevationChart(
     val maxElev = elevations.maxOrNull() ?: 0f
     val minElev = elevations.minOrNull() ?: 0f
     val elevRange = (maxElev - minElev).coerceAtLeast(1f)
-
-    // State für die Interaktion (ausgewählter Punkt)
-    var selectedPoint by remember { mutableStateOf<DataPoint?>(null) }
 
     // Intervall-Berechnungen
     val intervalKm = when {
@@ -292,7 +308,7 @@ fun ElevationChart(
                 drawLine(
                     color = indicatorColor.copy(alpha = 0.6f),
                     start = Offset(indicatorX, 0f),
-                    end = Offset(indicatorX, chartHeight), strokeWidth = 1.5.dp.toPx()
+                    end = Offset(indicatorX, chartHeight), strokeWidth = 2.0.dp.toPx()
                 )
                 // Kreispunkt auf der Linie zeichnen (Äußerer Ring + Kern)
                 drawCircle(
@@ -354,7 +370,7 @@ fun ElevationChartPreview() {
             dataPoints = sampleDataPoints,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                .height(300.dp),
         )
     }
 }

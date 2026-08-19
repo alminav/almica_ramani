@@ -25,6 +25,7 @@ class Const {
         val TOGGLE_BUTTONS_PEEK_HEIGHT_LARGE = 100.dp
         val TOGGLE_BUTTONS_PEEK_HEIGHT_SMALL = 60.dp
         val HIDDEN_PEEK_HEIGHT = 0.dp
+        val LOCATIONS_CHART_PEEK_HEIGHT = 240.dp
 
         /**
          * In MapLibre Android, the rendering sequence of style layers is determined by their order in the style JSON,

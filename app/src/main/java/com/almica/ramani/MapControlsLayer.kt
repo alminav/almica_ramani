@@ -107,7 +107,7 @@ fun BoxScope.MapControlsLayerContent(
     onRecalc: () -> Unit,
     onRestart: () -> Unit
 ) {
-    val showLocationStatistic = activeOverlay == OverlayType.LOCATION_STATISTIC
+    val showLocationStatistic = false // 19aug 2026 activeOverlay == OverlayType.LOCATION_STATISTIC
     val showRouteFiles = activeOverlay == OverlayType.ROUTE_FILES
     val showGhFolders = activeOverlay == OverlayType.GH_FOLDERS
     val showPoiDatabase = activeOverlay == OverlayType.POI_DATABASE
@@ -160,7 +160,7 @@ fun BoxScope.MapControlsLayerContent(
             setMapLongClickMenu = { setOverlay(if (it) OverlayType.MAP_LONG_CLICK else OverlayType.NONE) },
             setLocationStatistic = { setOverlay(if (it) OverlayType.LOCATION_STATISTIC else OverlayType.NONE) },
             setGpsValueState = { setGpsValueState(it) },
-            showLocationStatistic,
+            false, // 19aug2026 showLocationStatistic,
             gpsValueState,
             logCount
         )

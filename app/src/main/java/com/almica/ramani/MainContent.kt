@@ -192,6 +192,7 @@ fun MainScaffoldContent(
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetContent = {
+            //Timber.i("sheetPeekHeight: ${uiState.sheetPeekHeight}")
             if (uiState.gradientRouteEntity != null) {
                 GradientChart(
                     uiState.gradientRouteEntity,
@@ -233,6 +234,20 @@ fun MainScaffoldContent(
                         dimmerState = { viewModel?.setDimmer(it) }
                     )
 
+            } else if (uiState.activeOverlay == OverlayType.LOCATION_STATISTIC) {
+                MonitorGraphLocations(
+                    lllh = uiState.polygonState.lllh,
+                    _plotResult = null,
+                    startTime = startTime,
+                    result = { viewModel?.closeOverlay() },
+                    map = { latLng ->
+                        latLng?.let {
+                            cameraPosition.value = CameraPosition(cameraPosition.value).apply { target = LatLng(it.latitude, it.longitude) }
+                        }
+                    },
+                    highlightRoutePoint = { viewModel?.setHighlightRoutePoint(it) },
+                    onChartTypeChange = { viewModel?.setMonitorGraphType(it) }
+                )
             }
             else Box(Modifier.size(1.dp)) // Placeholder
         },
@@ -372,7 +387,7 @@ fun MainScaffoldContent(
                 }
             }
 
-            ChartOverlays(uiState, viewModel, cameraPosition, startTime)
+            //ChartOverlays(uiState, viewModel, cameraPosition, startTime)
             LocationUpdatesScreen()
             if (uiState.activeOverlay != OverlayType.ROUTE_FOLDERS
                 && uiState.activeOverlay != OverlayType.POI_DATABASE
@@ -447,7 +462,8 @@ fun ChartOverlays(uiState: MainUiState, viewModel: MainViewModel?, cameraPositio
                     cameraPosition.value = CameraPosition(cameraPosition.value).apply { target = LatLng(it.latitude, it.longitude) }
                 }
             },
-            highlightRoutePoint = { viewModel?.setHighlightRoutePoint(it) }
+            highlightRoutePoint = { viewModel?.setHighlightRoutePoint(it) },
+            onChartTypeChange = { viewModel?.setMonitorGraphType(it) }
         )
     }
 }

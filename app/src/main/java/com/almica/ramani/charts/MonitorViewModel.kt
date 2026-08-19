@@ -34,7 +34,7 @@ import com.almica.ramani.utils.KiThumbnailer.drawRouteThumbnail
 import com.almica.ramani.utils.isNotNull
 
 enum class MonitorGraphType {
-    ALTITUDE, SPEED, SPEEDOMETER, COMPASS
+    ALTITUDE, SPEED, SPEEDOMETER, COMPASS, COMPASS_THUMBNAIL
 }
 
 data class PlotResult(val lines: GraphDataPoints, var distKM: Float)
@@ -156,7 +156,8 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
             MonitorGraphType.ALTITUDE -> Pair(state.locationAltitude.format(0), "m")
             MonitorGraphType.SPEED -> Pair(state.locationSpeed.format(0), "KmH")
             MonitorGraphType.SPEEDOMETER -> Pair(state.locationSpeed.format(0), "KmH")
-            MonitorGraphType.COMPASS -> {
+            MonitorGraphType.COMPASS,
+            MonitorGraphType.COMPASS_THUMBNAIL -> {
                 val cardinal = CardinalDirection.getDirectionFromAzimuthShort(state.locationBearing)
                 Pair(getApplication<Application>().getString(cardinal.dirName), "")
             }

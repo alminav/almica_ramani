@@ -12,6 +12,7 @@ import com.almica.ramani.Helpers.Companion.createMvtOfflineStyle
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.almica.ramani.MainSnackbarSelection.MapManager
+import com.almica.ramani.charts.MonitorGraphType
 import com.almica.ramani.compass.CompassViewModel
 import com.almica.ramani.geojsonMaps.GeojsonMapRepository
 import com.almica.ramani.locations.LocationRepository
@@ -87,6 +88,7 @@ data class MainUiState(
     val renderMode: Int = RenderMode.NORMAL,
     val useCyclewayOverlays: Boolean = false,
     val routesRegionFilter: String = "",
+    val monitorGraphType: MonitorGraphType = MonitorGraphType.ALTITUDE,
     val prefMaptypeKey: Int = 0,
     val toggleButtonsBottomBar: Boolean = false,
     val routesGeoJsonString: String? = null,
@@ -98,14 +100,17 @@ data class MainUiState(
     val poiEntities: List<PoiEntity> = emptyList(),
     val mvtPath: String? = null,
     val styleUriToUse: String? = null,
-    val isTrackingEnabled: Boolean = true
-) {
+    val isTrackingEnabled: Boolean = true)
+{
     val sheetPeekHeight: Dp
         get() = when {
             toggleButtonsBottomBar ->
-            if (polygonState.polygonData != null) Const.TOGGLE_BUTTONS_PEEK_HEIGHT_LARGE else Const.TOGGLE_BUTTONS_PEEK_HEIGHT_SMALL
+            if (polygonState.polygonData != null)
+                Const.TOGGLE_BUTTONS_PEEK_HEIGHT_LARGE else Const.TOGGLE_BUTTONS_PEEK_HEIGHT_SMALL
             chartRouteEntity != null -> Const.ELEVATION_CHART_PEEK_HEIGHT
             gradientRouteEntity != null -> Const.GRADIENT_CHART_PEEK_HEIGHT
+            activeOverlay == OverlayType.LOCATION_STATISTIC -> if (monitorGraphType == MonitorGraphType.COMPASS_THUMBNAIL)
+                Const.ELEVATION_CHART_PEEK_HEIGHT else Const.LOCATIONS_CHART_PEEK_HEIGHT
             else -> Const.HIDDEN_PEEK_HEIGHT
         }
 }
@@ -267,7 +272,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { 
             it.copy(
                 activeOverlay = overlay,
-                hairCrossOffsetFraction = if (overlay == OverlayType.LOCATION_STATISTIC) 0.2f
+                hairCrossOffsetFraction = if (overlay == OverlayType.LOCATION_STATISTIC) 0.0f // 0.2f 19aug2026
                     else it.hairCrossOffsetFraction
             ) 
         }
@@ -298,8 +303,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updatePolygon(state: PolygonState) {
-        _uiState.update { it.copy(polygonState = state) }
+    fun updatePolygon(newPolygonState: PolygonState) {
+        _uiState.update { currentState ->
+            // Determine the new graph type based on the polygon content
+            val newGraphType = when {
+                newPolygonState.lllh.isNotEmpty() && currentState.monitorGraphType == MonitorGraphType.COMPASS ->
+                    MonitorGraphType.COMPASS_THUMBNAIL
+                newPolygonState.lllh.isEmpty() && currentState.monitorGraphType == MonitorGraphType.COMPASS_THUMBNAIL ->
+                    MonitorGraphType.COMPASS
+                else -> currentState.monitorGraphType
+            }
+
+            currentState.copy(
+                polygonState = newPolygonState,
+                monitorGraphType = newGraphType
+            )
+        }
     }
 
     fun setLoadedRoute(entity: RouteEntity?) {
@@ -397,6 +416,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setRouteMonitorState(state: Int) {
         Timber.i("setRouteMonitorState: $state")
         _uiState.update { it.copy(routeMonitorState = state) }
+    }
+
+    fun setMonitorGraphType(type: MonitorGraphType) {
+        _uiState.update { it.copy(monitorGraphType = type) }
     }
 
     fun setCameraMode(mode: Int) {
