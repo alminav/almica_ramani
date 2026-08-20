@@ -101,6 +101,7 @@ import java.io.File
 import java.io.FileFilter
 
 class MvtmakerActivity : ComponentActivity() {
+    // ToDo KI improve
     @SuppressLint("LocalContextGetResourceValueCall")
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {

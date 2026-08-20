@@ -3,7 +3,7 @@ package com.almica.ramani
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.StateFlow
 
-class GpsViewModel(private val repository: GpsRepository = GpsRepository.getInstance()) : ViewModel() {
+class GpsViewModel(repository: GpsRepository = GpsRepository.getInstance()) : ViewModel() {
     val distance: StateFlow<Double> = repository.distance
     val speed: StateFlow<Float> = repository.speed
     val bearing: StateFlow<Float> = repository.bearing

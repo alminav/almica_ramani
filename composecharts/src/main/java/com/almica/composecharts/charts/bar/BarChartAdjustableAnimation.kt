@@ -3,6 +3,8 @@ package com.almica.composecharts.charts.bar
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -20,6 +22,8 @@ import com.almica.composecharts.charts.bar.render.yaxis.SimpleYAxisDrawer
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import com.almica.composecharts.charts.simpleChartAnimation
+import androidx.compose.ui.tooling.preview.Preview
+import timber.log.Timber
 
 /**
  * Created by bytebeats on 2021/9/25 : 15:56
@@ -27,7 +31,6 @@ import com.almica.composecharts.charts.simpleChartAnimation
  * Quote: Peasant. Educated. Worker
  */
 
-private const val logtag = "BarChartWithoutAnimation"
 @Composable
 fun BarChartAdjustableAnimation(
     barChartData: BarChartData,
@@ -54,7 +57,6 @@ fun BarChartAdjustableAnimation(
     }
 
     val progress = transitionAnimation.value
-//    Log.i(logtag, "${Thread.currentThread().getStackTrace()[2].lineNumber}: progress:$progress")
     Canvas(
         modifier = modifier
             .fillMaxSize()
@@ -88,8 +90,9 @@ fun BarChartAdjustableAnimation(
                         routePointer,
                         labelDrawer
                     ) { barArea, bar, barBorderArea ->
-                        if (barBorderArea != Rect.Zero)
-                            barDrawer.drawBar(drawScope = this, canvas, barBorderArea, bar.copy(color = Color.Black))
+                        // 20aug2026 sliderposition shows routePointer
+//                        if (barBorderArea != Rect.Zero)
+//                            barDrawer.drawBar(drawScope = this, canvas, barBorderArea, bar.copy(color = Color.Black))
                         barDrawer.drawBar(drawScope = this, canvas, barArea, bar)
                     }
                 }
@@ -111,7 +114,8 @@ fun BarChartAdjustableAnimation(
                 progress,
                 routePointer,
                 labelDrawer
-            ) { barArea, bar, _, ->
+            ) { barArea, bar, _ ->
+                //Timber.i("labelDrawer bar: $bar")
                 labelDrawer.drawLabel(
                     drawScope = this,
                     canvas = canvas,
@@ -130,4 +134,27 @@ fun BarChartAdjustableAnimation(
             )
         }
     }
+}
+
+@Preview(showBackground = true, widthDp = 400, heightDp = 300)
+@Composable
+fun BarChartAdjustableAnimationPreview() {
+    val barChartData = remember {
+        BarChartData(
+            bars = listOf(
+                BarChartData.Bar(10f, Color.Red, "B1"),
+                BarChartData.Bar(20f, Color.Green, "B2"),
+                BarChartData.Bar(15f, Color.Blue, "B3"),
+                BarChartData.Bar(30f, Color.Yellow, "B4"),
+                BarChartData.Bar(25f, Color.Cyan, "B5"),
+            )
+        )
+    }
+    BarChartAdjustableAnimation(
+        barChartData = barChartData,
+        modifier = Modifier.size(300.dp),
+        routePointer = 2,
+        locationTime = 0L,
+        animated = false
+    )
 }

@@ -46,6 +46,7 @@ class GradientChartDataModel(
 
     var labelDrawer by mutableStateOf(SimpleLabelDrawer(drawLocation = SimpleLabelDrawer.DrawLocation.XAxis))
         //private set
+    var sliderPosition by mutableStateOf(0f)
     var barChartData by mutableStateOf(generateGradientChart(lllh, routePointer, routeDistance))
     val bars: List<BarChartData.Bar>
         get() = barChartData.first!!.bars
@@ -101,8 +102,9 @@ fun generateGradientChart(
         val c = interpolateColor((0.1 * abs(gradient)).toFloat())
         //Timber.i("lllh altitude: $i ${lllh[i].altitude.toFloat()}")
         val bar = BarChartData.Bar(
-            label = if ((i-1)==routePointer) Const.UC_ARROW_UP
-            else if (i == (0.5*lllh.size).toInt()) {
+            // 20aug2026 sliderposition is adjusted to routePointer
+            label = //if ((i-1)==routePointer) Const.UC_ARROW_UP else
+                if (i == (0.5*lllh.size).toInt()) {
                 val midLabel = routeDistance.formatDistM(true)
                 midLabel
             } else

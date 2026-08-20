@@ -3,7 +3,6 @@ package com.almica.ramani.routes
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.location.Location
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -351,7 +350,7 @@ fun RouteDatabaseScreen(mapPos: LatLng?, selectRoute: (RouteEntity?, RouteMenu) 
             ModalBottomSheet(modifier = Modifier.padding(bottom = 96.dp), onDismissRequest = { showRouteGradient = null }) {
                 GradientChartMonitor(
                     it,
-                    Location(null), 0.0f, Icons.AutoMirrored.Filled.ArrowBack,
+                    0.0f, Icons.AutoMirrored.Filled.ArrowBack,
                      result = {
                         showRouteGradient = null
                     }, true)

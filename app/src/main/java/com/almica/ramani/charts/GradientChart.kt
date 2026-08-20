@@ -5,107 +5,125 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.almica.ramani.LatLngH
 import com.almica.ramani.routes.RouteEntity
 import com.almica.ramani.ui.theme.RamaniTheme
-import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
-import com.almica.ramani.utils.getDistanceFromLllh
-import com.almica.ramani.utils.kmlString2Lllh
+import com.almica.ramani.utils.format
 import com.google.android.gms.maps.model.LatLng
 import timber.log.Timber
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GradientChart(routeEntity: RouteEntity,
-                  moveMap: (LatLng?) -> Unit,
-                  result: (LatLng?) -> Unit) {
-    var simplifiedPoints by remember { mutableStateOf(emptyList<LatLngH>()) }
-    var routeDistance by remember { mutableDoubleStateOf(-1.0) }
-    var barChartDataModel by remember { mutableStateOf(GradientChartDataModel(emptyList(), -1, 0.0)) }
-
+fun GradientChart(
+    routeEntity: RouteEntity,
+    moveMap: (LatLng?) -> Unit,
+    result: (LatLng?) -> Unit,
+    viewModel: GradientChartViewModel = viewModel()
+) {
     LaunchedEffect(routeEntity) {
-        val lllh = routeEntity.kmlString.kmlString2Lllh()
-        routeDistance = lllh.getDistanceFromLllh()
-        Timber.i("${routeEntity.name} lllh.size:${lllh.size}")
-        val stepCount = (0.001 * routeDistance).toInt().coerceAtMost(42)
-        if (lllh.isNotEmpty()) {
-            simplifiedPoints = lllh.simplifyToTargetCount(stepCount)
-        }
-        Timber.i("simplifiedPoints.size:${simplifiedPoints.size} routeDistance:${routeDistance.toInt()}")
-        barChartDataModel = GradientChartDataModel(simplifiedPoints, -1, routeDistance)
-        Timber.i("barChartDataModel bars: ${barChartDataModel.barChartData.first?.bars?.size}")
+        viewModel.loadRoute(routeEntity)
     }
-    GradientChartContent(
-        name = routeEntity.name,
-        simplifiedPoints = simplifiedPoints,
-        barChartDataModel = barChartDataModel,
-        moveMap = moveMap,
-        result = result
-    )
+
+    val state = viewModel.uiState.collectAsState().value
+
+    when (state) {
+        is GradientChartUiState.Loading -> {
+            // Potentially show a loading indicator
+        }
+        is GradientChartUiState.Success -> {
+            GradientChartWithSlider(
+                state = state,
+                moveMap = moveMap,
+                result = result
+            )
+        }
+    }
 }
 
 @Composable
-fun GradientChartContent(
-    name: String,
-    simplifiedPoints: List<LatLngH>,
-    barChartDataModel: GradientChartDataModel,
+fun GradientChartWithSlider(
+    state: GradientChartUiState.Success,
     moveMap: (LatLng?) -> Unit,
     result: (LatLng?) -> Unit
 ) {
+    val dataModel = state.dataModel
+
+    val currentLatLng by remember(state.points, dataModel) {
+        derivedStateOf {
+            val idx = dataModel.sliderPosition.roundToInt().coerceIn(state.points.indices)
+            if (state.points.isNotEmpty()) {
+                val p = state.points[idx]
+                LatLng(p.latitude, p.longitude)
+            } else null
+        }
+    }
+
+    val distanceLabel by remember(state.distances, dataModel) {
+        derivedStateOf {
+            val idx = dataModel.sliderPosition.roundToInt().coerceIn(state.distances.indices)
+            if (state.distances.isNotEmpty()) {
+                "${(state.distances[idx] / 1000.0).format(1)} km"
+            } else "0.0 km"
+        }
+    }
+
     Column {
-        if (barChartDataModel.barChartData.second != null)
-            Text(text = "${barChartDataModel.barChartData.second}  $name", fontSize = 14.sp,
-                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        else
-            Text(text = name, fontSize = 14.sp,
-                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        val title = dataModel.barChartData.second?.let { "$it  ${state.name}" } ?: state.name
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        
         Spacer(modifier = Modifier.height(10.dp))
-        BarChartRow(barChartDataModel = barChartDataModel, System.currentTimeMillis(), false)
-        var sliderPosition by remember{mutableFloatStateOf(0f)}
+        
+        BarChartRow(
+            barChartDataModel = dataModel,
+            locationTime = 0L,
+            animated = false
+        )
+        
         Column(modifier = Modifier.padding(start = 32.dp, end = 4.dp)) {
             Slider(
-                value = sliderPosition,
+                value = dataModel.sliderPosition,
                 onValueChange = {
-                    sliderPosition = it.roundToInt().toFloat()
-                    if (it.roundToInt() < simplifiedPoints.size) {
-                        val latLng = LatLng(simplifiedPoints[it.roundToInt()].latitude,
-                            simplifiedPoints[it.roundToInt()].longitude)
-                        moveMap(latLng)
-                    }
+                    Timber.i("sliderPosition: $it")
+                    dataModel.sliderPosition = it
+                    moveMap(currentLatLng)
                 },
                 onValueChangeFinished = {
-                    Timber.i("sliderPosition: $sliderPosition")
-                    if (sliderPosition.roundToInt() < simplifiedPoints.size) {
-                        val latLng = LatLng(simplifiedPoints[sliderPosition.roundToInt()].latitude,
-                            simplifiedPoints[sliderPosition.roundToInt()].longitude)
-                        result(latLng)
-                    }
+                    Timber.i("sliderPosition: ${dataModel.sliderPosition}")
+                    result(currentLatLng)
                 },
-                steps = (barChartDataModel.barChartData.first?.bars?.size ?: 1) - 1,
-                valueRange=0f..(barChartDataModel.barChartData.first?.bars?.size?.toFloat() ?: 0f)
+                steps = if (state.points.size > 1) state.points.size - 2 else 0,
+                valueRange = 0f..if (state.points.isNotEmpty()) (state.points.size - 1).toFloat() else 0f
             )
-            Text(text = "$sliderPosition km",
-                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            
+            Text(
+                text = distanceLabel,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
@@ -129,7 +147,7 @@ fun GradientChartPreview() {
 
 @Preview(showBackground = true)
 @Composable
-fun GradientChartContentPreview() {
+fun GradientChartWithSliderPreview() {
     val samplePoints = listOf(
         LatLngH(-1.2833, 36.8167, 1600.0),
         LatLngH(-1.2843, 36.8177, 1610.0),
@@ -137,12 +155,15 @@ fun GradientChartContentPreview() {
         LatLngH(-1.2863, 36.8197, 1615.0),
         LatLngH(-1.2873, 36.8207, 1605.0)
     )
-    val sampleDataModel = GradientChartDataModel(samplePoints, -1, 5.0)
+    val state = GradientChartUiState.Success(
+        name = "Sample Route",
+        points = samplePoints,
+        distances = listOf(0.0, 150.0, 300.0, 450.0, 600.0),
+        dataModel = GradientChartDataModel(samplePoints, -1, 0.6)
+    )
     RamaniTheme {
-        GradientChartContent(
-            name = "Sample Route",
-            simplifiedPoints = samplePoints,
-            barChartDataModel = sampleDataModel,
+        GradientChartWithSlider(
+            state = state,
             moveMap = {},
             result = {}
         )

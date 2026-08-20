@@ -8,7 +8,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
-import android.location.Location
 import android.graphics.Typeface
 import android.text.TextPaint
 import androidx.activity.compose.BackHandler
@@ -1010,7 +1009,7 @@ else {
             ModalBottomSheet(onDismissRequest = { showRouteGradient = null }) {
                 GradientChartMonitor(
                     it,
-                    Location(null), 0.0f, Icons.AutoMirrored.Filled.ArrowBack,
+                    0.0f, Icons.AutoMirrored.Filled.ArrowBack,
                     result = {
                         showRouteGradient = null
                     }, true

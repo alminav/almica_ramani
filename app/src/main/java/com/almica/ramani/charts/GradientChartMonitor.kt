@@ -1,7 +1,6 @@
 package com.almica.ramani.charts
 
 import android.annotation.SuppressLint
-import android.location.Location
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -69,114 +67,51 @@ import kotlin.math.max
  * 17apr2026
  * liveSharedPreferences replaced by GpsViewModel Observer for time
  */
-private const val logtag = "GradientChartMonitor"
 @SuppressLint("MutableCollectionMutableState")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GradientChartMonitor(
     routeEntity: RouteEntity,
-    userLocation: Location,
     offsetYByPercent: Float,
     homeIcon: ImageVector,
     result: (LatLng?) -> Unit,
     animated: Boolean
 ) {
-//    Timber.i( "${mapComposer?.applier}")
-    val context = LocalContext.current
     val routeTolerance = 500.0
-    var trackingIsActive by remember { mutableStateOf(false) }
-    var locationTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    var routePointer by remember { mutableIntStateOf(-1) }
-    //var routeDeviation by remember { mutableStateOf<Int?>(0) }
-    //val lllh = Helpers.getLllhFromFile(routeFile)
-    val routeName by remember { mutableStateOf(
+
+    val latitude by GpsViewModel.latitude.collectAsState()
+    val longitude by GpsViewModel.longitude.collectAsState()
+    val locationTime by GpsViewModel.time.collectAsState()
+
+    val routeName = remember(routeEntity.name) {
         if (routeEntity.name.length > 20) {
-            routeEntity.name.substring(0..20) + Const.UC_THREEDOTS } else routeEntity.name)
+            routeEntity.name.substring(0..20) + Const.UC_THREEDOTS
+        } else routeEntity.name
     }
 
-    //var lllhReduced = ArrayList<LatLngH>()
-    var simplifiedPoints by remember { mutableStateOf(emptyList<LatLngH>()) }
-    var routeDistance by remember { mutableDoubleStateOf(-1.0) }
-    var barChartDataModel by remember { mutableStateOf(GradientChartDataModel(emptyList(), -1, 0.0)) }
-
-    LaunchedEffect(routeName) {
+    val (simplifiedPoints, routeDistance) = remember(routeEntity.kmlString) {
         val lllh = routeEntity.kmlString.kmlString2Lllh()
-        routeDistance = lllh.getDistanceFromLllh()
-        Timber.i("${routeEntity.name} lllh.size:${lllh.size}")
-        val stepCount = (0.001 * routeDistance).toInt().coerceAtMost(42)
-        if (lllh.isNotEmpty()) {
-            simplifiedPoints = lllh.simplifyToTargetCount(stepCount)
-        }
-//        if (lllh.isNotEmpty())
-//            simplifiedPoints = reducedLllhKmSteps(lllh)
-        if (userLocation.isNotNull() && userLocation.provider != null) {
-            val gmsLatLng = LatLng(userLocation.latitude, userLocation.longitude)
-            routePointer = Helpers.locationIndexOnPath(gmsLatLng, simplifiedPoints, routeTolerance)
-            Timber.i("routePointer: $routePointer $userLocation")
-        } else {
-            Timber.i("userLocation = null")
-        }
-        Timber.i("simplifiedPoints.size:${simplifiedPoints.size} routeDistance:${routeDistance.toInt()}")
-        barChartDataModel = GradientChartDataModel(simplifiedPoints, routePointer, routeDistance)
-        Timber.i("barChartDataModel bars: ${barChartDataModel.barChartData.first?.bars?.size}")
+        val dist = lllh.getDistanceFromLllh()
+        val stepCount = (0.001 * dist).toInt().coerceAtMost(42)
+        val points = if (lllh.isNotEmpty()) lllh.simplifyToTargetCount(stepCount) else emptyList()
+        points to dist
+    }
+
+    val routePointer = remember(latitude, longitude, simplifiedPoints) {
+        Helpers.locationIndexOnPath(LatLng(latitude, longitude), simplifiedPoints, routeTolerance)
+    }
+
+    val barChartDataModel = remember(simplifiedPoints, routePointer, routeDistance) {
+        GradientChartDataModel(simplifiedPoints, routePointer, routeDistance)
     }
 
     DisposableEffect(LocalLifecycleOwner.current) {
         onDispose {
-            Timber.i( "onDispose")
+            Timber.i("onDispose")
         }
     }
 
-    val latModel = GpsViewModel.latitude.collectAsState()
-    val lonModel = GpsViewModel.longitude.collectAsState()
-    latModel.value?.let { latitude ->
-        lonModel.value?.let { longitude ->
-            val recordedLatLng = LatLng(latitude, longitude)
-            recordedLatLng.let {
-                routePointer = Helpers.locationIndexOnPath(it, simplifiedPoints, routeTolerance)
-            }
-        }
-    }
-    LaunchedEffect(routePointer) {
-        Timber.i("LaunchedEffect routePointer:$routePointer")
-        barChartDataModel =
-            GradientChartDataModel(simplifiedPoints, routePointer, routeDistance)
-    }
 
-    /*
-    if (liveSharedPreferences.isNotNull()) {
-        liveSharedPreferences?.getLong(Const.LAST_LOCATION_TIME, 0L)
-            ?.observe(LocalLifecycleOwner.current) { locTime ->
-                //Timber.i( "locTime:$locTime")
-
-                val locationRepository =
-                    LocationRepository.getInstance(context, Executors.newSingleThreadExecutor())
-                if (lllhReduced.isNotEmpty().and(locTime.isNotNull()).and(locationTime != locTime)) {
-                    val locations = locationRepository.getLocationForTime(locTime)
-                    Timber.i(
-                        "locationTime:$locationTime")
-                    if (locations.isNotEmpty()) {
-                        locationTime = locTime!!
-                        val latitude = locations[0].latitude
-                        val longitude = locations[0].longitude
-                        Timber.i("lat: $latitude lon: $longitude")
-                        val recordedLatLng = LatLng(latitude, longitude)
-                        recordedLatLng.let {
-                            routePointer = Helpers.locationIndexOnPath(it, lllhReduced, routeTolerance)
-                        }
-                        Timber.i(
-                            "routePointer:$routePointer")
-                        barChartDataModel =
-                            GradientChartDataModel(lllhReduced, routePointer, routeDistance)
-                        Timber.i(
-                            "barChartDataModel: ${barChartDataModel.barChartData.second}")
-                    } else
-                        Timber.i( "locations is empty")
-                }
-            } ?: 0L
-    } else
-        Timber.i( "liveSharedPreferences = null")
-    */
     Surface(modifier = Modifier.offsetYByPercent(offsetYByPercent)
         //.padding(top = 500.dp)
         ) {
@@ -188,9 +123,6 @@ fun GradientChartMonitor(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
                         onClick = {
-                            //ScreenRouter.navigateHome()
-                            simplifiedPoints = emptyList()
-                            routeDistance = -1.0
                             result(null)
                         }
                     ) {
@@ -240,7 +172,7 @@ fun GradientChartMonitor(
                         )
                 }
 
-                AnimatedVisibility(visible = trackingIsActive.and(routePointer < 0)) {
+                AnimatedVisibility(visible = routePointer < 0) {
                     Timber.i(
                         "%s",
                                 stringResource(R.string.route_tolerance_exceeded, routeTolerance.toInt()))
@@ -303,25 +235,22 @@ fun BarChartRow(barChartDataModel: GradientChartDataModel, locationTime: Long, a
     }
 }
 
-fun reducedLllhKmSteps(lllh: ArrayList<LatLngH>) : ArrayList<LatLngH> {
-    if (lllh.isEmpty()) return arrayListOf()
-    //val lllh = RouteSmoothingUtil.smoothRoute(lllhSource) as ArrayList<LatLngH>?
-    lllh.let {
-        val originalDistanceKm = (1 + (0.001 * calcDistMeter(lllh)).toInt())
-        val stepWidth = max(1, lllh.size / originalDistanceKm)
+fun reducedLllhKmSteps(lllh: List<LatLngH>): List<LatLngH> {
+    if (lllh.isEmpty()) return emptyList()
+    val originalDistanceKm = (1 + (0.001 * calcDistMeter(lllh)).toInt())
+    val stepWidth = max(1, lllh.size / originalDistanceKm)
 
-        Timber.i("originalDistanceKm: $originalDistanceKm stepWidth: $stepWidth")
+    Timber.i("originalDistanceKm: $originalDistanceKm stepWidth: $stepWidth")
 
-        val reducedListLatLngH = (lllh.filterIndexed { index, _ ->
-            index % stepWidth == 0
-        }.take(originalDistanceKm) ?: arrayListOf()) as ArrayList<LatLngH>
+    val reducedListLatLngH = lllh.filterIndexed { index, _ ->
+        index % stepWidth == 0
+    }.take(originalDistanceKm)
 
-        Timber.i("reduce: ${lllh.size} --> ${reducedListLatLngH.size}")
-        return reducedListLatLngH
-    }
+    Timber.i("reduce: ${lllh.size} --> ${reducedListLatLngH.size}")
+    return reducedListLatLngH
 }
 
-fun calcDistMeter(listLatLng: ArrayList<LatLngH>?): Double {
+fun calcDistMeter(listLatLng: List<LatLngH>?): Double {
     return listLatLng?.zipWithNext { a, b ->
         SphericalUtil.computeDistanceBetween(a.latLng, b.latLng)
     }?.sum() ?: 0.0
@@ -341,15 +270,9 @@ fun GradientChartMonitorPreview() {
         name = "Sample Route",
         kmlString = sampleKml
     )
-    val userLocation = Location("fused").apply {
-        latitude = 0.0
-        longitude = 0.0
-        provider = "fused"
-    }
     RamaniTheme {
         GradientChartMonitor(
             routeEntity = routeEntity,
-            userLocation = userLocation,
             offsetYByPercent = 0f,
             homeIcon = Icons.Default.Home,
             result = {},

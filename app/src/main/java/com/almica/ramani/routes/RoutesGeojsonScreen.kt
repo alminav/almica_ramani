@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.location.Location
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
@@ -373,7 +372,7 @@ fun RoutesGeojsonScreen(
                         ) {
                             GradientChartMonitor(
                                 overlay.entity,
-                                Location(null), 0.0f, Icons.AutoMirrored.Filled.ArrowBack,
+                                0.0f, Icons.AutoMirrored.Filled.ArrowBack,
                                 result = { activeOverlay = null },
                                 true
                             )
