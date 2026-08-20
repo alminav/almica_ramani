@@ -298,7 +298,8 @@ fun nearestRoutePoint(
         val newDist = SphericalUtil.computeDistanceBetween(listLatLng[i].latLngGms, latLong).toInt()
         var headingPoint = SphericalUtil.computeHeading(latLong, listLatLng[i].latLngGms)
         if (headingPoint < 0) headingPoint += 360
-        if (headingPoint > heading - 90 && headingPoint < heading + 90 && newDist < prevDist) {
+        if (headingPoint > heading - 90 && headingPoint < heading + 90 &&
+                newDist < prevDist) {
             prevDist = newDist
             routePointer = i
         }

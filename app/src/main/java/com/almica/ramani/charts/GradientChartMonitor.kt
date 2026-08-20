@@ -45,6 +45,7 @@ import com.almica.ramani.GpsViewModel
 import com.almica.ramani.Helpers
 import com.almica.ramani.LatLngH
 import com.almica.ramani.R
+import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.utils.isNotNull
 import com.almica.ramani.routes.RouteEntity
 import com.almica.ramani.utils.RouteSmoothingUtil
@@ -77,7 +78,7 @@ fun GradientChartMonitor(
     result: (LatLng?) -> Unit,
     animated: Boolean
 ) {
-    val routeTolerance = 500.0
+    //val routeTolerance = Double.MAX_VALUE //500.0 20aug2026 check of route tolerance disabled
 
     val latitude by GpsViewModel.latitude.collectAsState()
     val longitude by GpsViewModel.longitude.collectAsState()
@@ -98,7 +99,16 @@ fun GradientChartMonitor(
     }
 
     val routePointer = remember(latitude, longitude, simplifiedPoints) {
-        Helpers.locationIndexOnPath(LatLng(latitude, longitude), simplifiedPoints, routeTolerance)
+        //Helpers.locationIndexOnPath(LatLng(latitude, longitude), simplifiedPoints, routeTolerance)
+        //20aug2026 route tolerance check disabled
+
+        simplifiedPoints.indices.minByOrNull { index ->
+            val point = simplifiedPoints[index]
+            MapUtils.calculateHaversineDistance(
+                LatLng(latitude, longitude),
+                LatLng(point.latitude, point.longitude)
+            )
+        } ?: -1
     }
 
     val barChartDataModel = remember(simplifiedPoints, routePointer, routeDistance) {
@@ -172,10 +182,12 @@ fun GradientChartMonitor(
                         )
                 }
 
+
+/** 20aug2026 route tolerance check disabled
                 AnimatedVisibility(visible = routePointer < 0) {
                     Timber.i(
                         "%s",
-                                stringResource(R.string.route_tolerance_exceeded, routeTolerance.toInt()))
+                                stringResource(R.string.route_deviation, routeTolerance.toInt()))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -189,7 +201,7 @@ fun GradientChartMonitor(
                             )
                         )
                     }
-                }
+                }*/
                 //Spacer(modifier = Modifier.height(100.dp))
             }
         }

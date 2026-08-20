@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.almica.ramani.GpsViewModel
 import com.almica.ramani.LatLngH
+import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.routes.RouteEntity
 import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
 import com.almica.ramani.utils.getDistanceFromLllh
@@ -167,11 +168,21 @@ class GradientChartViewModel : ViewModel() {
     private fun updateDataPoint() {
         val state = _uiState.value
         if (state is GradientChartUiState.Success && state.latLng != null) {
+            val pointer = state.points.indices.minByOrNull { index ->
+                val point = state.points[index]
+                MapUtils.calculateHaversineDistance(
+                    LatLng(state.latLng.latitude, state.latLng.longitude),
+                    LatLng(point.latitude, point.longitude)
+                )
+            } ?: -1
+            /**
+             * 20aug2026 heading check removed
             val pointer = nearestRoutePoint(
-                state.locationBearing.toDouble(),
-                state.latLng,
-                state.points
+            state.locationBearing.toDouble(),
+            state.latLng,
+            state.points
             )
+             */
             if (pointer != state.dataModel.routePointer) {
                 // label = if ((i-1)==routePointer) Const.UC_ARROW_UP
 
