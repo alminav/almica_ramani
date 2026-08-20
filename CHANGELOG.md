@@ -2,6 +2,15 @@
 
 All notable changes to the **Ramani** project will be documented in this file.
 
+## [Unreleased] - 2026-08-20
+
+### ✨ Features & Improvements
+- **Gradient Chart Enhancements**: Improved the `GradientChart` UI and interactivity.
+    - **Slider Integration**: Synced `sliderPosition` with `routePointer` for real-time elevation tracking during navigation.
+    - **Visual Cleanup**: Removed black borders from bars in `BarChartAdjustableAnimation` for a cleaner aesthetic.
+    - **Precision Labeling**: Optimized mid-point distance labeling in `GradientChartDataModel`.
+- **Logging Optimization**: Reduced `Timber` log noise in chart rendering and animation components.
+
 ## [Unreleased] - 2026-08-19
 
 ### ✨ Features & Improvements
@@ -62,4 +71,4 @@ All notable changes to the **Ramani** project will be documented in this file.
 - **Project Structure**: Excluded `backups` and `pictures` directories from the IDEA project view to declutter the workspace.
 
 ---
-*Generated on 2026-08-03*
+*Generated on 2026-08-20*
