@@ -545,6 +545,7 @@
     <string name="elevation_chart_total">Total %1$.1f km</string>
     <string name="elevation_chart_no_data">no valid data for chart</string>
     <string name="elevation_chart_title">Elevation chart</string>
+    <string name="route_deviation">route deviation</string>
 
     <string-array name="wind_directions">
         <item>N</item>
