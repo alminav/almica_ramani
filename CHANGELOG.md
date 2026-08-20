@@ -5,11 +5,24 @@ All notable changes to the **Ramani** project will be documented in this file.
 ## [Unreleased] - 2026-08-20
 
 ### ✨ Features & Improvements
+- **Chart Logic Refinement**:
+    - **Simplified Tracking**: Updated `GradientChart` and `ElevationChart` to handle `routePointer` independently of device heading.
+    - **Tolerance Checking**: Implemented route tolerance validation to notify users when they are off-path.
 - **Gradient Chart Enhancements**: Improved the `GradientChart` UI and interactivity.
     - **Slider Integration**: Synced `sliderPosition` with `routePointer` for real-time elevation tracking during navigation.
     - **Visual Cleanup**: Removed black borders from bars in `BarChartAdjustableAnimation` for a cleaner aesthetic.
     - **Precision Labeling**: Optimized mid-point distance labeling in `GradientChartDataModel`.
 - **Logging Optimization**: Reduced `Timber` log noise in chart rendering and animation components.
+
+### 🏗️ Refactoring & Architecture
+- **Monitor UI Cleanup**: Refactored `GradientChartMonitor`, `MonitorGraphLocations`, and their respective ViewModels (`GradientChartViewModel`, `MonitorViewModel`) for better separation of concerns and state management.
+
+### ⚙️ Build & Configuration
+- **R8/Proguard Hardening**: Added explicit keep rules for **GraphHopper** and **MapLibre** in `app/proguard-rules.pro` to prevent build issues in minified releases.
+- **Repository Maintenance**: Updated `app/.gitignore` to exclude build artifacts.
+
+### 🌐 Localization
+- **String Resources**: Updated `strings.xml` with new labels for route status and chart feedback.
 
 ## [Unreleased] - 2026-08-19
 
