@@ -76,9 +76,9 @@ fun GradientChartMonitor(
     offsetYByPercent: Float,
     homeIcon: ImageVector,
     result: (LatLng?) -> Unit,
+//    routePointer: (Int) -> Unit = {},
     animated: Boolean
 ) {
-    //val routeTolerance = Double.MAX_VALUE //500.0 20aug2026 check of route tolerance disabled
 
     val latitude by GpsViewModel.latitude.collectAsState()
     val longitude by GpsViewModel.longitude.collectAsState()
@@ -98,21 +98,20 @@ fun GradientChartMonitor(
         points to dist
     }
 
-    val routePointer = remember(latitude, longitude, simplifiedPoints) {
-        //Helpers.locationIndexOnPath(LatLng(latitude, longitude), simplifiedPoints, routeTolerance)
-        //20aug2026 route tolerance check disabled
-
+    val closestIndex = remember(latitude, longitude, simplifiedPoints) {
+        if (simplifiedPoints.isEmpty()) return@remember -1
+        val currentLatLng = LatLng(latitude, longitude)
         simplifiedPoints.indices.minByOrNull { index ->
-            val point = simplifiedPoints[index]
-            MapUtils.calculateHaversineDistance(
-                LatLng(latitude, longitude),
-                LatLng(point.latitude, point.longitude)
-            )
+            MapUtils.calculateHaversineDistance(currentLatLng, simplifiedPoints[index].latLng)
         } ?: -1
     }
 
-    val barChartDataModel = remember(simplifiedPoints, routePointer, routeDistance) {
-        GradientChartDataModel(simplifiedPoints, routePointer, routeDistance)
+//    LaunchedEffect(closestIndex) {
+//        routePointer(closestIndex)
+//    }
+
+    val barChartDataModel = remember(simplifiedPoints, closestIndex, routeDistance) {
+        GradientChartDataModel(simplifiedPoints, closestIndex, routeDistance)
     }
 
     DisposableEffect(LocalLifecycleOwner.current) {
@@ -183,25 +182,6 @@ fun GradientChartMonitor(
                 }
 
 
-/** 20aug2026 route tolerance check disabled
-                AnimatedVisibility(visible = routePointer < 0) {
-                    Timber.i(
-                        "%s",
-                                stringResource(R.string.route_deviation, routeTolerance.toInt()))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(0.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(
-                                R.string.route_tolerance_exceeded,
-                                routeTolerance.toInt()
-                            )
-                        )
-                    }
-                }*/
                 //Spacer(modifier = Modifier.height(100.dp))
             }
         }
@@ -234,7 +214,7 @@ fun BarChartRow(barChartDataModel: GradientChartDataModel, locationTime: Long, a
                 .height(100.dp)
         ) {
             barChartDataModel.barChartData.first?.let {
-                Timber.i( "${barChartDataModel.labelDrawer.drawLocation}")
+                //Timber.i( "${barChartDataModel.labelDrawer.drawLocation}")
                 BarChartAdjustableAnimation(
                     barChartData = it,
                     labelDrawer = barChartDataModel.labelDrawer,

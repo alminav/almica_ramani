@@ -2,6 +2,20 @@
 
 All notable changes to the **Ramani** project will be documented in this file.
 
+## [Unreleased] - 2026-08-21
+
+### ✨ Features & Improvements
+- **Route Tracking Optimization**:
+    - **Reactive Map Updates**: Refactored `MainMapView` for route highlight tracking, improving performance during map movement.
+- **Gradient Chart Refactoring**:
+    - **Real-time Synchronization**: Updated `GradientChartMonitor` to use `GpsViewModel` for live location and time tracking, replacing legacy preference observers.
+    - **Performance Optimization**: Implemented route simplification (`simplifyToTargetCount`) to reduce the number of points rendered in the elevation chart.
+    - **UI Modernization**: Refactored chart containers to use Material 3 `Card` and `Surface` components.
+
+### 🏗️ Refactoring & Architecture
+- **State Consistency**: Improved main-thread safety in `MainMapView` by isolating heavy distance calculations to `Dispatchers.Default` while ensuring UI state updates remain atomic.
+- **Code Cleanup**: Removed unused imports and redundant variables across `MainMapView` and `GradientChartMonitor`.
+
 ## [Unreleased] - 2026-08-20
 
 ### ✨ Features & Improvements

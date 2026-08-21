@@ -374,7 +374,7 @@ fun RoutesGeojsonScreen(
                                 overlay.entity,
                                 0.0f, Icons.AutoMirrored.Filled.ArrowBack,
                                 result = { activeOverlay = null },
-                                true
+                                animated = true
                             )
                             Text(
                                 text = distRoute.formatDistM(true),

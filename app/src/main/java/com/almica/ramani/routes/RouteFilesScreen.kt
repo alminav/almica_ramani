@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -46,7 +47,6 @@ import androidx.compose.material.icons.outlined.Height
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ImportExport
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Preview
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Share
@@ -54,7 +54,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -75,6 +74,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -108,9 +108,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import androidx.exifinterface.media.ExifInterface
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.almica.ramani.BuildConfig
 import com.almica.ramani.Const
 import com.almica.ramani.Helpers
@@ -123,8 +123,6 @@ import com.almica.ramani.filepicker.FileImportActivity
 import com.almica.ramani.filepicker.FileType
 import com.almica.ramani.filepicker.UnzipUtils
 import com.almica.ramani.googlemaps.MapUtils
-import com.almica.ramani.routes.SnackRoutesAction.Nothing
-import com.almica.ramani.routes.SnackRoutesAction.RemoveRouteFolder
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.HgtReader
 import com.almica.ramani.utils.formatDistM
@@ -135,7 +133,6 @@ import com.almica.ramani.utils.lllhToKmlString
 import com.almica.ramani.utils.reduceWithTolerance
 import com.google.maps.android.PolyUtil
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -148,11 +145,9 @@ import java.util.UUID
 import java.util.concurrent.Executors
 import androidx.core.graphics.createBitmap
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
-import com.almica.ramani.utils.GeoJsonUtils
 import com.almica.ramani.utils.GeoJsonUtils.Companion.pointToTile
+import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
 import com.almica.ramani.utils.getCenter
-import com.google.android.gms.maps.model.LatLng
-import kotlin.time.Duration.Companion.milliseconds
 
 enum class RouteEntityItemAction{
     Select,
@@ -162,149 +157,119 @@ enum class RouteEntityItemAction{
     Database
 }
 
-private const val logtag = "RouteFilesScreen"
+private const val MAX_ELEVATION_POINTS = 512
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RouteFilesTopBar(
+    uiState: RouteFilesUiState,
+    onBackClick: () -> Unit,
+    onImportExportClick: () -> Unit,
+    onFilterClick: () -> Unit,
+    onAddFolderClick: () -> Unit,
+    onRefreshClick: () -> Unit,
+    onSrtmClick: () -> Unit
+) {
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Go back home"
+                )
+            }
+        },
+        title = {
+            Text(text = stringResource(R.string.route_files), fontSize = 14.sp, maxLines = 1)
+        },
+        actions = {
+            IconButton(onClick = onImportExportClick) {
+                Icon(Icons.Outlined.ImportExport, contentDescription = null)
+            }
+            IconButton(onClick = onFilterClick) {
+                Icon(
+                    painterResource(R.drawable.outline_filter_alt_24),
+                    "filter",
+                    modifier = Modifier.padding(horizontal = 10.dp).size(60.dp)
+                )
+            }
+            IconButton(onClick = onAddFolderClick) {
+                Icon(
+                    Icons.Outlined.Add,
+                    "newFolder",
+                    modifier = Modifier.padding(horizontal = 10.dp).size(60.dp)
+                )
+            }
+            IconButton(onClick = onRefreshClick) {
+                Icon(
+                    Icons.Outlined.Refresh,
+                    "notifyDataChanged",
+                    modifier = Modifier.padding(horizontal = 10.dp).size(60.dp)
+                )
+            }
+            BadgedBox(badge = {
+                if (uiState.srtmFile.isNotNull()) Badge { Text(text = Const.UC_CHECKMARK) }
+            }) {
+                TextButton(onClick = onSrtmClick) {
+                    Text(text = stringResource(R.string.srtm))
+                }
+            }
+        }
+    )
+}
+
 @SuppressLint("UnrememberedMutableState", "UnusedMaterial3ScaffoldPaddingParameter",
     "LocalContextGetResourceValueCall", "MutableCollectionMutableState"
 )
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
+fun RouteFilesScreen(
+    selectRoute: (RouteEntity?, RouteMenu) -> Unit,
+    viewModel: RouteFilesViewModel = viewModel()
+) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    //var routeEntity by remember { mutableStateOf<RouteEntity?>(null) }
-    var newRouteFolderMode by remember { mutableStateOf(false) }
-    var newRouteFolder by remember { mutableStateOf("") }
-    var createNewRouteFolder by remember { mutableStateOf(false) }
-    var showRouteMoBo by remember { mutableStateOf<RouteEntity?>(null) }
-    var showRouteChart by remember { mutableStateOf<File?>(null) }
-    var showRouteGradient by remember { mutableStateOf<RouteEntity?>(null) }
-    var showSrtmFiles by remember { mutableStateOf(false) }
-    var srtmFile by remember { mutableStateOf<File?>(null) }
-    var moveFile by remember { mutableStateOf(false) }
-    var askForNameFilter by remember { mutableStateOf(false) }
-    var askForRouteName by remember { mutableStateOf<RouteEntity?>(null) }
-    var routeEntities by remember { mutableStateOf< MutableList<RouteEntity>>(mutableListOf())}
-    var routeEntitiesSorted by remember { mutableStateOf<MutableList<RouteEntity>> (arrayListOf()) }
-    var showRoutesImportExportMenu by remember { mutableStateOf(false) }
-    var showSingleRouteImportExportMenu: String? by remember { mutableStateOf(null) }
-    //var routeEntitiesSorted : MutableList<RouteEntity> = mutableListOf()
-    var notifyDataChanged by remember { mutableStateOf(true) }
-    var dataChangeCompleted by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
-    //var snackbarTriple by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
-    var snackRoutesData by remember { mutableStateOf<SnackRoutesData?>(null) }
-    LaunchedEffect(key1 = snackRoutesData) {
-        Timber.i( "LaunchedEffect(key1 = snackRoutesData)")
-        delay(5000.milliseconds)
-        if (snackRoutesData?.routeMenu != RouteMenu.RefreshPreview)
-            snackRoutesData = null
-    }
+
     BackHandler {
         scope.launch {
-            Timber.i("")
-            //(context as Activity).finish()
-            if (showRouteGradient.isNotNull())
-                showRouteGradient = null
-            else if (showRouteChart.isNotNull())
-                showRouteChart = null
+            if (uiState.showRouteGradient.isNotNull())
+                viewModel.setShowRouteGradient(null)
+            else if (uiState.showRouteChart.isNotNull())
+                viewModel.setShowRouteChart(null)
             else
                 selectRoute(null, RouteMenu.Home)
         }
     }
     Scaffold(
         topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            selectRoute(null, RouteMenu.Home)
-                            //ScreenRouter.navigateHome()
-                            Timber.i("navigateHome")
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go back home"
-                        )
-                    }
-                }, title = {
-                    Text(text = stringResource(R.string.route_files), fontSize = 14.sp, maxLines = 1)
-                }, actions = {
-                    IconButton(onClick = {
-                        showRoutesImportExportMenu = true
-                    }) {
-                        Icon(
-                            Icons.Outlined.ImportExport,
-                            contentDescription = null
-                        )
-                    }
-                    IconButton(onClick = { askForNameFilter = true })
-                    {
-                        Icon(
-                            painterResource(R.drawable.outline_filter_alt_24),
-                            "filter",
-                            modifier = Modifier
-                                .padding(end = 10.dp, start = 10.dp)
-                                .width(60.dp)
-                                .height(60.dp)
-                        )
-                    }
-                    IconButton(onClick = { newRouteFolderMode = true })
-                    {
-                        Icon(
-                            Icons.Outlined.Add,
-                            "newFolder",
-                            modifier = Modifier
-                                .padding(end = 10.dp, start = 10.dp)
-                                .width(60.dp)
-                                .height(60.dp)
-                        )
-                    }
-                    IconButton(onClick = {
-                        dataChangeCompleted = false
-                        notifyDataChanged = true
-                        Timber.i( "notifyDataChanged: $notifyDataChanged") })
-                    {
-                        Icon(
-                            Icons.Outlined.Refresh,
-                            "notifyDataChanged",
-                            modifier = Modifier
-                                .padding(end = 10.dp, start = 10.dp)
-                                .width(60.dp)
-                                .height(60.dp)
-                        )
-                    }
-                    BadgedBox(badge = {
-                        if (srtmFile.isNotNull()) Badge { Text(text = Const.UC_CHECKMARK) }
-                    }) {
-                        TextButton(onClick = {
-                            showSrtmFiles = true
-                            Timber.i("")
-                        }) {
-                            Text(text = stringResource(R.string.srtm))
-                        }
-                    }
-                })
-
-            if (createNewRouteFolder && newRouteFolder.isNotEmpty()) {
+            RouteFilesTopBar(
+                uiState = uiState,
+                onBackClick = { selectRoute(null, RouteMenu.Home) },
+                onImportExportClick = { viewModel.setShowRoutesImportExportMenu(true) },
+                onFilterClick = { viewModel.setAskForNameFilter(true) },
+                onAddFolderClick = { viewModel.setNewRouteFolderMode(true) },
+                onRefreshClick = { viewModel.refreshRoutes() },
+                onSrtmClick = { viewModel.setShowSrtmFiles(true) }
+            )
+            
+            if (uiState.createNewRouteFolder && uiState.newRouteFolder.isNotEmpty()) {
                 NewRouteFolder(
-                    newRouteFolder,
-                    newFolder = { name ->
-                        newRouteFolder = name.first
-                        createNewRouteFolder = false
+                    uiState.newRouteFolder,
+                    newFolder = { _ ->
+                        viewModel.createNewRouteFolder()
                     }
                 )
             }
-            AnimatedVisibility(visible = newRouteFolderMode) {
+            AnimatedVisibility(visible = uiState.newRouteFolderMode) {
                 Row(
                     modifier = Modifier
                         .padding(top = 60.dp)
                         .background(Color.White)
                 ) {
                     OutlinedTextField(
-                        value = newRouteFolder,
-                        onValueChange = { newRouteFolder = it },
+                        value = uiState.newRouteFolder,
+                        onValueChange = { viewModel.setNewRouteFolder(it) },
                         label = { Text(stringResource(R.string.routefolder_name)) },
                         modifier = Modifier
                             .padding(start = 6.dp, end = 6.dp)
@@ -312,65 +277,46 @@ fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
                     )
                     IconButton(
                         modifier = Modifier.align(alignment = Alignment.CenterVertically),
-                        //.border(border = BorderStroke(2.dp, Color.LightGray)),
                         onClick = {
-                            newRouteFolderMode = false
-                            createNewRouteFolder = true
+                            viewModel.createNewRouteFolder()
                         }
                     ) {
-                        Icon(//modifier = Modifier.align(alignment = Alignment.CenterVertically),
+                        Icon(
                             imageVector = Icons.Outlined.Done,
-                            contentDescription = "Localized description"
+                            contentDescription = "Done"
                         )
                     }
                 }
             }
         }) { _ ->
-        snackRoutesData?.let {
+        uiState.snackRoutesData?.let {
             MoboSnack(it) {responseAction ->
                 when(responseAction) {
-                    Nothing -> snackRoutesData = null
-                    RemoveRouteFolder -> {
-                        val region = it.actionData
+                    SnackRoutesAction.Nothing -> viewModel.setSnackRoutesData(null)
+                    SnackRoutesAction.RemoveRouteFolder -> {
+                        val region = it.actionData as? String
                         region?.let { it1 ->
-                            deleteRouteFolder(
-                                context,
-                                it1 as String,
-                                routeEntities
-                            ) { result, resultSorted ->
-                                snackRoutesData = null
-                                routeEntities.clear()
-                                routeEntities.addAll(result)
-                                routeEntitiesSorted.clear()
-                                routeEntitiesSorted.addAll(resultSorted)
-                                dataChangeCompleted = false
-                                notifyDataChanged = true
-                                snackRoutesData = null
-                            }
+                            viewModel.deleteRouteFolder(it1)
+                            viewModel.setSnackRoutesData(null)
                         }
                     }
 
                     SnackRoutesAction.ShowSrtmFiles -> {
-                        snackRoutesData = null
-                        showSrtmFiles = true
+                        viewModel.setSnackRoutesData(null)
+                        viewModel.setShowSrtmFiles(true)
                     }
 
                     SnackRoutesAction.RemoveAllRoutes -> {
-                        snackRoutesData = null
-                        deleteMainRouteFolder(context) {
-                            routeEntities.clear()
-                            routeEntitiesSorted.clear()
-                            dataChangeCompleted = false
-                            notifyDataChanged = true
-                        }
+                        viewModel.setSnackRoutesData(null)
+                        viewModel.deleteMainRouteFolder()
                     }
                 }
             }
         }
-        if (showSrtmFiles) {
-            DropdownSrtmFiles(context, srtmFile) { file, import ->
-                showSrtmFiles = false
-                srtmFile = file
+        if (uiState.showSrtmFiles) {
+            DropdownSrtmFiles(context, uiState.srtmFile) { file, import ->
+                viewModel.setShowSrtmFiles(false)
+                viewModel.setSrtmFile(file)
                 if (import) {
                     context.startActivity(
                         Intent(context, FileImportActivity::class.java)
@@ -380,56 +326,42 @@ fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
                 }
             }
         }
-        showSingleRouteImportExportMenu?.let {
+        uiState.showSingleRouteImportExportMenu?.let { region ->
             DropdownSingleRouteImportExport { action ->
                 when(action) {
-                    SingleRouteAction.Nothing -> { showSingleRouteImportExportMenu = null }
+                    SingleRouteAction.Nothing -> { viewModel.setShowSingleRouteImportExportMenu(null) }
                     SingleRouteAction.Text -> {
                         context.startActivity(
                             Intent(context, FileImportActivity::class.java)
                                 .setAction(context.getString(R.string.import_title))
                                 .putExtra(Const.EXTRA_FILETYPE, FileType.Route.name)
-                                .putExtra(Const.EXTRA_ROUTEFOLDER, showSingleRouteImportExportMenu)
+                                .putExtra(Const.EXTRA_ROUTEFOLDER, region)
                         )
-                        showSingleRouteImportExportMenu = null
+                        viewModel.setShowSingleRouteImportExportMenu(null)
                     }
                     SingleRouteAction.Image -> {
                         context.startActivity(
                             Intent(context, FileImportActivity::class.java)
                                 .setAction(context.getString(R.string.import_title))
                                 .putExtra(Const.EXTRA_FILETYPE, FileType.RouteThumbnail.name)
-                                .putExtra(Const.EXTRA_ROUTEFOLDER, showSingleRouteImportExportMenu)
+                                .putExtra(Const.EXTRA_ROUTEFOLDER, region)
                         )
-                        showSingleRouteImportExportMenu = null
+                        viewModel.setShowSingleRouteImportExportMenu(null)
                     }
 
                     SingleRouteAction.Cleanup -> {
-                        showSingleRouteImportExportMenu?.let { region ->
-                            val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
-                            val routeFolder = File(rootRouteFolder, region)
-                            cleanUpRouteFolder(context, File(context.filesDir, Const.THUMBNAILS)) {deleteCount, renameCount ->
-                                Timber.i("cleanUp ${Const.THUMBNAILS} deleteCount $deleteCount renameCount $renameCount")
-                            }
-                            cleanUpRouteFolder(context, routeFolder) {deleteCount, renameCount ->
-                                snackRoutesData =
-                                    SnackRoutesData(
-                                        RouteMenu.Placeholder,
-                                        context.getString(R.string.changed_files_, deleteCount, renameCount),
-                                        action = Nothing, actionText = null, null
-                                    )
-                            }
-                            showSingleRouteImportExportMenu = null
-                        }
+                        viewModel.cleanUpRouteFolder(region)
+                        viewModel.setShowSingleRouteImportExportMenu(null)
                     }
                 }
             }
         }
 
-        if (showRoutesImportExportMenu) {
+        if (uiState.showRoutesImportExportMenu) {
             DropdownRoutesImportExport { action ->
                 when(action) {
                     RoutesAction.Import -> {
-                        showRoutesImportExportMenu = false
+                        viewModel.setShowRoutesImportExportMenu(false)
                         context.startActivity(
                             Intent(context, FileImportActivity::class.java)
                                 .setAction(context.getString(R.string.import_title))
@@ -437,30 +369,13 @@ fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
                         )
                     }
                     RoutesAction.Export -> {
-                        showRoutesImportExportMenu = false
-                        val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
-                        @SuppressLint("SimpleDateFormat") val timeFormat =
-                            SimpleDateFormat(Const.TIME_PATTERN_LONG_YEAR)
-                        val timeTag = java.lang.String.format(
-                            Locale.getDefault(), "%s", timeFormat.format(System.currentTimeMillis())
-                        )
-                        val zipFile = File(context.cacheDir, "${Const.ROUTEFOLDER}_${timeTag}${Const.ZIP_EXT}")
-                        lifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                            UnzipUtils.zipFolder(rootRouteFolder, zipFile)
-                        }.invokeOnCompletion {
-                            val uri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", zipFile)
-                            val intent = Intent(Intent.ACTION_SEND)
-                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            intent.type = "*/*"
-                            intent.putExtra(Intent.EXTRA_STREAM, uri)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            context.startActivity(intent)
-                        }
+                        viewModel.setShowRoutesImportExportMenu(false)
+                        viewModel.exportRoutes()
                     }
-                    RoutesAction.Nothing -> showRoutesImportExportMenu = false
+                    RoutesAction.Nothing -> viewModel.setShowRoutesImportExportMenu(false)
                     RoutesAction.Delete -> {
-                        showRoutesImportExportMenu = false
-                        snackRoutesData =
+                        viewModel.setShowRoutesImportExportMenu(false)
+                        viewModel.setSnackRoutesData(
                             SnackRoutesData(
                                 RouteMenu.Placeholder,
                                 context.getString(R.string.delete_all_routes),
@@ -468,31 +383,15 @@ fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
                                 actionText = context.getString(R.string.ok),
                                 actionData = null
                             )
+                        )
                     }
 
                     RoutesAction.ExportThumbnails -> {
-                        showRoutesImportExportMenu = false
-                        val thumbnailFolder = File(context.filesDir, Const.THUMBNAILS)
-                        @SuppressLint("SimpleDateFormat") val timeFormat =
-                            SimpleDateFormat(Const.TIME_PATTERN_LONG_YEAR)
-                        val timeTag = java.lang.String.format(
-                            Locale.getDefault(), "%s", timeFormat.format(System.currentTimeMillis())
-                        )
-                        val zipFile = File(context.cacheDir, "${Const.THUMBNAILS}_${timeTag}${Const.ZIP_EXT}")
-                        lifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                            UnzipUtils.zipFolder(thumbnailFolder, zipFile)
-                        }.invokeOnCompletion {
-                            val uri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", zipFile)
-                            val intent = Intent(Intent.ACTION_SEND)
-                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            intent.type = "*/*"
-                            intent.putExtra(Intent.EXTRA_STREAM, uri)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            context.startActivity(intent)
-                        }
+                        viewModel.setShowRoutesImportExportMenu(false)
+                        viewModel.exportThumbnails()
                     }
                     RoutesAction.ImportThumbnails -> {
-                        showRoutesImportExportMenu = false
+                        viewModel.setShowRoutesImportExportMenu(false)
                         context.startActivity(
                             Intent(context, FileImportActivity::class.java)
                                 .setAction(context.getString(R.string.import_title))
@@ -502,157 +401,87 @@ fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
                 }
             }
         }
-        if (isLoading)
+        if (uiState.isLoading)
             ProgressDialog()
-        if (notifyDataChanged) {
-            RouteFilesContent(
-                context, lifecycleOwner,
-                initialize = { routes ->
-                    if (!routes.isNullOrEmpty()) {
-                        routeEntities = routes.toMutableList()
-                        //routeEntitiesSorted = routes.toMutableList()
-                        routeEntitiesSorted =
-                            routeEntities.sortedBy { entity -> entity.region.plus(entity.name) }
-                                .toMutableList()
-                        notifyDataChanged = false
-                        Timber.i("routeEntities ${routeEntities.size}")
-                    } else {
-                        Timber.e("routes isNullOrEmpty")
-                        routeEntities = mutableListOf()
-                        routeEntitiesSorted = mutableListOf()
-                        notifyDataChanged = false
-                    }
-                    dataChangeCompleted = true
-                }
-            )
-        }
 
-        if (dataChangeCompleted) {
+        if (uiState.dataChangeCompleted) {
             RouteFilesGroupedList(
-                routeEntitiesSorted,
+                uiState.routeEntitiesSorted,
                 selectRoute = { route, action ->
-                    //Timber.i("action:${action.name}")
                     if (route != null) {
-                        Timber.i(
-                            "action:${action.name} " + "${route.name} ${route.region}"
-                        )
                         when (action) {
                             RouteEntityItemAction.Select -> {
-                                //routeEntity = route
-                                showRouteMoBo = route
-                                Timber.i("${route.name}  ${route.kmlString.length}")
-                                showRouteChart = null
+                                viewModel.setShowRouteMoBo(route)
                             }
 
                             RouteEntityItemAction.Delete -> {
-                                val routeRepository =
-                                    RouteRepository.getInstance(
-                                        context,
-                                        Executors.newSingleThreadExecutor()
-                                    )
-                                routeRepository.removeRoute(route.id)
-                                var result = routeEntitiesSorted.remove(route)
-                                Timber.i(
-                                    "remove result $result routeEntitiesSorted ${routeEntitiesSorted.size}"
-                                )
-                                result = routeEntities.remove(route)
-                                Timber.i(
-                                    "remove result $result routeEntities ${routeEntities.size}"
-                                )
-                                dataChangeCompleted = false
-                                notifyDataChanged = true
+                                viewModel.deleteRoute(route)
                             }
 
                             RouteEntityItemAction.Map -> {
-                                Timber.i(
-                                    "$action ${route.name}"
-                                )
-//                            showRouteEntityInMap(context, mapboxMap, route)
-                                val rootFolder =
-                                    File(context.filesDir, Const.ROUTEFOLDER)
+                                val rootFolder = File(context.filesDir, Const.ROUTEFOLDER)
                                 val routeFolder = File(rootFolder, route.region)
                                 val routeFile = File(routeFolder, route.name)
-                                val lllh =
-                                    if (route.name.endsWith(Const.JPG_EXT)) {
-                                        Helpers.getCoordinatesFromExif(routeFile)
-                                    } else
-                                        Helpers.getLllhFromFile(routeFile)
+                                val lllh = if (route.name.endsWith(Const.JPG_EXT)) {
+                                    Helpers.getCoordinatesFromExif(routeFile)
+                                } else Helpers.getLllhFromFile(routeFile)
+                                
                                 val kmlString = lllh?.lllhToKmlString(route.name)
-                                val encodedString =
-                                    lllh?.let { encodeLllh(it) }
-                                Timber.i("encodedString length: ${encodedString?.length}")
-                                Timber.i("encodedString: $encodedString")
-                                val lllhDecoded = encodedString?.let { decodeLllh(it) }
-                                Timber.i("lllhDecoded size: ${lllhDecoded?.size}")
-
                                 if (kmlString != null) {
                                     route.kmlString = kmlString
-                                    Timber.i("kmlString length: ${kmlString.length}")
-                                } else
-                                    Timber.i(
-                                        "invalid route ${route.name}"
-                                    )
-
+                                }
                                 selectRoute(route, RouteMenu.Map)
                             }
 
                             RouteEntityItemAction.Hide -> {
-                                route.let {
-                                    //removeRouteLine(it.name)
-                                    Timber.i(
-                                        "removeRouteLine ${it.name}"
-                                    )
-                                }
+                                Timber.i("Hide ${route.name}")
                             }
 
                             RouteEntityItemAction.Database -> {
-                                snackRoutesData =
+                                viewModel.setSnackRoutesData(
                                     SnackRoutesData(
                                         RouteMenu.Placeholder,
-                                        context.getString(
-                                            R.string.added_to_database,
-                                            route.name
-                                        ),
-                                        action = Nothing, actionText = null, null
+                                        context.getString(R.string.added_to_database, route.name),
+                                        action = SnackRoutesAction.Nothing, actionText = null, null
                                     )
+                                )
                             }
                         }
-                    } //else Timber.i("route = null")
+                    }
                 },
                 deleteRouteFolder = { region ->
-                    snackRoutesData =
-                        SnackRoutesData(
-                            RouteMenu.Placeholder,
-                            context.getString(R.string.remove_route_folder, region),
-                            action = RemoveRouteFolder,
-                            actionText = context.getString(R.string.ok),
-                            actionData = region
+                    region?.let {
+                        viewModel.setSnackRoutesData(
+                            SnackRoutesData(
+                                RouteMenu.Placeholder,
+                                context.getString(R.string.remove_route_folder, it),
+                                action = SnackRoutesAction.RemoveRouteFolder,
+                                actionText = context.getString(R.string.ok),
+                                actionData = it
+                            )
                         )
+                    }
                 }, singleRouteMenu = {routeFolder ->
-                    showSingleRouteImportExportMenu = routeFolder
+                    viewModel.setShowSingleRouteImportExportMenu(routeFolder)
                 }
             )
         }
 
-        showRouteMoBo?.let {
-            RouteFileMoBoSheet(it) { action ->
-                Timber.i("${it.name} ${it.region} action $action")
+        uiState.showRouteMoBo?.let { route ->
+            RouteFileMoBoSheet(route) { action ->
                 when (action) {
-                    RouteMenu.Home -> showRouteMoBo = null
+                    RouteMenu.Home -> viewModel.setShowRouteMoBo(null)
                     RouteMenu.RefreshPreview -> {
                         val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
-                        val routeFolder = File(rootRouteFolder, it.region)
-                        val routeFile = File(routeFolder, it.name)
-                        val lllh =
-                            if (it.name.endsWith(Const.JPG_EXT)) {
-                                Helpers.getCoordinatesFromExif(routeFile)
-                            } else
-                                Helpers.getLllhFromFile(routeFile)
+                        val routeFolder = File(rootRouteFolder, route.region)
+                        val routeFile = File(routeFolder, route.name)
+                        val lllh = if (route.name.endsWith(Const.JPG_EXT)) {
+                            Helpers.getCoordinatesFromExif(routeFile)
+                        } else Helpers.getLllhFromFile(routeFile)
+
                         if (lllh != null) {
                             val routeCenter = lllh.getCenter()
-                            val mvtTileMatch: GeoJsonUtils.Companion.Tile =
-                                pointToTile(routeCenter.longitude, routeCenter.latitude, 9.0)
-                            Timber.i("$routeCenter mvtTileMatch: $mvtTileMatch")
+                            val mvtTileMatch = pointToTile(routeCenter.longitude, routeCenter.latitude, 9.0)
                             val mvtMatchingMap = "${Const.MVT_PREFIX}${mvtTileMatch.x}_${mvtTileMatch.y}_${mvtTileMatch.z}"
                             val mvtRootFolder = File(context.filesDir, Const.MVT_FOLDER)
                             val mvtMatchingFile = File(mvtRootFolder, mvtMatchingMap.plus(Const.MBTILES_EXT))
@@ -661,358 +490,201 @@ fun RouteFilesScreen(selectRoute: (RouteEntity?, RouteMenu) -> Unit) {
                             var baseMapChange = false
                             if (mvtMatchingFile.exists() && mvtMatchingFile.path != mvtCurrentPath) {
                                 preferences.edit { putString(Const.PREF_MVT_FILEPATH, mvtMatchingFile.path) }
-                                Timber.i("pref ${Const.PREF_MVT_FILEPATH} changed: ${mvtMatchingFile.path}")
                                 baseMapChange = true
                             }
-                            Helpers.takeRouteSnapshot(context, lllh, it.name, Const.styleVectorUri, 512, 0.1, true,
-                                routeFolder)
+                            Helpers.takeRouteSnapshot(context, lllh, route.name, Const.styleVectorUri, 512, 0.1, true, routeFolder)
                             { snapShot, _ ->
-                                Timber.i("takeLocationsSnapshot ready")
                                 snapShot?.let { snapshot ->
                                     addLineToSnapshotWithGradient(snapshot, lllh)
-                                    it.bitmap = snapShot.bitmap // it = showRouteMoBo
-                                    //dataChangeCompleted = false
-                                    //notifyDataChanged = true
-                                    showRouteMoBo = null
-                                    Timber.i("notifyDataChanged ${it.name}")
-
-                                    // experiment 21mai2026
-                                    // Helpers.textRecognition(snapShot.bitmap)
-
-                                    val routeDisplayName = it.name
-                                        .removeSuffix(Const.GPX_EXT)
-                                        .removeSuffix(Const.KML_EXT)
-                                        .removeSuffix(Const.JPG_EXT)
-
+                                    route.bitmap = snapShot.bitmap
+                                    viewModel.setShowRouteMoBo(null)
+                                    
+                                    val routeDisplayName = route.name.removeSuffix(Const.GPX_EXT).removeSuffix(Const.KML_EXT).removeSuffix(Const.JPG_EXT)
                                     val snackTitle = StringBuilder(context.getString(R.string.refresh_route_preview_ready, routeDisplayName))
                                     if (baseMapChange) {
-                                        snackTitle.append("\n")
-                                            .append(context.getString(R.string.vector_map_changed_to_, mvtMatchingFile.name))
+                                        snackTitle.append("\n").append(context.getString(R.string.vector_map_changed_to_, mvtMatchingFile.name))
                                     } else if (mvtMatchingFile.exists()) {
-                                        snackTitle.append("\n")
-                                            .append(context.getString(R.string.vector_map_used_, mvtMatchingFile.name))
+                                        snackTitle.append("\n").append(context.getString(R.string.vector_map_used_, mvtMatchingFile.name))
                                     } else {
-                                        snackTitle.append("\n")
-                                            .append(context.getString(R.string.vector_map_missing_, mvtMatchingFile.name))
+                                        snackTitle.append("\n").append(context.getString(R.string.vector_map_missing_, mvtMatchingFile.name))
                                     }
 
-                                    snackRoutesData =
-                                        SnackRoutesData(
-                                            RouteMenu.RefreshPreview,
-                                            snackTitle.toString(),
-                                            action = Nothing,
-                                            actionText = null, snapShot.bitmap
-                                        )
+                                    viewModel.setSnackRoutesData(
+                                        SnackRoutesData(RouteMenu.RefreshPreview, snackTitle.toString(), action = SnackRoutesAction.Nothing, actionText = null, snapShot.bitmap)
+                                    )
                                 }
                             }
-                        } else
-                            Timber.e("${it.name} lllh = null")
+                        }
                     }
                     RouteMenu.Map -> {
-                        val rootFolder =
-                            File(context.filesDir, Const.ROUTEFOLDER)
-                        val routeFolder = File(rootFolder, it.region)
-                        val routeFile = File(routeFolder, it.name)
-                        val lllh =
-                            if (it.name.endsWith(Const.JPG_EXT)) {
-                                Helpers.getCoordinatesFromExif(routeFile)
-                            } else
-                                Helpers.getLllhFromFile(routeFile)
-                        val kmlString = lllh?.lllhToKmlString(it.name)
+                        val rootFolder = File(context.filesDir, Const.ROUTEFOLDER)
+                        val routeFolder = File(rootFolder, route.region)
+                        val routeFile = File(routeFolder, route.name)
+                        val lllh = if (route.name.endsWith(Const.JPG_EXT)) {
+                            Helpers.getCoordinatesFromExif(routeFile)
+                        } else Helpers.getLllhFromFile(routeFile)
+                        val kmlString = lllh?.lllhToKmlString(route.name)
                         if (kmlString != null) {
-                            it.kmlString = kmlString
-                        } else
-                            Timber.i("invalid route ${it.name}")
-                        selectRoute(it, RouteMenu.Map)
-                        showRouteMoBo = null
+                            route.kmlString = kmlString
+                        }
+                        selectRoute(route, RouteMenu.Map)
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.MoveFile -> {
-                        if (showRouteMoBo != null && showRouteMoBo?.name == "routes.geojson") {
-                            val rootFolder = context.filesDir
-                            val routesRootFolder = File(rootFolder, Const.ROUTEFOLDER)
-                            val routesFolder =
-                                File(routesRootFolder, showRouteMoBo!!.region)
-                            val sourceFile = File(routesFolder, showRouteMoBo!!.name)
-                            val targetFile = File(routesRootFolder, showRouteMoBo!!.name)
-                            sourceFile.copyTo(targetFile, true)
-                            if (targetFile.exists())
-                                sourceFile.delete()
-                            snackRoutesData =
-                                SnackRoutesData(
-                                    action,
-                                    context.getString(
-                                        R.string.moved_to,
-                                        "routes folder"
-                                    ),
-                                    action = Nothing, actionText = null, null
-                                )
-                            moveFile = true
-                            showRouteMoBo = null
+                        if (route.name == "routes.geojson") {
+                            viewModel.moveGeoJsonFile(route)
                         } else {
-                            askForRouteName = showRouteMoBo?.copy()
-                            moveFile = true
-                            showRouteMoBo = null
+                            viewModel.setAskForRouteName(route.copy(), isMove = true)
                         }
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.DeleteFile -> {
-                        val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
-                        val routeFolder = File(rootRouteFolder, it.region)
-                        if (showRouteMoBo?.name == "routes.geojson") {
-                            File(rootRouteFolder, showRouteMoBo!!.name).delete()
-                            File(routeFolder, showRouteMoBo!!.name).delete()
-                            dataChangeCompleted = false
-                            notifyDataChanged = true
-                            showRouteMoBo = null
+                        if (route.name == "routes.geojson") {
+                            viewModel.deleteGeoJsonFile(route)
                         } else {
-                            val result =
-                                routeEntitiesSorted.remove(showRouteMoBo)
-                            Timber.i(
-                                "remove result $result routeEntitiesSorted ${routeEntitiesSorted.size}"
-                            )
-                            routeEntities.remove(showRouteMoBo)
-                            val routeFile = File(routeFolder, it.name)
-                            val deleteResult = routeFile.delete()
-                            Timber.i(
-                                "delete file ${routeFile.path} $deleteResult"
-                            )
-                            val sharedPref = context.getSharedPreferences(
-                                context.getString(R.string.early_annotations),
-                                Context.MODE_PRIVATE
-                            )
-                            sharedPref.edit { remove(routeFile.path) }
-                            dataChangeCompleted = false
-                            notifyDataChanged = true
-                            showRouteMoBo = null
+                            viewModel.deleteRouteWithFile(route)
                         }
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.ShareFile -> {
-                        shareRouteFile(context, it)
-                        showRouteMoBo = null
+                        shareRouteFile(context, route)
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.ShareSnapshot -> {
-                        shareRouteSnapshot(context, it)
-                        showRouteMoBo = null
+                        shareRouteSnapshot(context, route)
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.SaveFile -> {
-                        askForRouteName = it.copy()
-                        moveFile = false
-                        showRouteMoBo = null
+                        viewModel.setAskForRouteName(route.copy(), isMove = false)
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.InsertIntoDatabase -> {
-                        val rootRouteFolder =
-                            File(context.filesDir, Const.ROUTEFOLDER)
-                        val routeFolder = File(rootRouteFolder, it.region)
-                        val routeFile = File(routeFolder, it.name)
+                        val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
+                        val routeFolder = File(rootRouteFolder, route.region)
+                        val routeFile = File(routeFolder, route.name)
 
                         if (routeFile.exists()) {
-                            val lllh =
-                                if (it.name.endsWith(Const.JPG_EXT)) {
-                                    Helpers.getCoordinatesFromExif(routeFile)
-                                } else
-                                    Helpers.getLllhFromFile(routeFile)
-                            val region = it.region
-                            val name = it.name
-                            region.let {
-                                name.let { name ->
-                                    lllh?.let { _ ->
-                                        takeSnapshot(context, lllh, region, name, routeFolder) {
-                                            Timber.i("takeSnapshot ready $name")
-                                            snackRoutesData =
-                                                SnackRoutesData(
-                                                    action,
-                                                    context.getString(R.string.save_to_database_ready, name),
-                                                    action = Nothing, actionText = null, null
-                                                )
-                                        }
-                                    }
+                            val lllh = if (route.name.endsWith(Const.JPG_EXT)) {
+                                Helpers.getCoordinatesFromExif(routeFile)
+                            } else Helpers.getLllhFromFile(routeFile)
+                            val region = route.region
+                            val name = route.name
+                            lllh?.let {
+                                viewModel.takeSnapshot(lllh, region, name, routeFolder) {
+                                    viewModel.setSnackRoutesData(
+                                        SnackRoutesData(action, context.getString(R.string.save_to_database_ready, name), action = SnackRoutesAction.Nothing, actionText = null, null)
+                                    )
                                 }
                             }
                         }
-                        showRouteMoBo = null
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.Chart -> {
-                        val rootRouteFolder =
-                            File(context.filesDir, Const.ROUTEFOLDER)
-                        val routeFolder = File(rootRouteFolder, it.region)
-                        val routeFile = File(routeFolder, it.name)
+                        val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
+                        val routeFolder = File(rootRouteFolder, route.region)
+                        val routeFile = File(routeFolder, route.name)
 
                         if (routeFile.exists()) {
-                            showRouteChart = routeFile
+                            viewModel.setShowRouteChart(routeFile)
                         }
-                        showRouteMoBo = null
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.Gradient -> {
-                        val rootRouteFolder =
-                            File(context.filesDir, Const.ROUTEFOLDER)
-                        val routeFolder = File(rootRouteFolder, it.region)
-                        val routeFile = File(routeFolder, it.name)
+                        val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
+                        val routeFolder = File(rootRouteFolder, route.region)
+                        val routeFile = File(routeFolder, route.name)
                         if (routeFile.exists()) {
-                            val lllh =
-                                if (it.name.endsWith(Const.JPG_EXT)) {
-                                    Helpers.getCoordinatesFromExif(routeFile)
-                                } else
-                                    Helpers.getLllhFromFile(routeFile)
+                            val lllh = if (route.name.endsWith(Const.JPG_EXT)) {
+                                Helpers.getCoordinatesFromExif(routeFile)
+                            } else Helpers.getLllhFromFile(routeFile)
                             if (lllh.isNullOrEmpty().not()) {
-                                Timber.i(it.name)
-                                val kmlString = lllh.lllhToKmlString(it.name)
-                                showRouteGradient = it.copy()
-                                showRouteGradient!!.kmlString = kmlString
+                                val kmlString = lllh!!.lllhToKmlString(route.name)
+                                val gradientRoute = route.copy(kmlString = kmlString)
+                                viewModel.setShowRouteGradient(gradientRoute)
                             }
                         }
-                        showRouteMoBo = null
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.ElevationRefreshFromSrtm -> {
-                        val rootRouteFolder =
-                            File(context.filesDir, Const.ROUTEFOLDER)
-                        var routeFile: File?
-                        val routeFolder = File(rootRouteFolder, it.region)
-                        routeFile = File(routeFolder, it.name)
+                        val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
+                        val routeFolder = File(rootRouteFolder, route.region)
+                        val routeFile = File(routeFolder, route.name)
                         if (routeFile.exists()) {
-                            val lllh =
-                                if (it.name.endsWith(Const.JPG_EXT)) {
-                                    Helpers.getCoordinatesFromExif(routeFile)
-                                } else
-                                    Helpers.getLllhFromFile(routeFile)
-                            val hgtFile = srtmFile
-                            if (hgtFile != null) {
-                                Timber.i("hgtFile: ${hgtFile.name}")
-                                if (hgtFile.exists()) {
-                                    val hgtReader = HgtReader(context, hgtFile)
-                                    val refreshedLllh =
-                                        hgtReader.refreshRouteElevationFromSrtm(lllh).lllh
-                                    val path =
-                                        routeFile.path.replace(Const.GPX_EXT, Const.KML_EXT)
-                                            .replace(Const.JPG_EXT, Const.KML_EXT)
-                                    val result =
-                                        Helpers.writeLllh2KmlFile(refreshedLllh, path)
-                                    if (result) {
-                                        snackRoutesData =
-                                            SnackRoutesData(
-                                                action,
-                                                context.getString(R.string.saved_to_, path),
-                                                action = Nothing, actionText = null, null
-                                            )
-                                    }
-                                    Timber.i("result:$result")
-                                } else {
-                                    snackRoutesData =
-                                        SnackRoutesData(
-                                            action,
-                                            context.getString(R.string.not_found_, hgtFile.path),
-                                            action = Nothing, actionText = null, null
-                                        )
-                                    Timber.i(
-                                        "not found: ${hgtFile.path}"
+                            val lllh = if (route.name.endsWith(Const.JPG_EXT)) {
+                                Helpers.getCoordinatesFromExif(routeFile)
+                            } else Helpers.getLllhFromFile(routeFile)
+                            val hgtFile = uiState.srtmFile
+                            if (hgtFile != null && hgtFile.exists()) {
+                                val hgtReader = HgtReader(context, hgtFile)
+                                val refreshedLllh = hgtReader.refreshRouteElevationFromSrtm(lllh).lllh
+                                val path = routeFile.path.replace(Const.GPX_EXT, Const.KML_EXT).replace(Const.JPG_EXT, Const.KML_EXT)
+                                val result = Helpers.writeLllh2KmlFile(refreshedLllh, path)
+                                if (result) {
+                                    viewModel.setSnackRoutesData(
+                                        SnackRoutesData(action, context.getString(R.string.saved_to_, path), action = SnackRoutesAction.Nothing, actionText = null, null)
                                     )
                                 }
                             } else {
-                                snackRoutesData =
-                                    SnackRoutesData(
-                                        action,
-                                        context.getString(R.string.select_hgt_file),
-                                        action = SnackRoutesAction.ShowSrtmFiles,
-                                        actionText = context.getString(R.string.ok),
-                                        null
-                                    )
+                                viewModel.setSnackRoutesData(
+                                    SnackRoutesData(action, context.getString(R.string.select_hgt_file), action = SnackRoutesAction.ShowSrtmFiles, actionText = context.getString(R.string.ok), null)
+                                )
                             }
-                        } else
-                            Timber.i("not found: ${routeFile.path}")
-                        showRouteMoBo = null
+                        }
+                        viewModel.setShowRouteMoBo(null)
                     }
                     RouteMenu.ElevationGmsService -> {
                         val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
-                        var routeFile: File?
-                        val routeFolder = File(rootRouteFolder, it.region)
-                        routeFile = File(routeFolder, it.name)
+                        val routeFolder = File(rootRouteFolder, route.region)
+                        val routeFile = File(routeFolder, route.name)
                         if (routeFile.exists()) {
-                            val lllh =
-                                if (it.name.endsWith(Const.JPG_EXT)) {
-                                    Helpers.getCoordinatesFromExif(routeFile)
-                                } else
-                                    Helpers.getLllhFromFile(routeFile)
-                            if (lllh != null && lllh.size < 512) {
-                                val gmsLatLng: List<LatLng> = List(lllh.size) { i ->
-                                    LatLng(lllh[i].latitude, lllh[i].longitude)
-                                }
+                            val lllh = if (route.name.endsWith(Const.JPG_EXT)) {
+                                Helpers.getCoordinatesFromExif(routeFile)
+                            } else Helpers.getLllhFromFile(routeFile)
+                            if (lllh != null) {
+                                val gmsLatLng = if (lllh.size > MAX_ELEVATION_POINTS) {
+                                    lllh.simplifyToTargetCount(MAX_ELEVATION_POINTS)
+                                } else {
+                                    lllh
+                                }.map { it.latLngGms }
                                 val encodedPolyline = PolyUtil.encode(gmsLatLng)
                                 scope.launch {
-                                    val refreshedLllh = MapUtils.gmsElevationService(
-                                        context,
-                                        "enc:${encodedPolyline}"
-                                    )
+                                    val refreshedLllh = MapUtils.gmsElevationService(context, "enc:${encodedPolyline}")
                                     if (refreshedLllh.isNotEmpty()) {
-                                        val path =
-                                            routeFile.path.replace(
-                                                Const.GPX_EXT,
-                                                Const.KML_EXT
-                                            )
-                                                .replace(Const.JPG_EXT, Const.KML_EXT)
-                                        val result =
-                                            Helpers.writeLllh2KmlFile(refreshedLllh, path)
+                                        val path = routeFile.path.replace(Const.GPX_EXT, Const.KML_EXT).replace(Const.JPG_EXT, Const.KML_EXT)
+                                        val result = Helpers.writeLllh2KmlFile(refreshedLllh, path)
                                         if (result)
-                                            snackRoutesData =
-                                                SnackRoutesData(
-                                                    action,
-                                                    context.getString(R.string.saved_to_, path),
-                                                    action = Nothing, actionText = null, null
-                                                )
-                                    } else {
-                                        snackRoutesData =
-                                            SnackRoutesData(
-                                                action,
-                                                "${context.getString(R.string.gms_elevation_service)} FAILED",
-                                                action = Nothing, actionText = null, null
+                                            viewModel.setSnackRoutesData(
+                                                SnackRoutesData(action, context.getString(R.string.saved_to_, path), action = SnackRoutesAction.Nothing, actionText = null, null)
                                             )
-                                        Timber.i(
-                                            "" +
-                                                    "${context.getString(R.string.gms_elevation_service)} FAILED"
-                                        )
                                     }
                                 }
                             }
-else {
-                                Timber.i("route coordinates: ${lllh?.size}")
-                                snackRoutesData =
-                                    SnackRoutesData(
-                                        action,
-                                        context.getString(R.string.too_many_coordinates_512),
-                                        action = Nothing, actionText = null, null
-                                    )
-                            }
                         }
-                        showRouteMoBo = null
+                        viewModel.setShowRouteMoBo(null)
                     }
-
                     RouteMenu.Placeholder -> {}
                 }
             }
         }
-        showRouteChart?.let {
-            Timber.i("LineGraphLllh ${it.name}")
-            val lllh =
-                if (it.name.endsWith(Const.JPG_EXT)) {
-                    Helpers.getCoordinatesFromExif(it)
-                } else
-                    Helpers.getLllhFromFile(it)
+        uiState.showRouteChart?.let { file ->
+            val lllh = if (file.name.endsWith(Const.JPG_EXT)) {
+                Helpers.getCoordinatesFromExif(file)
+            } else Helpers.getLllhFromFile(file)
             val lllhReduced = lllh?.reduceWithTolerance(200.0)
-            ModalBottomSheet(onDismissRequest = { showRouteChart = null }) {
-                LineYGraphLllh(lllhReduced, it.name, 0F, { _ ->
-                    Timber.i("")
-                    showRouteChart = null
-                }, {}, Icons.AutoMirrored.Filled.ArrowBack)
+            ModalBottomSheet(onDismissRequest = { viewModel.setShowRouteChart(null) }) {
+                LineYGraphLllh(lllhReduced, file.name, 0F, { viewModel.setShowRouteChart(null) }, {}, Icons.AutoMirrored.Filled.ArrowBack)
             }
         }
-        showRouteGradient?.let {
-            val lllh = it.kmlString.kmlString2Lllh()
+        uiState.showRouteGradient?.let { route ->
+            val lllh = route.kmlString.kmlString2Lllh()
             val distRoute = lllh.getDistanceFromLllh()
-            Timber.i("GradientChartMonitor ${it.name}")
-            ModalBottomSheet(onDismissRequest = { showRouteGradient = null }) {
+            ModalBottomSheet(onDismissRequest = { viewModel.setShowRouteGradient(null) }) {
                 GradientChartMonitor(
-                    it,
+                    route,
                     0.0f, Icons.AutoMirrored.Filled.ArrowBack,
                     result = {
-                        showRouteGradient = null
-                    }, true
+                        viewModel.setShowRouteGradient(null)
+                    }, animated = true
                 )
                 Text(
                     text = distRoute.formatDistM(true),
@@ -1022,7 +694,7 @@ else {
                 Spacer(modifier = Modifier.height(96.dp))
             }
         }
-        askForRouteName?.let { routeEntity ->
+        uiState.askForRouteName?.let { routeEntity ->
             val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
             val routeFolder = File(rootRouteFolder, routeEntity.region)
             var routeFile = File(routeFolder, routeEntity.name)
@@ -1031,31 +703,14 @@ else {
                 val newFileName = routeFile.name.replace(Const.JPG_EXT, Const.KML_EXT)
                 val newRouteFile = File(routeFolder, newFileName)
                 Helpers.writeLllh2KmlFile(lllh, newRouteFile.path)
-                routeEntities.add(
-                    RouteEntity(
-                        UUID.randomUUID(),
-                        newRouteFile.name,
-                        routeEntity.region
-                    )
+                viewModel.refreshRoutes()
+                viewModel.setAskForRouteName(null)
+                viewModel.setSnackRoutesData(
+                    SnackRoutesData(RouteMenu.Placeholder, context.getString(R.string.route_file_created_, newRouteFile.path), action = SnackRoutesAction.Nothing, actionText = null, null)
                 )
-                moveFile = false
-                askForRouteName = null
-                routeEntitiesSorted =
-                    routeEntities.sortedBy { entity ->
-                        entity.region.plus(entity.name)
-                    }.toMutableList()
-                dataChangeCompleted = false
-                notifyDataChanged = true
-                snackRoutesData =
-                    SnackRoutesData(
-                        RouteMenu.Placeholder, context.getString(
-                            R.string.route_file_created_,
-                            newRouteFile.path
-                        ), action = Nothing, actionText = null, null
-                    )
             } else {
                 RouteFileSaveMoBoSheet(routeEntity.name) { targetFileName, targetRouteFolder ->
-                    if (targetRouteFolder != null) { // && routeEntity.region != targetRouteFolder.first) {
+                    if (targetRouteFolder != null) {
                         if (routeEntity.region == Const.ROUTEFOLDER)
                             routeFile = File(rootRouteFolder, routeEntity.name)
                         var newFileName = targetFileName
@@ -1064,56 +719,24 @@ else {
                                 newFileName = targetFileName.plus((Const.KML_EXT))
                             val newRouteFile = File(targetRouteFolder.second, newFileName)
                             routeFile.copyTo(newRouteFile, overwrite = true)
-                            Timber.i(
-                                "newRouteFile ${newRouteFile.path}"
-                            )
-                            targetRouteFolder.let { it1 ->
-                                routeEntities.add(
-                                    RouteEntity(
-                                        UUID.randomUUID(),
-                                        targetFileName,
-                                        it1.first
-                                    )
-                                )
-                            }
-                            if (moveFile) {
-                                routeEntities.remove(askForRouteName)
+                            
+                            if (uiState.moveFile) {
                                 routeFile.delete()
                             }
-                            snackRoutesData =
-                                SnackRoutesData(
-                                    RouteMenu.Placeholder, context.getString(
-                                        R.string.route_file_created_,
-                                        newRouteFile.path
-                                    ), action = Nothing, actionText = null, null
-                                )
-                        } else Timber.i(
-                            "$logtag ${Thread.currentThread().stackTrace[2].lineNumber}: ${routeFile.path} not found"
-                        )
+                            viewModel.setSnackRoutesData(
+                                SnackRoutesData(RouteMenu.Placeholder, context.getString(R.string.route_file_created_, newRouteFile.path), action = SnackRoutesAction.Nothing, actionText = null, null)
+                            )
+                        }
                     }
-                    moveFile = false
-                    askForRouteName = null
-                    routeEntitiesSorted =
-                        routeEntities.sortedBy { entity ->
-                            entity.region.plus(entity.name)
-                        }.toMutableList()
-                    dataChangeCompleted = false
-                    notifyDataChanged = true
+                    viewModel.setAskForRouteName(null)
+                    viewModel.refreshRoutes()
                 }
             }
         }
 
-        if (askForNameFilter) {
-            AskForRouteNameFilter(routeEntities, filter = { filter, region ->
-                Timber.i("filter $filter")
-                askForNameFilter = false
-                routeEntitiesSorted = when (region) {
-                    null -> if (filter == null) routeEntities.sortedBy { entity ->
-                        entity.region.plus(entity.name) }.toMutableList()
-                    else filterByName(filter, routeEntities).toMutableList()
-                    else -> filterByRegion(region, routeEntities).toMutableList()
-                }
-                //notifyDataChanged = true
+        if (uiState.askForNameFilter) {
+            AskForRouteNameFilter(uiState.routeEntities, filter = { filter, region ->
+                viewModel.applyFilter(filter, region)
             })
         }
     }
@@ -1137,42 +760,12 @@ fun RouteFilesGroupedListPreview() {
     }
 }
 
-fun takeSnapshot(
-    context: Context, lllh: List<LatLngH>,
-    region: String,
-    name: String,
-    routeFolder: File?,
-    finished: () -> Unit
-) {
-    Helpers.takeRouteSnapshot(
-        context,
-        lllh,
-        name,
-        Const.styleVectorUri,
-        512,
-        0.1,
-        true,
-        routeFolder
-    ) { snapshot, _ ->
-        val track = Track(lllh)
-        val kmlString = lllh.lllhToKmlString(name)
-        snapshot?.let {
-            Timber.i("name: $name")
-            replaceRouteDao(context, name, region, kmlString, it.bitmap, track) {
-                finished()
-            }
-        }
-    }
-}
-
-
 fun filterByRegion(region: String?, routeEntities: List<RouteEntity>): List<RouteEntity> {
     val filteredRouteEntities: ArrayList<RouteEntity> = ArrayList()
     routeEntities.forEach { routeEntity ->
         if (routeEntity.region == region)
             filteredRouteEntities.add(routeEntity)
     }
-    //Timber.i("filteredRouteEntities ${filteredRouteEntities.size}")
     return filteredRouteEntities
 }
 
@@ -1184,7 +777,6 @@ fun filterByName(name: String?, routeEntities: List<RouteEntity>): List<RouteEnt
                 filteredRouteEntities.add(routeEntity)
         }
     }
-    //Timber.i("filteredRouteEntities ${filteredRouteEntities.size}")
     return filteredRouteEntities
 }
 
@@ -1197,7 +789,6 @@ fun RouteFilesGroupedList(
     deleteRouteFolder: (String?) -> Unit,
     singleRouteMenu: (String) -> Unit
 ) {
-    Timber.i("routeEntities ${routeEntities.size}")
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val marginTopDp = TopAppBarDefaults.TopAppBarExpandedHeight.value
@@ -1221,7 +812,6 @@ fun RouteFilesGroupedList(
                         BadgedBox(badge = { Badge { Text("${routeEntities.size}") } }) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(onClick = {
-                                    Timber.i("route folder: $initial")
                                     singleRouteMenu(initial)
                                 }) {
                                     Icon(
@@ -1230,15 +820,11 @@ fun RouteFilesGroupedList(
                                     )
                                 }
                                 IconButton(onClick = {
-                                    Timber.i("route folder: $initial")
                                     val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
                                     @SuppressLint("SimpleDateFormat") val timeFormat =
                                         SimpleDateFormat(Const.TIME_PATTERN_LONG_YEAR)
-                                    val timeTag = java.lang.String.format(
-                                        Locale.getDefault(), "%s", timeFormat.format(System.currentTimeMillis())
-                                    )
+                                    val timeTag = timeFormat.format(System.currentTimeMillis())
                                     val zipFile = File(context.cacheDir, "${Const.ROUTEFOLDER}_${initial}_${timeTag}${Const.ZIP_EXT}")
-                                    Timber.i("zipFile: ${zipFile.path}")
                                     val routeFolder = File(rootRouteFolder, initial)
                                     lifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                                         UnzipUtils.zipRouteSubFolder(routeFolder, zipFile)
@@ -1280,7 +866,6 @@ fun RouteFilesGroupedList(
                                     )
                                 }
                                 IconButton(onClick = {
-                                    Timber.i(initial)
                                     deleteRouteFolder(initial)
                                 }) {
                                     Icon(
@@ -1295,9 +880,8 @@ fun RouteFilesGroupedList(
 
                 items(routeEntities) { routeItem ->
                     if(groupExpanded != null && routeItem.region == groupExpanded) {
-                        RouteFilesItem(context, routeItem, onItemClick = { routeItem, action ->
-                            Timber.i("routeItem ${routeItem.name} action ${action.name}")
-                            selectRoute(routeItem, action)
+                        RouteFilesItem(context, routeItem, onItemClick = { item, action ->
+                            selectRoute(item, action)
                         })
                     }
                 }
@@ -1381,8 +965,7 @@ fun RouteFilesItem(
                         onItemClick(updatedItem, RouteEntityItemAction.Database)
                     }
                 }
-            } else
-                Timber.i("NOT found ${routeFile.path}")
+            }
         }
     )
 }
@@ -1393,17 +976,7 @@ fun ProgressDialog() {
         onDismissRequest = { },
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
         confirmButton = {},
-        title = { Text(stringResource(R.string.loading)) },
-/*
-        text = {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }
- */
+        title = { Text(stringResource(R.string.loading)) }
     )
 }
 
@@ -1461,7 +1034,6 @@ fun RouteFilesItemUI(
             Spacer(modifier = Modifier.height(4.dp))
             if (routeItem.bitmap != null) {
                 val imageBitmap = routeItem.bitmap!!.asImageBitmap()
-                // Lays out and draws an image sized to the rectangular subsection of the ImageBitmap
                 Image(
                     painter = BitmapPainter(
                         imageBitmap,
@@ -1477,86 +1049,33 @@ fun RouteFilesItemUI(
     }
 }
 
-@Composable
-private fun RouteFilesContent(
-    context: Context,
-    lifecycleOwner: LifecycleOwner,
-    initialize: (List<RouteEntity>?) -> Unit
-) {
-    var routeEntities : List<RouteEntity>
-    LaunchedEffect(Unit) {
-        Timber.i("RouteFilesContent LaunchedEffect")
-        lifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            routeEntities = getAllRoutesSimple(context)
-            initialize(routeEntities.sortedBy {entity ->
-                entity.region.plus(entity.name)
-            })
-        }.invokeOnCompletion {
-            Timber.i("invokeOnCompletion")
-        }
-    }
-
-}
-
 enum class SingleRouteAction{
     Nothing,
     Text,
     Image,
     Cleanup
 }
+
 @Composable
-private fun DropdownSingleRouteImportExport(action: (SingleRouteAction) -> Unit) {
+fun DropdownSingleRouteImportExport(action: (SingleRouteAction) -> Unit) {
     DropdownMenu(
         expanded = true,
         onDismissRequest = { action(SingleRouteAction.Nothing) }
     ) {
         DropdownMenuItem(
-            leadingIcon = {
-                Icon(
-                    Icons.Outlined.FileDownload,
-                    null
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.import_file)
-                )
-            },
-            onClick = {
-                action(SingleRouteAction.Text)
-            }
+            leadingIcon = { Icon(Icons.Outlined.FileDownload, null) },
+            text = { Text(text = stringResource(R.string.import_file)) },
+            onClick = { action(SingleRouteAction.Text) }
         )
         DropdownMenuItem(
-            leadingIcon = {
-                Icon(
-                    Icons.Outlined.Image,
-                    null
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.import_photo)
-                )
-            },
-            onClick = {
-                action(SingleRouteAction.Image)
-            }
+            leadingIcon = { Icon(Icons.Outlined.Image, null) },
+            text = { Text(text = stringResource(R.string.import_photo)) },
+            onClick = { action(SingleRouteAction.Image) }
         )
         DropdownMenuItem(
-            leadingIcon = {
-                Icon(
-                    Icons.Outlined.ClearAll,
-                    null
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.cleanup)
-                )
-            },
-            onClick = {
-                action(SingleRouteAction.Cleanup)
-            }
+            leadingIcon = { Icon(Icons.Outlined.ClearAll, null) },
+            text = { Text(text = stringResource(R.string.cleanup)) },
+            onClick = { action(SingleRouteAction.Cleanup) }
         )
     }
 }
@@ -1569,93 +1088,38 @@ enum class RoutesAction {
     ImportThumbnails,
     Nothing
 }
+
 @Composable
-private fun DropdownRoutesImportExport(action: (RoutesAction) -> Unit) {
+fun DropdownRoutesImportExport(action: (RoutesAction) -> Unit) {
     DropdownMenu(
         expanded = true,
         onDismissRequest = { action(RoutesAction.Nothing) }
     ) {
         DropdownMenuItem(
-            leadingIcon = {
-                Icon(
-                    Icons.Outlined.ImportExport,
-                    null
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.import_title)
-                )
-            },
-            onClick = {
-                action(RoutesAction.Import)
-            }
+            leadingIcon = { Icon(Icons.Outlined.ImportExport, null) },
+            text = { Text(text = stringResource(R.string.import_title)) },
+            onClick = { action(RoutesAction.Import) }
         )
         DropdownMenuItem(
-            leadingIcon = {
-                Icon(
-                    Icons.Outlined.Share,
-                    null
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.share)
-                )
-            },
-            onClick = {
-                action(RoutesAction.Export)
-            }
+            leadingIcon = { Icon(Icons.Outlined.Share, null) },
+            text = { Text(text = stringResource(R.string.share)) },
+            onClick = { action(RoutesAction.Export) }
         )
         DropdownMenuItem(
-            leadingIcon = {
-                Icon(
-                    Icons.Outlined.Delete,
-                    null
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.delete_all_routes)
-                )
-            },
-            onClick = {
-                action(RoutesAction.Delete)
-            }
+            leadingIcon = { Icon(Icons.Outlined.Delete, null) },
+            text = { Text(text = stringResource(R.string.delete_all_routes)) },
+            onClick = { action(RoutesAction.Delete) }
         )
         DropdownMenuItem(
-            leadingIcon = {
-                Icon(
-                    Icons.Outlined.ImportExport,
-                    null
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.import_thumbnails)
-                )
-            },
-            onClick = {
-                action(RoutesAction.ImportThumbnails)
-            }
+            leadingIcon = { Icon(Icons.Outlined.ImportExport, null) },
+            text = { Text(text = stringResource(R.string.import_thumbnails)) },
+            onClick = { action(RoutesAction.ImportThumbnails) }
         )
         DropdownMenuItem(
-            leadingIcon = {
-                Icon(
-                    Icons.Outlined.Share,
-                    null
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.export_thumbnails)
-                )
-            },
-            onClick = {
-                action(RoutesAction.ExportThumbnails)
-            }
+            leadingIcon = { Icon(Icons.Outlined.Share, null) },
+            text = { Text(text = stringResource(R.string.export_thumbnails)) },
+            onClick = { action(RoutesAction.ExportThumbnails) }
         )
-
     }
 }
 
@@ -1664,9 +1128,7 @@ fun DropdownSrtmFiles(context: Context, srtmFile: File?, selected: (File?, Boole
     val hgtFolder = File(context.filesDir, Const.HGT_FOLDER_NAME)
     val hgtFiles = hgtFolder.listFiles()
     hgtFiles?.sort()
-    Surface(Modifier
-        .fillMaxWidth()
-        .padding(top = 100.dp)) {
+    Surface(Modifier.fillMaxWidth().padding(top = 100.dp)) {
         Box(Modifier.fillMaxWidth()) {
             Row(Modifier.align(Alignment.TopEnd)) {
                 DropdownMenu(
@@ -1674,32 +1136,17 @@ fun DropdownSrtmFiles(context: Context, srtmFile: File?, selected: (File?, Boole
                     onDismissRequest = { selected(null, false) }
                 ) {
                     DropdownMenuItem(
-                        trailingIcon = {
-                            Icon(
-                                Icons.Outlined.ImportExport,
-                                null
-                            )
-                        },
+                        trailingIcon = { Icon(Icons.Outlined.ImportExport, null) },
                         text = { Text(text = stringResource(R.string.import_title), textDecoration = TextDecoration.Underline) },
-                        onClick = {
-                            selected(null, true)
-                        }
+                        onClick = { selected(null, true) }
                     )
                     hgtFiles?.forEach { file ->
-                        Timber.i(
-                            "${file.name}"
-                        )
                         DropdownMenuItem(
                             trailingIcon = {
-                                if (srtmFile?.name == file.name) Icon(
-                                    Icons.Outlined.Check,
-                                    null
-                                )
+                                if (srtmFile?.name == file.name) Icon(Icons.Outlined.Check, null)
                             },
                             text = { Text(text = file.name) },
-                            onClick = {
-                                selected(file, false)
-                            }
+                            onClick = { selected(file, false) }
                         )
                     }
                 }
@@ -1710,36 +1157,19 @@ fun DropdownSrtmFiles(context: Context, srtmFile: File?, selected: (File?, Boole
 
 fun deleteMainRouteFolder(context: Context, finished: () -> Unit) {
     val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
-    var result = rootRouteFolder.deleteRecursively()
-    Timber.i("${rootRouteFolder.name} deleteRecursively $result")
+    rootRouteFolder.deleteRecursively()
     val thumbnailFolder = File(context.filesDir, Const.THUMBNAILS)
-    result = thumbnailFolder.deleteRecursively()
-    Timber.i("${thumbnailFolder.name} deleteRecursively $result")
-
+    thumbnailFolder.deleteRecursively()
     finished()
 }
 
 fun deleteFilesOlderThan(folder: File, days: Int) {
-    //val folder = File(context.filesDir, Const.THUMBNAILS)
     val twoDaysAgo = System.currentTimeMillis() - (days * 24 * 60 * 60 * 1000)
-    val deletedCount = Helpers.deleteFilesOlderThan(folder, twoDaysAgo, recursive = false)
-    Timber.i("Deleted $deletedCount old ${folder.name} files")
+    Helpers.deleteFilesOlderThan(folder, twoDaysAgo, recursive = false)
 }
-/**
- * Cleans up a specific region folder by removing redundant route files.
- *
- * This function iterates through all JPEG images in the specified [region] folder.
- * For each image found, it looks for corresponding .kml and .gpx files with the
- * same filename and deletes them to save storage space.
- *
- * @param context The Android context used to access internal files.
- * @param region The sub-folder name within the routes directory to clean.
- * @param finished A callback invoked with the total number of files deleted.
- */
+
 fun cleanUpRouteFolder(context: Context, routeFolder: File?, finished: (Int, Int) -> Unit) {
-    //deleteFilesOlderThan(File(context.filesDir, Const.THUMBNAILS), 3)
     var renameCount = 0
-    // Define problematic double extensions and their corrected replacements
     val suffixMap = listOf(
         (Const.JPG_EXT + Const.JPG_EXT) to Const.JPG_EXT,
         (Const.KML_EXT + Const.GPX_EXT) to Const.GPX_EXT,
@@ -1762,50 +1192,19 @@ fun cleanUpRouteFolder(context: Context, routeFolder: File?, finished: (Int, Int
         val baseName = f.nameWithoutExtension
         if (File(routeFolder, "$baseName${Const.KML_EXT}").delete()) deleteCount++
         if (File(routeFolder, "$baseName${Const.GPX_EXT}").delete()) deleteCount++
-        //if (File(routeFolder, "$baseName${Const.JPG_EXT}").delete()) count++
     }
 
     finished(deleteCount, renameCount)
 }
 
-
 fun deleteRouteFolder(context: Context, region: String, routeEntities: List<RouteEntity>,
                       finished: (List<RouteEntity>, List<RouteEntity>) -> Unit) {
     val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
     val routeFolder = File(rootRouteFolder, region)
-    val result = routeFolder.deleteRecursively()
-    Timber.i("${routeFolder.name} deleteRecursively $result")
-    val newRouteEntities = ArrayList<RouteEntity>()
-    routeEntities.forEach { routeEntity ->
-        if (routeEntity.region != region)
-            newRouteEntities.add((routeEntity))
-    }
-
-    val routeEntitiesSorted = newRouteEntities.sortedBy {entity ->  entity.region.plus(entity.name) }.toMutableList()
+    routeFolder.deleteRecursively()
+    val newRouteEntities = routeEntities.filter { it.region != region }
+    val routeEntitiesSorted = newRouteEntities.sortedBy { it.region + it.name }.toMutableList()
     finished(newRouteEntities, routeEntitiesSorted)
-}
-
-fun getAllRoutesSimpleWithFilter(context: Context, filter: String): List<RouteEntity> {
-    //val filterNoSpaces = filter.replace(" ", "")
-    val routeEntities = ArrayList<RouteEntity>()
-    val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
-    if (!rootRouteFolder.exists()) {
-        Timber.i("return emptyList")
-        return emptyList()
-    }
-    Timber.i("filter: $filter")
-    rootRouteFolder.walkTopDown().forEach { routeFile ->
-        Timber.i("${routeFile.parentFile?.name} - ${routeFile.nameWithoutExtension}")
-        if (routeFile.isFile && routeFile.nameWithoutExtension.contains(filter, true)) {
-            val routeEntity =
-                RouteEntity(
-                    UUID.randomUUID(), routeFile.name,
-                    routeFile.parentFile?.name.toString()
-                )
-            routeEntities.add(routeEntity)
-        }
-    }
-    return routeEntities
 }
 
 fun getAllRoutesSimple(context: Context): List<RouteEntity> {
@@ -1826,7 +1225,7 @@ fun getAllRoutesSimple(context: Context): List<RouteEntity> {
     return routeEntities
 }
 
-private fun shareRouteSnapshot(context: Context, routeEntity: RouteEntity) {
+fun shareRouteSnapshot(context: Context, routeEntity: RouteEntity) {
     val rootFolder = context.filesDir
     val routesRootFolder = File(rootFolder, Const.ROUTEFOLDER)
     val routesFolder = File(routesRootFolder, routeEntity.region)
@@ -1848,7 +1247,6 @@ private fun shareRouteSnapshot(context: Context, routeEntity: RouteEntity) {
             val latLngArray = exifInterfaceSource.latLong
 
             val options = BitmapFactory.Options().apply { inMutable = true }
-            // AI fix for: Immutable bitmap passed to Canvas constructor
             val thumbnail = BitmapFactory.decodeFile(routeSnapshotFile.path, options) ?: return
             val bmp: Bitmap = createBitmap(thumbnail.width, thumbnail.height + 30)
             bmp.let {
@@ -1858,92 +1256,81 @@ private fun shareRouteSnapshot(context: Context, routeEntity: RouteEntity) {
                 val name = routeSnapshotFile.name.replace(Const.JPG_EXT, "")
                 drawRouteName(context, thumbCanvas, name)
                 val file = File(context.cacheDir, routeSnapshotFile.name)
-                val b = file.createNewFile()
-                Timber.i("${file.path} create $b")
+                file.createNewFile()
 
                 val out = FileOutputStream(file)
-                it.compress( //isBoundary ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG,
-                    Bitmap.CompressFormat.JPEG, 90, out
-                )
+                it.compress(Bitmap.CompressFormat.JPEG, 90, out)
                 out.flush()
                 out.close()
                 val exifInterface = ExifInterface(file.path)
                 exifInterface.setAttribute(ExifInterface.TAG_IMAGE_DESCRIPTION, distString)
-                exifInterface.setAttribute(
-                    ExifInterface.TAG_ORIENTATION,  // 28jan2022
-                    ExifInterface.ORIENTATION_NORMAL.toString()
-                )
+                exifInterface.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
 
-                kmlString?.let {
-                    if (it.length < Const.EXIF_MAX_SIZE) {
-                        exifInterface.setAttribute(ExifInterface.TAG_USER_COMMENT, it)
-                    } else {
-                        Timber.w("kmlString too large for EXIF: ${it.length}")
+                kmlString?.let { kml ->
+                    if (kml.length < Const.EXIF_MAX_SIZE) {
+                        exifInterface.setAttribute(ExifInterface.TAG_USER_COMMENT, kml)
                     }
                 }
-                latLngArray?.let { exifInterface.setLatLong(it[0], it[1]) }
+                latLngArray?.let { array -> exifInterface.setLatLong(array[0], array[1]) }
                 exifInterface.saveAttributes()
-                Timber.i("${file.name} write exif OK")
 
-                val uri = FileProvider.getUriForFile(
-                    context,
-                    BuildConfig.APPLICATION_ID + ".provider",
-                    file
-                )
-                val intent = Intent(Intent.ACTION_SEND)
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                intent.type = "*/*"
-                intent.putExtra(Intent.EXTRA_STREAM, uri)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                val uri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", file)
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    type = "*/*"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
                 context.startActivity(intent)
             }
-        } else
-            Timber.i(context.getString(R.string.file_not_found, routeSnapshotFile.path))
+        }
     } catch (e: Exception) {
-        Timber.i("${e.message}")
+        Timber.e(e)
     }
 }
 
 fun drawRouteName(context: Context, thumbCanvas: Canvas, name: String, textSize: Float = 32f) {
-    val bgTextPaint = Paint()
-    bgTextPaint.color = ContextCompat.getColor(context, R.color.white_transparent_)
-    bgTextPaint.isAntiAlias = true
-    bgTextPaint.strokeWidth = context.resources.getDimension(R.dimen.thumbLineWidth)
-    //bgTextPaint.setStrokeWidth(2);
-    bgTextPaint.style = Paint.Style.FILL
-    bgTextPaint.strokeJoin = Paint.Join.ROUND
-    bgTextPaint.strokeCap = Paint.Cap.ROUND
-    val textPaint = TextPaint()
-    textPaint.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-    textPaint.color = ContextCompat.getColor(context, R.color.design_default_color_primary)
-    textPaint.isAntiAlias = true
-    textPaint.strokeWidth = 2f
-    textPaint.textSize = textSize
+    val bgTextPaint = Paint().apply {
+        color = ContextCompat.getColor(context, R.color.white_transparent_)
+        isAntiAlias = true
+        strokeWidth = context.resources.getDimension(R.dimen.thumbLineWidth)
+        style = Paint.Style.FILL
+        strokeJoin = Paint.Join.ROUND
+        strokeCap = Paint.Cap.ROUND
+    }
+    val textPaint = TextPaint().apply {
+        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        color = ContextCompat.getColor(context, R.color.design_default_color_primary)
+        isAntiAlias = true
+        strokeWidth = 2f
+        this.textSize = textSize
+    }
     val textBounds = Rect()
     textPaint.getTextBounds(name, 0, name.length, textBounds)
     thumbCanvas.drawRect(textBounds, bgTextPaint)
-    thumbCanvas.drawText(name, 5F, ((thumbCanvas.height - 0.25*textBounds.height()).toFloat()), textPaint)
+    thumbCanvas.drawText(name, 5F, (thumbCanvas.height - 0.25f * textBounds.height()), textPaint)
 }
 
 fun drawLastPageIndicator(context: Context, thumbCanvas: Canvas, name: String, textSize: Float = 64f) {
-    val bgTextPaint = Paint()
-    bgTextPaint.color = ContextCompat.getColor(context, R.color.white_transparent_)
-    bgTextPaint.isAntiAlias = true
-    bgTextPaint.strokeWidth = context.resources.getDimension(R.dimen.thumbLineWidth)*2
-    //bgTextPaint.setStrokeWidth(2);
-    bgTextPaint.style = Paint.Style.FILL
-    bgTextPaint.strokeJoin = Paint.Join.ROUND
-    bgTextPaint.strokeCap = Paint.Cap.ROUND
-    val textPaint = TextPaint()
-    textPaint.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-    textPaint.color = ContextCompat.getColor(context, R.color.design_default_color_primary)
-    textPaint.isAntiAlias = true
-    textPaint.strokeWidth = 2f
-    textPaint.textSize = textSize
+    val bgTextPaint = Paint().apply {
+        color = ContextCompat.getColor(context, R.color.white_transparent_)
+        isAntiAlias = true
+        strokeWidth = context.resources.getDimension(R.dimen.thumbLineWidth) * 2
+        style = Paint.Style.FILL
+        strokeJoin = Paint.Join.ROUND
+        strokeCap = Paint.Cap.ROUND
+    }
+    val textPaint = TextPaint().apply {
+        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        color = ContextCompat.getColor(context, R.color.design_default_color_primary)
+        isAntiAlias = true
+        strokeWidth = 2f
+        this.textSize = textSize
+    }
     val textBounds = Rect()
     textPaint.getTextBounds(name, 0, name.length, textBounds)
     thumbCanvas.drawRect(textBounds, bgTextPaint)
-    thumbCanvas.drawText(name, 0.5f*(thumbCanvas.width - textBounds.width()), ((0.5*thumbCanvas.height - 0.25*textBounds.height()).toFloat()), textPaint)
+    thumbCanvas.drawText(name, 0.5f * (thumbCanvas.width - textBounds.width()), (0.5f * thumbCanvas.height - 0.25f * textBounds.height()), textPaint)
 }
 
 fun shareRouteFile(context: Context, routeEntity: RouteEntity) {
@@ -1966,28 +1353,26 @@ fun shareRouteFile(context: Context, routeEntity: RouteEntity) {
     try {
         if(routeFile.exists()) {
             val uri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", routeFile)
-            val intent = Intent(Intent.ACTION_SEND)
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            intent.type = "*/*"
-            intent.putExtra(Intent.EXTRA_STREAM, uri)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                type = "*/*"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
             context.startActivity(intent)
-        } else
-            Timber.i(context.getString(R.string.file_not_found, routeFile.path))
+        }
         if (routeSnapshotFile != null && routeSnapshotFile.exists()) {
             val uri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", routeSnapshotFile)
-            val intent = Intent(Intent.ACTION_SEND)
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            intent.type = "*/*"
-            intent.putExtra(Intent.EXTRA_STREAM, uri)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                type = "*/*"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
             context.startActivity(intent)
         }
     } catch (e: Exception) {
-        val msg = e.message
-        if (msg != null) {
-            Timber.e(msg)
-        }
+        Timber.e(e)
     }
 }
 
@@ -1997,7 +1382,6 @@ fun RouteFilesRegionList(
     routeEntities: List<RouteEntity>?,
     selectRegion: (String?, Boolean) -> Unit
 ) {
-    Timber.i("routeEntities ${routeEntities?.size}")
     val regions = createRegionArray(routeEntities)
     LazyColumn(
         contentPadding = paddingValues,
@@ -2007,16 +1391,10 @@ fun RouteFilesRegionList(
             Box(
                 modifier = Modifier
                     .background(color = Color.White)
-                    //.clickable { selectRegion(region) }
                     .pointerInput(Unit) {
                         detectTapGestures(
-                            onTap = {
-                                Timber.i("onTap $region")
-                                selectRegion(region, false)
-                            }, onLongPress = {
-                                Timber.i("onLongPress $region")
-                                selectRegion(region, true)
-                            }
+                            onTap = { selectRegion(region, false) },
+                            onLongPress = { selectRegion(region, true) }
                         )
                     }
             ) {
@@ -2063,31 +1441,22 @@ fun AskForRouteNameFilter(routeEntities: List<RouteEntity>?, filter: (String?, S
     var nameFilter by remember { mutableStateOf("") }
     Surface {
         Column(
-            Modifier
-                //.padding(paddings)
-                .fillMaxSize(),
+            Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                IconButton(
-                    onClick = { filter(null, null) }
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Go back home"
-                    )
+                IconButton(onClick = { filter(null, null) }) {
+                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Go back home")
                 }
                 Text(text = stringResource(R.string.regions_), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(0.8f))
             }
             Spacer(modifier = Modifier.height(4.dp))
-            RouteFilesRegionList(PaddingValues(0.dp), routeEntities) { region, remove ->
-                Timber.i("$region $remove")
+            RouteFilesRegionList(PaddingValues(0.dp), routeEntities) { region, _ ->
                 filter(null, region)
             }
             HorizontalDivider()
-            //TextInsideBoxScreen(stringResource(R.string.name_filter))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(modifier = Modifier.fillMaxWidth(0.7f),
                     value = nameFilter, onValueChange = { nameFilter = it },
@@ -2098,24 +1467,6 @@ fun AskForRouteNameFilter(routeEntities: List<RouteEntity>?, filter: (String?, S
             }
         }
     }
-}
-
-
-enum class RouteMenu {
-    Home,
-    Map,
-    Chart,
-    ElevationRefreshFromSrtm,
-    ElevationGmsService,
-    Gradient,
-    RefreshPreview,
-    SaveFile,
-    DeleteFile,
-    ShareFile,
-    ShareSnapshot,
-    MoveFile,
-    InsertIntoDatabase,
-    Placeholder
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -2130,52 +1481,26 @@ fun RouteFileMoBoSheet(routeEntity: RouteEntity, routeMenu: (action: RouteMenu) 
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.Map) }) {
                     Row {
-                        Icon(
-                            painterResource(R.drawable.outline_map_24),
-                            contentDescription = stringResource(R.string.map)
-                        )
+                        Icon(painterResource(R.drawable.outline_map_24), contentDescription = stringResource(R.string.map))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.map),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.map), color = Color.Black)
                     }
                 }
                 Spacer(modifier = Modifier.width(2.dp))
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.RefreshPreview) }) {
                     Row {
-                        Icon(
-                            Icons.Outlined.Preview,
-                            contentDescription = stringResource(R.string.refresh_route_preview)
-                        )
+                        Icon(Icons.Outlined.Preview, contentDescription = stringResource(R.string.refresh_route_preview))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.refresh_route_preview),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.refresh_route_preview), color = Color.Black)
                     }
                 }
             }
@@ -2185,50 +1510,26 @@ fun RouteFileMoBoSheet(routeEntity: RouteEntity, routeMenu: (action: RouteMenu) 
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.Chart) }) {
                     Row {
-                        Icon(
-                            painterResource(R.drawable.monitoring_24px),
-                            contentDescription = stringResource(R.string.elevation_chart)
-                        )
+                        Icon(painterResource(R.drawable.monitoring_24px), contentDescription = stringResource(R.string.elevation_chart))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.elevation_chart),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.elevation_chart), color = Color.Black)
                     }
                 }
                 Spacer(modifier = Modifier.width(2.dp))
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.Gradient) }) {
                     Row {
-                        Icon(
-                            painterResource(R.drawable.gradient_24px),
-                            contentDescription = stringResource(R.string.gradient)
-                        )
+                        Icon(painterResource(R.drawable.gradient_24px), contentDescription = stringResource(R.string.gradient))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.gradient),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.gradient), color = Color.Black)
                     }
                 }
             }
@@ -2238,50 +1539,26 @@ fun RouteFileMoBoSheet(routeEntity: RouteEntity, routeMenu: (action: RouteMenu) 
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.ElevationGmsService) }) {
                     Row {
-                        Icon(
-                            Icons.Outlined.Height,
-                            contentDescription = stringResource(R.string.gms_elevation_service)
-                        )
+                        Icon(Icons.Outlined.Height, contentDescription = stringResource(R.string.gms_elevation_service))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.gms_elevation_service),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.gms_elevation_service), color = Color.Black)
                     }
                 }
                 Spacer(modifier = Modifier.width(2.dp))
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.ElevationRefreshFromSrtm) }) {
                     Row {
-                        Icon(
-                            Icons.Outlined.Height,
-                            contentDescription = stringResource(R.string.elevation_refresh)
-                        )
+                        Icon(Icons.Outlined.Height, contentDescription = stringResource(R.string.elevation_refresh))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.elevation_refresh),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.elevation_refresh), color = Color.Black)
                     }
                 }
             }
@@ -2292,52 +1569,26 @@ fun RouteFileMoBoSheet(routeEntity: RouteEntity, routeMenu: (action: RouteMenu) 
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.SaveFile) }) {
                     Row {
-                        Icon(
-                            painterResource(R.drawable.file_save_24px),
-                            contentDescription = stringResource(R.string.save_route)
-                        )
+                        Icon(painterResource(R.drawable.file_save_24px), contentDescription = stringResource(R.string.save_route))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.save_route),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.save_route), color = Color.Black)
                     }
                 }
                 Spacer(modifier = Modifier.width(2.dp))
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.DeleteFile) }) {
                     Row {
-                        Icon(
-                            Icons.Outlined.Delete,
-                            contentDescription = stringResource(R.string.delete_file)
-                        )
+                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.delete_file))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.delete_file),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.delete_file), color = Color.Black)
                     }
                 }
             }
@@ -2347,52 +1598,26 @@ fun RouteFileMoBoSheet(routeEntity: RouteEntity, routeMenu: (action: RouteMenu) 
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.ShareFile) }) {
                     Row {
-                        Icon(
-                            Icons.Outlined.Share,
-                            contentDescription = stringResource(R.string.share_file)
-                        )
+                        Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.share_file))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.share_file),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.share_file), color = Color.Black)
                     }
                 }
                 Spacer(modifier = Modifier.width(2.dp))
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.ShareSnapshot) }) {
                     Row {
-                        Icon(
-                            Icons.Outlined.Share,
-                            contentDescription = stringResource(R.string.share_route_snapshot)
-                        )
+                        Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.share_route_snapshot))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.share_route_snapshot),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.share_route_snapshot), color = Color.Black)
                     }
                 }
             }
@@ -2402,51 +1627,26 @@ fun RouteFileMoBoSheet(routeEntity: RouteEntity, routeMenu: (action: RouteMenu) 
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
                     onClick = { routeMenu(RouteMenu.MoveFile) }) {
                     Row {
-                        Icon(
-                            painterResource(R.drawable.file_move_24px),
-                            contentDescription = stringResource(R.string.move_file)
-                        )
+                        Icon(painterResource(R.drawable.file_move_24px), contentDescription = stringResource(R.string.move_file))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.move_file),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.move_file), color = Color.Black)
                     }
                 }
                 Spacer(modifier = Modifier.width(2.dp))
                 Button(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(0.5f).fillMaxHeight(),
                     shape = RoundedCornerShape(corner = CornerSize(3.dp)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Blue
-                    ),                    onClick = { routeMenu(RouteMenu.InsertIntoDatabase) }) {
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Blue),
+                    onClick = { routeMenu(RouteMenu.InsertIntoDatabase) }) {
                     Row {
-                        Icon(
-                            painterResource(R.drawable.database_24),
-                            contentDescription = stringResource(R.string.save_to_database)
-                        )
+                        Icon(painterResource(R.drawable.database_24), contentDescription = stringResource(R.string.save_to_database))
                         Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            modifier = Modifier.weight(0.8f),
-                            fontSize = 14.sp,
-                            text = stringResource(R.string.save_to_database),
-                            color = Color.Black
-                        )
+                        Text(modifier = Modifier.weight(0.8f), fontSize = 14.sp, text = stringResource(R.string.save_to_database), color = Color.Black)
                     }
                 }
             }
@@ -2469,8 +1669,6 @@ fun RouteFileSaveMoBoSheet(
     val fileFilter = FileFilter { file: File? -> file?.isDirectory == true }
     val files: Array<File> = routesRootFolder.listFiles(fileFilter) ?: emptyArray()
     files.sortWith(compareBy { it.name })
-    Timber.i("routeName:$routeName")
-    Timber.i("files:${files.size}")
     val routeFolderList = ArrayList<Pair<String, String>>()
     for (file in files) {
         routeFolderList.add(Pair(file.name, file.path))
@@ -2483,21 +1681,13 @@ fun RouteFileSaveMoBoSheet(
     ) {
         Column(modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
             Box(modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
-                Text(
-                    fontSize = 16.sp,
-                    text = stringResource(R.string.save_route),
-                    color = Color.Black
-                )
+                Text(fontSize = 16.sp, text = stringResource(R.string.save_route), color = Color.Black)
             }
             OutlinedTextField(
                 value = routeName, readOnly = false,
-                onValueChange = {
-                    routeName = it
-                    Timber.i(routeName)
-                },
+                onValueChange = { routeName = it },
                 label = { Text(stringResource(R.string.route_name)) },
-                modifier = Modifier
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
             )
 
             LazyColumn(
@@ -2535,6 +1725,82 @@ private fun RouteFolderItem(routeFolderName: String, onItemClick: (String) -> Un
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MoboSnack(snackRoutesData: SnackRoutesData, finished: (action: SnackRoutesAction) -> Unit) {
+    ModalBottomSheet(onDismissRequest = { finished(SnackRoutesAction.Nothing) }) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 3.dp, start = 3.dp, end = 3.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = snackRoutesData.title,
+                    Modifier.weight(0.8f).padding(top = 8.dp, bottom = 8.dp),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Blue
+                )
+                snackRoutesData.actionText?.let { text ->
+                    TextButton(onClick = { finished(snackRoutesData.action) }, modifier = Modifier.weight(0.2f)) {
+                        Text(text = text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = Color.Blue)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            if (snackRoutesData.routeMenu == RouteMenu.RefreshPreview && snackRoutesData.actionData != null) {
+                val imageBitmap = (snackRoutesData.actionData as Bitmap).asImageBitmap()
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Image(
+                        painter = BitmapPainter(imageBitmap, IntOffset(0, 0), IntSize(imageBitmap.width, imageBitmap.height)),
+                        contentDescription = snackRoutesData.action.name
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NewRouteFolder(folderName: String, newFolder: (Pair<String, String>) -> Unit) {
+    val context = LocalContext.current
+    LaunchedEffect(folderName) {
+        val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
+        val routeFolder = File(rootRouteFolder, folderName)
+        routeFolder.mkdirs()
+        newFolder(Pair(routeFolder.name, routeFolder.path))
+    }
+}
+
+fun takeSnapshot(
+    context: Context, lllh: List<LatLngH>,
+    region: String,
+    name: String,
+    routeFolder: File?,
+    finished: () -> Unit
+) {
+    Helpers.takeRouteSnapshot(
+        context,
+        lllh,
+        name,
+        Const.styleVectorUri,
+        512,
+        0.1,
+        true,
+        routeFolder
+    ) { snapshot, _ ->
+        val track = Track(lllh)
+        val kmlString = lllh.lllhToKmlString(name)
+        snapshot?.let {
+            Timber.i("name: $name")
+            replaceRouteDao(context, name, region, kmlString, it.bitmap, track) {
+                finished()
+            }
+        }
+    }
+}
+
 internal fun replaceRouteDao(context: Context, name: String, region: String, kmlString: String,
                              bitmap: Bitmap, track: Track, finished: () -> Unit) {
     Timber.i( "$name $region")
@@ -2561,210 +1827,5 @@ internal fun replaceRouteDao(context: Context, name: String, region: String, kml
             Timber.i(name)
             finished()
         }
-//        routeRepository.removeRoute(name, region)
-//        routeRepository.addRoute(routeEntity)
     }
 }
-
-internal fun encodeLllh(lllh: ArrayList<LatLngH>): String {
-    //PolyUtil.decode("xxx");
-    val gmsLllh = List(lllh.size) { i ->
-        lllh[i].latLngGms
-    }
-    val encodedPolyLine = PolyUtil.encode(gmsLllh)
-    return encodedPolyLine
-}
-
-internal fun decodeLllh(encodedPolyline: String) : List<LatLngH> {
-    //PolyUtil.decode("xxx");
-    val decodedPolyline = PolyUtil.decode(encodedPolyline)
-    val lllh = List(decodedPolyline.size) { i ->
-        LatLngH(decodedPolyline[i].latitude, decodedPolyline[i].longitude)
-    }
-    return lllh
-}
-enum class SnackRoutesAction {
-    Nothing,
-    RemoveRouteFolder,
-    RemoveAllRoutes,
-    ShowSrtmFiles
-}
-data class SnackRoutesData(
-    val routeMenu: RouteMenu, val title: String,
-    val action: SnackRoutesAction, val actionText: String?, val actionData: Any?
-)
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MoboSnack(snackRoutesData: SnackRoutesData, finished: (action: SnackRoutesAction) -> Unit) {
-    ModalBottomSheet(onDismissRequest = { finished(Nothing) }) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 3.dp, start = 3.dp, end = 3.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = snackRoutesData.title,
-                    Modifier
-                        .weight(0.8f)
-                        .padding(top = 8.dp, bottom = 8.dp),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Blue
-                )
-                snackRoutesData.actionText?.let { text ->
-                    TextButton(onClick = {
-                        Timber.i(snackRoutesData.action.name)
-                        finished(snackRoutesData.action)
-                    }, modifier = Modifier.weight(0.2f)) {
-                        Text(
-                            text = text,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Blue
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            if (snackRoutesData.routeMenu == RouteMenu.RefreshPreview && snackRoutesData.actionData != null) {
-                val imageBitmap = (snackRoutesData.actionData as Bitmap).asImageBitmap()
-                // Lays out and draws an image sized to the rectangular subsection of the ImageBitmap
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Image(
-                        painter = BitmapPainter(
-                            imageBitmap,
-                            IntOffset(0, 0),
-                            IntSize(imageBitmap.width, imageBitmap.height)
-                        ),
-                        contentDescription = snackRoutesData.action.name
-                    )
-                }
-            }
-        }
-    }
-}
-
-@ComposePreview(showBackground = true)
-@Composable
-fun RouteFileMoBoSheetPreview() {
-    RamaniTheme {
-        RouteFileMoBoSheet(
-            routeEntity = RouteEntity(
-                name = "Sample Route.kml",
-                region = "Sample Region"
-            ),
-            routeMenu = {}
-        )
-    }
-}
-
-@ComposePreview(showBackground = true)
-@Composable
-fun RouteFileSaveMoBoSheetPreview() {
-    RamaniTheme {
-        RouteFileSaveMoBoSheet(
-            name = "Sample Route.kml",
-            callback = { _, _ -> }
-        )
-    }
-}
-
-@ComposePreview(showBackground = true)
-@Composable
-fun RouteFilesItemPreview() {
-    RamaniTheme {
-        RouteFilesItemUI(
-            routeItem = RouteEntity(name = "Sample Route.kml", region = "Mountains"),
-            routeDbState = 0,
-            onItemClick = {},
-            onMapClick = {},
-            onDatabaseClick = {}
-        )
-    }
-}
-
-@ComposePreview(showBackground = true)
-@Composable
-fun RouteFilesContentPreview() {
-    RamaniTheme {
-        RouteFilesContent(
-            context = LocalContext.current,
-            lifecycleOwner = LocalLifecycleOwner.current,
-            initialize = {}
-        )
-    }
-}
-
-@ComposePreview(showBackground = true)
-@Composable
-fun RouteFilesScreenPreview() {
-    RamaniTheme {
-        RouteFilesScreen(selectRoute = { _, _ -> })
-    }
-}
-
-@ComposePreview(showBackground = true)
-@Composable
-fun RouteFilesMoboSnackPreview() {
-    RamaniTheme {
-        MoboSnack(
-            snackRoutesData = SnackRoutesData(
-                routeMenu = RouteMenu.Placeholder,
-                title = "Sample Snack Message",
-                action = Nothing,
-                actionText = "OK",
-                actionData = null
-            ),
-            finished = {}
-        )
-    }
-}
-
-@ComposePreview(showBackground = true)
-@Composable
-fun RouteFilesAskForRouteNameFilterPreview() {
-    val sampleRouteEntities = listOf(
-        RouteEntity(name = "Hiking Trail.kml", region = "Mountains"),
-        RouteEntity(name = "City Walk.gpx", region = "City")
-    )
-    RamaniTheme {
-        AskForRouteNameFilter(
-            routeEntities = sampleRouteEntities,
-            filter = { _, _ -> }
-        )
-    }
-}
-
-@ComposePreview(showBackground = true)
-@Composable
-fun RouteFilesRegionListPreview() {
-    val sampleRouteEntities = listOf(
-        RouteEntity(name = "Hiking Trail.kml", region = "Mountains"),
-        RouteEntity(name = "City Walk.gpx", region = "City")
-    )
-    RamaniTheme {
-        RouteFilesRegionList(
-            paddingValues = PaddingValues(0.dp),
-            routeEntities = sampleRouteEntities,
-            selectRegion = { _, _ -> }
-        )
-    }
-}
-
-@Composable
-fun NewRouteFolder(folderName: String, newFolder: (Pair<String, String>) -> Unit) {
-    val context = LocalContext.current
-    LaunchedEffect(folderName) {
-        val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
-        val routeFolder = File(rootRouteFolder, folderName)
-        routeFolder.mkdirs()
-        newFolder(Pair(routeFolder.name, routeFolder.path))
-    }
-}
-
-

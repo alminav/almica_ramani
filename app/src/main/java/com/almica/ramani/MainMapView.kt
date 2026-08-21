@@ -8,10 +8,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.rememberUpdatedState
 import com.google.gson.JsonElement
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.absoluteValue
 import androidx.compose.ui.Modifier
 import com.almica.ramani.compass.CompassViewModel
+import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.utils.isNotNull
 import com.almica.ramani.utils.offsetYByPercent
@@ -62,15 +66,39 @@ fun MainMapView(
     onMarkerLongClick: (JsonElement?) -> Unit,
     onPoiClick: (PoiEntity) -> Unit,
     onLogCountChange: (Int) -> Unit,
+    onHighlightRoutePoint: (Int) -> Unit,
     context: Context
 ) {
     val uiSettings = UiSettings(compassMargins = Margins(top = 200), scrollGesturesEnabled = true)
+    
+    val steps = uiState.polygonState.polygonData?.polygonMarkerDataList //uiState.polygonState.polygonData?.lllhKmSteps
+    val target = cameraPosition.value.target
+    val currentHighlight = uiState.highlightRoutePoint
+    val onHighlightUpdated = rememberUpdatedState(onHighlightRoutePoint)
+
+    LaunchedEffect(target, steps) {
+        if (steps != null && target != null) {
+            withContext(Dispatchers.Default) {
+                val targetGms = com.google.android.gms.maps.model.LatLng(target.latitude, target.longitude)
+                var highlightRoutePoint = steps.indices.minByOrNull { index ->
+                    MapUtils.calculateHaversineDistance(targetGms, steps[index].latLngH.latLngGms)
+                } ?: -1
+                if (highlightRoutePoint != -1) highlightRoutePoint++
+                if (highlightRoutePoint != currentHighlight) {
+                    Timber.i("highlightRoutePoint: $highlightRoutePoint / ${steps.size}")
+                    onHighlightUpdated.value(highlightRoutePoint)
+                }
+            }
+        }
+    }
     //Timber.i("localStyleBuilder: $localStyleBuilder")
     //Timber.i("styleBuilderMaptypeRaster: $styleBuilderMaptypeRaster")
     MapLibre(
         images = imageList,
         uiSettings = uiSettings,
-        modifier = Modifier.fillMaxSize().offsetYByPercent(uiState.hairCrossOffsetFraction),
+        modifier = Modifier
+            .fillMaxSize()
+            .offsetYByPercent(uiState.hairCrossOffsetFraction),
         mapView = mapView,
         styleBuilder = localStyleBuilder ?: styleBuilderMaptypeRaster,
         cameraPosition = cameraPosition.value,

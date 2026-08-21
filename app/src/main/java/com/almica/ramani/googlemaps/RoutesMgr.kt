@@ -33,6 +33,7 @@ import com.almica.ramani.R
 import com.almica.ramani.routes.RouteDatabaseScreen
 import com.almica.ramani.routes.RouteEntity
 import com.almica.ramani.routes.RouteFilesScreen
+import com.almica.ramani.routes.RouteMenu
 import com.almica.ramani.routes.RoutesGeojsonScreen
 import androidx.compose.ui.tooling.preview.Preview
 import com.almica.ramani.ui.theme.RamaniTheme
@@ -57,11 +58,10 @@ fun RoutesMgr(
             val graph =
                 navController.createGraph(startDestination = RoutesMgrScreen.RouteFiles.rout) {
                     composable(route = RoutesMgrScreen.RouteFiles.rout) {
-                        RouteFilesScreen()
-                        { routeEntity, routeMenu ->
+                        RouteFilesScreen(selectRoute = { routeEntity: RouteEntity?, routeMenu: RouteMenu ->
                             Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: ${routeEntity?.name} $routeMenu")
                             selectRouteEntity(routeEntity)
-                        }
+                        })
                     }
                     composable(route = RoutesMgrScreen.RouteGeojson.rout) {
                         RoutesGeojsonScreen()

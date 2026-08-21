@@ -332,6 +332,10 @@ fun MainScaffoldContent(
                 onLogCountChange = { count ->
                     viewModel?.setLogCount(count)
                 },
+                onHighlightRoutePoint = {
+                    viewModel?.setHighlightRoutePoint(it)
+                    Timber.i("onHighlightRoutePoint: $it")
+                },
                 context = context
             )
 

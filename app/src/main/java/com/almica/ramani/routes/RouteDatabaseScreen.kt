@@ -353,7 +353,7 @@ fun RouteDatabaseScreen(mapPos: LatLng?, selectRoute: (RouteEntity?, RouteMenu) 
                     0.0f, Icons.AutoMirrored.Filled.ArrowBack,
                      result = {
                         showRouteGradient = null
-                    }, true)
+                    }, animated = true)
                 Text(
                     text = distRoute.formatDistM(true),
                     Modifier.fillMaxWidth(),

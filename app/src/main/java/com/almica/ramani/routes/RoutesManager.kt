@@ -16,6 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.createGraph
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.isNotNull
+import com.almica.ramani.routes.RouteMenu
 import timber.log.Timber
 
 private const val logtag = "RoutesManager"
@@ -35,11 +36,10 @@ fun RoutesManager(
         val graph =
             navController.createGraph(startDestination = RoutesManagerScreen.RouteFiles.rout) {
                 composable(route = RoutesManagerScreen.RouteFiles.rout) {
-                    RouteFilesScreen()
-                    { routeEntity, routeMenu ->
+                    RouteFilesScreen(selectRoute = { routeEntity, routeMenu ->
                         Timber.i( "${Thread.currentThread().stackTrace[2].lineNumber}: ${routeEntity?.name} $routeMenu")
                         selectRoute(routeEntity, routeMenu)
-                    }
+                    })
                 }
                 composable(route = RoutesManagerScreen.RouteGeojson.rout) {
                     RoutesGeojsonScreen()
