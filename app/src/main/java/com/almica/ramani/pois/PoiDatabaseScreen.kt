@@ -94,6 +94,7 @@ fun PoiDatabaseScreen(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val sortOrder by viewModel.sortOrder.collectAsStateWithLifecycle()
     val snackPoiData by viewModel.snackPoiData.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     var showCategoryList by remember { mutableStateOf(false) }
     var askForNameFilter by remember { mutableStateOf(false) }
@@ -113,6 +114,7 @@ fun PoiDatabaseScreen(
         poiEntitiesSorted = poiEntitiesSorted,
         sortOrder = sortOrder,
         snackPoiData = snackPoiData,
+        isLoading = isLoading,
         showCategoryList = showCategoryList,
         askForNameFilter = askForNameFilter,
         catMap = catMap,
@@ -165,6 +167,7 @@ fun PoiDatabaseScreen(
             viewModel.setCategory(category)
         },
         onNameFilterApplied = { filter ->
+            Timber.i("onNameFilterApplied: $filter")
             askForNameFilter = false
             viewModel.setSearchQuery(filter)
         }
@@ -180,6 +183,7 @@ fun PoiDatabaseScreenLayout(
     poiEntitiesSorted: List<PoiEntity>,
     sortOrder: PoiSortOrder,
     snackPoiData: SnackPoiData?,
+    isLoading: Boolean,
     showCategoryList: Boolean,
     askForNameFilter: Boolean,
     catMap: Map<String, Pair<Int, Int>>,
@@ -228,7 +232,19 @@ fun PoiDatabaseScreenLayout(
         snackPoiData?.let {
             MoboPoiSnack(it, onSnackAction)
         }
+        if (isLoading)
+            ProgressDialog()
     }
+}
+
+@Composable
+private fun ProgressDialog() {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { },
+        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+        confirmButton = {},
+        title = { Text(stringResource(R.string.loading)) }
+    )
 }
 
 
@@ -448,7 +464,7 @@ fun AskForPoiNameFilter(onFilter: (String?) -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = { onFilter(text) }) {
+            Button(onClick = { onFilter(text); Timber.i("onFilter: $text") }) {
                 Text("Apply")
             }
         }
@@ -535,6 +551,7 @@ fun PoiDatabaseScreenPreview() {
             poiEntitiesSorted = samplePois,
             sortOrder = PoiSortOrder.ByName,
             snackPoiData = null,
+            isLoading = false,
             showCategoryList = false,
             askForNameFilter = false,
             catMap = catMap,

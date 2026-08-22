@@ -158,6 +158,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(showRouteSavingScreen = false) }
     }
 
+    fun setIsLoading(value: Boolean) {
+        _uiState.update { it.copy(isLoading = value) }
+    }
+
     suspend fun getPlotData(): PlotResult = withContext(Dispatchers.IO) {
         createPlotDataResult(locationRepository, 0L)
     }

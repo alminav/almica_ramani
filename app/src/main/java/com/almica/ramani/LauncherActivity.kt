@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -61,6 +62,7 @@ import com.almica.ramani.googlemaps.MapUtils.gmsElevationService
 import com.almica.ramani.googlemaps.MoboLocationsMonitor
 import com.almica.ramani.routes.RouteDialogMode
 import com.almica.ramani.routes.RouteFileSaveMoBoSheet
+import androidx.compose.ui.window.DialogProperties
 import com.almica.ramani.ui.theme.MapsComposeSampleTheme
 import com.almica.ramani.utils.BackPressHandler
 import com.almica.ramani.utils.TimePagerDialog
@@ -159,10 +161,7 @@ class LauncherActivity : ComponentActivity() {
             else -> return
         }
 
-        val intent = Intent(this, FileImportActivity::class.java)
-            .setAction(getString(R.string.import_title))
-            .putExtra(Const.EXTRA_FILETYPE, fileType)
-        startActivity(intent)
+        FileImportActivity.launch(this, FileType.valueOf(fileType))
     }
 
     @SuppressLint("MutableCollectionMutableState")
@@ -187,6 +186,7 @@ class LauncherActivity : ComponentActivity() {
             onAddPoi = { name, latLng, category, onResult ->
                 val locationsParm = "${latLng.latitude},${latLng.longitude}"
                 scope.launch {
+                    viewModel.setIsLoading(true)
                     val lllh0 = gmsElevationService(context, locationsParm)
                     val h = lllh0.firstOrNull()?.altitude ?: 0.0
                     addPoiDao(
@@ -201,6 +201,7 @@ class LauncherActivity : ComponentActivity() {
                     ) { _ ->
                         onResult(name)
                     }
+                    viewModel.setIsLoading(false)
                 }
             },
             onRefreshLogCount = { viewModel.refreshAll() },
@@ -427,7 +428,20 @@ fun LauncherContentUI(
                 }
             }
         }
+
+        if (uiState.isLoading)
+            ProgressDialog()
     }
+}
+
+@Composable
+private fun ProgressDialog() {
+    AlertDialog(
+        onDismissRequest = { },
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+        confirmButton = {},
+        title = { Text(stringResource(R.string.loading)) }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

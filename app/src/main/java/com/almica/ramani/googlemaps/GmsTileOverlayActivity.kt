@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -720,10 +721,10 @@ private fun MapDialogs(
                 }
                 GmsHairCrossMenuAction.CalculateGmsOnlineRoute, GmsHairCrossMenuAction.CalculateGmsRoundTrip -> {
                     if (uiState.stopMarkerData != null) {
-                        viewModel.updateState { state -> state.copy(snackMsg = gmsRouteCalcText) }
+                        viewModel.updateState { state -> state.copy(snackMsg = gmsRouteCalcText, isLoading = true) }
                         gmsOnlineCalc(context, pos.latitude, pos.longitude, uiState.stopMarkerData.latLng.latitude, uiState.stopMarkerData.latLng.longitude, action == GmsHairCrossMenuAction.CalculateGmsRoundTrip) { lllh, name, success ->
-                            if (success) viewModel.updateState { state -> state.copy(routeData = RouteData(lllh, name, lllh.getDistanceFromLllh(), false, null), showHairCrossDropDownMenu = null, snackMsg = null) }
-                            else viewModel.updateState { state -> state.copy(snackMsg = gmsErrorText) }
+                            if (success) viewModel.updateState { state -> state.copy(routeData = RouteData(lllh, name, lllh.getDistanceFromLllh(), false, null), showHairCrossDropDownMenu = null, snackMsg = null, isLoading = false) }
+                            else viewModel.updateState { state -> state.copy(snackMsg = gmsErrorText, isLoading = false) }
                         }
                     } else viewModel.updateState { state -> state.copy(snackMsg = noStopMarkerText) }
                 }
@@ -748,10 +749,7 @@ private fun MapDialogs(
         ModalBottomSheet(
             onDismissRequest = { viewModel.updateState { state -> state.copy(gradientRouteData = null) } }
         ) {
-            GradientChart(route.getRouteEntity(context), moveMap = { latLng -> latLng?.let { cameraPositionState.position = CameraPosition.fromLatLngZoom(it, cameraPositionState.position.zoom) } }, result = { latLng ->
-                if (latLng == null) viewModel.updateState { state -> state.copy(gradientRouteData = null) }
-                else { cameraPositionState.position = CameraPosition.fromLatLngZoom(latLng, cameraPositionState.position.zoom); viewModel.updateState { state -> state.copy(tempMarkerLatLng = latLng) } }
-            })
+            GradientChart(route.getRouteEntity(context), moveMap = { latLng -> latLng?.let { cameraPositionState.position = CameraPosition.fromLatLngZoom(it, cameraPositionState.position.zoom) } })
         }
     }
 
@@ -832,6 +830,19 @@ private fun MapDialogs(
             onRouteGeojsonFileChange(file)
         }
     }
+
+    if (uiState.isLoading)
+        ProgressDialog()
+}
+
+@Composable
+fun ProgressDialog() {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { },
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+        confirmButton = {},
+        title = { Text(stringResource(R.string.loading)) }
+    )
 }
 
 fun getMbTileName(context: Context, latLng: LatLng): Pair<String, String> {

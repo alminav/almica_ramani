@@ -1,5 +1,7 @@
 package com.almica.ramani.filepicker
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -189,6 +191,30 @@ class FileImportActivity : ComponentActivity() {
     }
 
     data class SaveFileResult(val filename: String, val bytesCount: Long, val success: Boolean, val filesCount: Int)
+
+    companion object {
+        fun getIntent(
+            context: Context,
+            fileType: FileType,
+            routeFolder: String? = null,
+            directDownloadUrl: String? = null
+        ): Intent {
+            return Intent(context, FileImportActivity::class.java).apply {
+                putExtra(Const.EXTRA_FILETYPE, fileType.name)
+                routeFolder?.let { putExtra(com.almica.ramani.Const.EXTRA_ROUTEFOLDER, it) }
+                directDownloadUrl?.let { putExtra(Const.EXTRA_DIRECT_DOWNLOAD_URL, it) }
+            }
+        }
+
+        fun launch(
+            context: Context,
+            fileType: FileType,
+            routeFolder: String? = null,
+            directDownloadUrl: String? = null
+        ) {
+            context.startActivity(getIntent(context, fileType, routeFolder, directDownloadUrl))
+        }
+    }
 }
 
 @Composable

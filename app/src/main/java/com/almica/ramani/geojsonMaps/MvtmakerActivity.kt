@@ -248,11 +248,7 @@ class MvtmakerActivity : ComponentActivity() {
                                 clipText = regionName
                                 Timber.i("import clipText: $clipText")
 
-                                context.startActivity(
-                                    Intent(context, FileImportActivity::class.java)
-                                        .setAction(context.getString(R.string.import_title))
-                                        .putExtra(Const.EXTRA_FILETYPE, FileType.Mvt.name) //FileType.GeoJson.name)
-                                )
+                                FileImportActivity.launch(context, FileType.Mvt)
                             }
                         ) {
                             Text(text = stringResource(R.string.import_title))
@@ -400,11 +396,7 @@ class MvtmakerActivity : ComponentActivity() {
                             onDismissRequest = { listItems = false },
                             import = {
                                 listItems = false
-                                context.startActivity(
-                                    Intent(context, FileImportActivity::class.java)
-                                        .setAction(context.getString(R.string.import_title))
-                                        .putExtra(Const.EXTRA_FILETYPE, FileType.Mvt.name)
-                                )
+                                FileImportActivity.launch(context, FileType.Mvt)
                             },
                             onItemClick = { mvtItemModel ->
                                 listItems = false

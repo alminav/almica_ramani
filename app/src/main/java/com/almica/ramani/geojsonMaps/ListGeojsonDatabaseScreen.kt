@@ -275,11 +275,7 @@ fun ListGeojsonDatabaseScreen(
                     GeojsonSnackbarSelection.Nothing -> snackbarData = null
                     GeojsonSnackbarSelection.Import -> {
                         snackbarData = null
-                        context.startActivity(
-                            Intent(context, FileImportActivity::class.java)
-                                .setAction(context.getString(R.string.import_title))
-                                .putExtra(Const.EXTRA_FILETYPE, FileType.GeoJson.name)
-                        )
+                        FileImportActivity.launch(context, FileType.GeoJson)
                     }
                     null -> snackbarData = null
                 }
@@ -301,21 +297,8 @@ fun ListGeojsonDatabaseScreen(
             Timber.i("$region $name12 $name13")
             ImportGeojsonDropdownMenu(context, listOf(region, name12, name13)) { fileType, _ ->
                 showImportDropdownMenu = false
-                val intent = Intent(context, FileImportActivity::class.java)
-                    .setAction(context.getString(R.string.import_title))
-/* direct link download does not work
-                if (fileType == FileType.GeoJsonZip) {
-                    if (DriveSharedLinks.Companion.GeojsonMapRegions().list.keys.contains(fileData)) {
-                        val directDownloadUrl =
-                            DriveSharedLinks.Companion.GeojsonMapRegions().list[fileData]
-                        Timber.i( "directDownloadUrl: $directDownloadUrl")
-                        intent.putExtra(Const.EXTRA_DIRECT_DOWNLOAD_URL, directDownloadUrl)
-                    }
-                }
- */
                 if (fileType != FileType.Nothing) {
-                    intent.putExtra(Const.EXTRA_FILETYPE, fileType.name)
-                    context.startActivity(intent)
+                    FileImportActivity.launch(context, fileType)
                 }
             }
         }

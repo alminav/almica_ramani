@@ -95,7 +95,6 @@ fun ListMvtScreen(
     val viewModel: ListMvtViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val resources = LocalResources.current
     val clipboardManager = LocalClipboard.current
 
     LaunchedEffect(uiState.clipText) {
@@ -126,22 +125,14 @@ fun ListMvtScreen(
         onInfoMvt = { viewModel.takeSnapshotAndShowInfo(it) },
         onDriveDismiss = { viewModel.setShowDriveEntries(false) },
         onDriveImport = { _ ->
-            context.startActivity(
-                Intent(context, FileImportActivity::class.java)
-                    .setAction(resources.getString(R.string.import_title))
-                    .putExtra(Const.EXTRA_FILETYPE, FileType.Mvt.name)
-            )
+            FileImportActivity.launch(context, FileType.Mvt)
         },
         onDriveItemClick = { mvtItemModel ->
             viewModel.setShowGoogleMap(mvtItemModel.name)
         },
         onMapImport = { mvtName ->
             viewModel.setClipText(mvtName)
-            context.startActivity(
-                Intent(context, FileImportActivity::class.java)
-                    .setAction(resources.getString(R.string.import_title))
-                    .putExtra(Const.EXTRA_FILETYPE, FileType.Mvt.name)
-            )
+            FileImportActivity.launch(context, FileType.Mvt)
             viewModel.setShowGoogleMap(null)
             viewModel.setShowDriveEntries(false)
         },

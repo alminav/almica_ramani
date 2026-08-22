@@ -74,11 +74,7 @@ fun ListGhScreen(
         onRefresh = { viewModel.refreshFolders() },
         onDelete = { viewModel.deleteSelectedFolder() },
         onImport = {
-            context.startActivity(
-                Intent(context, FileImportActivity::class.java)
-                    .setAction(context.getString(R.string.import_title))
-                    .putExtra(Const.EXTRA_FILETYPE, FileType.GhFolderZip.name)
-            )
+            FileImportActivity.launch(context, FileType.GhFolderZip)
         },
         onSelectGhFolder = { path, name ->
             viewModel.selectFolder(path, name)

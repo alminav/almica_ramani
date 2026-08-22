@@ -10,7 +10,7 @@ import com.almica.ramani.utils.isNotNull
 import timber.log.Timber
 import java.io.File
 
-class PolygonState(var lllh: List<LatLngH>, val name: String, val distance: Double,
+data class PolygonState(var lllh: List<LatLngH>, val name: String, val distance: Double,
                    var polygonData: PolygonData? = null)
 
 data class PolygonData(

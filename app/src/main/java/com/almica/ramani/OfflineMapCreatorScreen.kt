@@ -237,11 +237,7 @@ fun OfflineMapCreatorContent(
         ListRasterDriveEntries(
             onDismissRequest = { viewModel.showRasterRegions = false },
             import = {
-                context.startActivity(
-                    Intent(context, FileImportActivity::class.java)
-                        .setAction(resources.getString(R.string.import_title))
-                        .putExtra(Const.EXTRA_FILETYPE, FileType.MbTiles.name)
-                )
+                FileImportActivity.launch(context, FileType.MbTiles)
             }
         ) { rasterItemModel ->
             viewModel.regionName = rasterItemModel.name.replace(Const.MBTILES_EXT, "")
@@ -306,11 +302,7 @@ fun OfflineMapCreatorContent(
                 )
                 TextButton(onClick = {
                     clipText = viewModel.regionName
-                    context.startActivity(
-                        Intent(context, FileImportActivity::class.java)
-                            .setAction(resources.getString(R.string.import_title))
-                            .putExtra(Const.EXTRA_FILETYPE, FileType.MbTiles.name)
-                    )
+                    FileImportActivity.launch(context, FileType.MbTiles)
                 }) {
                     Text(text = stringResource(R.string.import_title))
                 }

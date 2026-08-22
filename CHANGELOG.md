@@ -2,6 +2,30 @@
 
 All notable changes to the **Ramani** project will be documented in this file.
 
+## [Unreleased] - 2026-08-22
+
+### ✨ Features & Improvements
+- **Google Maps Elevation Service Integration**:
+    - **Route Refresh**: Added support for refreshing route elevations using the Google Maps Elevation API.
+    - **POI Refresh**: Implemented elevation refresh for individual POIs in the database.
+- **POI Database Overhaul**:
+    - **Material 3 Migration**: Fully refactored the POI database screen using M3 `Scaffold`, `TopAppBar`, and `NavigationBar`.
+    - **Advanced Filtering**: Added search-by-name and category-based filtering.
+    - **Spatial Awareness**: Real-time distance and directional heading calculations for POIs relative to the current map center.
+    - **Modern Feedback**: Integrated `MoboPoiSnack` (Material 3 bottom sheet snackbar) for transient UI feedback.
+- **Route Monitoring Enhancements**:
+    - **GMS Elevation Provider**: Added a new elevation provider option in the `RouteMonitorMenu`.
+    - **Camera Control**: New `setCameraTarget` helper for smoother map transitions during location selection.
+
+### 🏗️ Refactoring & Architecture
+- **State Management**: Converted `PolygonState` to a `data class` to enable idiomatic Kotlin `copy()` functionality and improved immutability patterns.
+- **Route Loading Unified**: Standardized route processing (`loadRouteFromFile`, `loadRouteFromLllh`) with consistent simplification and state mapping.
+- **UI Interaction**: Cleaned up `MapOverlayManager` by removing redundant expressions and refining snackbar parameters.
+
+### 🐛 Bug Fixes
+- **Build Stability**: Resolved "Unresolved reference 'copy'" compilation error in `MapOverlayManager.kt`.
+- **UI Logic**: Fixed stray code fragments and improper string formatting in map overlay notifications.
+
 ## [Unreleased] - 2026-08-21
 
 ### ✨ Features & Improvements
@@ -98,4 +122,4 @@ All notable changes to the **Ramani** project will be documented in this file.
 - **Project Structure**: Excluded `backups` and `pictures` directories from the IDEA project view to declutter the workspace.
 
 ---
-*Generated on 2026-08-20*
+*Generated on 2026-08-22*

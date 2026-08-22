@@ -191,6 +191,10 @@ class RouteFilesViewModel(application: Application) : AndroidViewModel(applicati
         _uiState.update { it.copy(showSingleRouteImportExportMenu = region) }
     }
 
+    fun setIsLoading(value: Boolean) {
+        _uiState.update { it.copy(isLoading = value) }
+    }
+
     fun setSnackRoutesData(data: SnackRoutesData?) {
         _uiState.update { it.copy(snackRoutesData = data) }
     }

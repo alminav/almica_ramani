@@ -154,11 +154,7 @@ fun ListMbTilesScreen(
                 name = mapName,
                 import = { rasterName ->
                     viewModel.setClipText(rasterName)
-                    context.startActivity(
-                        Intent(context, FileImportActivity::class.java)
-                            .setAction(context.getString(R.string.import_title))
-                            .putExtra(Const.EXTRA_FILETYPE, FileType.MbTiles.name)
-                    )
+                    FileImportActivity.launch(context, FileType.MbTiles)
                     viewModel.setShowGoogleMap(null)
                     viewModel.setShowDriveEntries(false)
                 },
@@ -186,11 +182,7 @@ fun ListMbTilesScreen(
             ListRasterDriveEntries(
                 onDismissRequest = { viewModel.setShowDriveEntries(false) },
                 import = {
-                    context.startActivity(
-                        Intent(context, FileImportActivity::class.java)
-                            .setAction(context.getString(R.string.import_title))
-                            .putExtra(Const.EXTRA_FILETYPE, FileType.MbTiles.name)
-                    )
+                    FileImportActivity.launch(context, FileType.MbTiles)
                 },
                 onItemClick = { model -> viewModel.setShowGoogleMap(model.name) }
             )

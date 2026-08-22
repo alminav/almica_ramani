@@ -9,6 +9,7 @@ import androidx.compose.material.Surface
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AreaChart
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Height
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Save
@@ -29,6 +30,7 @@ enum class RouteMonitorSelection {
     Remove,
     Reverse,
     SrtmRefresh,
+    GmsElevation,
     Nothing
 }
 @Composable
@@ -74,7 +76,11 @@ fun RouteMonitorMenu(context: Context, finished: (RouteMonitorSelection) -> Unit
                         onClick = { finished(RouteMonitorSelection.SrtmRefresh) },
                         leadingIcon = {Icon(Icons.Outlined.BarChart, null)}
                     )
-
+                    DropdownMenuItem(
+                        { Text(text = context.getString(R.string.gms_elevation_service), color = Black) },
+                        onClick = { finished(RouteMonitorSelection.GmsElevation) },
+                        leadingIcon = {Icon(Icons.Outlined.Height, null)}
+                    )
                 }
             }
         }

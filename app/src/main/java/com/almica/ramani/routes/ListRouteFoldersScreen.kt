@@ -428,19 +428,11 @@ fun ListRouteFoldersScreen(
                 when(action) {
                     RouteFolderAction.Nothing -> { menuRouteFolder = null }
                     RouteFolderAction.TextImport -> {
-                        launcher.launch(Intent(context, FileImportActivity::class.java)
-                            .setAction(resources.getString(R.string.import_title))
-                            .putExtra(Const.EXTRA_FILETYPE, FileType.Route.name)
-                            .putExtra(Const.EXTRA_ROUTEFOLDER, menuRouteFolder))
+                        launcher.launch(FileImportActivity.getIntent(context, FileType.Route, routeFolder = menuRouteFolder))
                         menuRouteFolder = null
                     }
                     RouteFolderAction.ImageImport -> {
-                        launcher.launch(
-                            Intent(context, FileImportActivity::class.java)
-                                .setAction(resources.getString(R.string.import_title))
-                                .putExtra(Const.EXTRA_FILETYPE, FileType.RouteThumbnail.name)
-                                .putExtra(Const.EXTRA_ROUTEFOLDER, menuRouteFolder)
-                        )
+                        launcher.launch(FileImportActivity.getIntent(context, FileType.RouteThumbnail, routeFolder = menuRouteFolder))
                         menuRouteFolder = null
                     }
 

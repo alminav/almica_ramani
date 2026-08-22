@@ -378,6 +378,7 @@
     <string name="geojson_database_zip">Geojson Database Zip</string>
     <string name="geojson_zip">Geojson Region Zip</string>
     <string name="added_to_database">%1$s added to database</string>
+    <string name="_gms_refresh_done">%1$s Gms Refresh ready</string>
     <string name="srtm_refresh">Srtm Refresh</string>
     <string name="srtm_refresh_done">Srtm Refresh ready</string>
     <string name="_srtm_refresh_done">%1$s Srtm Refresh ready</string>
@@ -546,6 +547,7 @@
     <string name="elevation_chart_no_data">no valid data for chart</string>
     <string name="elevation_chart_title">Elevation chart</string>
     <string name="route_deviation">route deviation</string>
+    <string name="refreshing_elevation">Refreshing elevation …</string>
 
     <string-array name="wind_directions">
         <item>N</item>

@@ -53,6 +53,9 @@ class PoiViewModel(application: Application) : AndroidViewModel(application) {
     private val _snackPoiData = MutableStateFlow<SnackPoiData?>(null)
     val snackPoiData = _snackPoiData.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+
     val categories = repository.getAllFlow().map { list ->
         list.asSequence().map { it.category }.distinct().toList()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -122,6 +125,7 @@ class PoiViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshElevation(poi: PoiEntity, messageFormat: String) {
         viewModelScope.launch {
+            _isLoading.value = true
             val lllh0 = gmsElevationService(getApplication(), "${poi.latitude},${poi.longitude}")
             val h = lllh0.firstOrNull()?.altitude ?: 0.0
             Timber.i("refreshElevation h: $h")
@@ -129,6 +133,7 @@ class PoiViewModel(application: Application) : AndroidViewModel(application) {
             _snackPoiData.value = SnackPoiData(
                 title = String.format(messageFormat, poi.name) + " " + h.formatAlti(true)
             )
+            _isLoading.value = false
         }
     }
 

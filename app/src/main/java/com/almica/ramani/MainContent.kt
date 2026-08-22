@@ -200,8 +200,7 @@ fun MainScaffoldContent(
                         cameraPosition.value = CameraPosition(cameraPosition.value).apply {
                             target = latLng?.let { LatLng(it.latitude, it.longitude) }
                         }
-                    },
-                    result = { viewModel?.setGradientRoute(null) }
+                    }
                 )
             } else if (uiState.chartRouteEntity != null) {
                 ElevationScreen(
@@ -509,7 +508,7 @@ private fun handleSnackbarAction(
         RemoveStop -> viewModel?.handleRemoveStop()
         Drive -> {
             viewModel?.setClipText(uiState.mainSnackbarData?.data.toString())
-            context.startActivity(Intent(context, FileImportActivity::class.java).setAction(context.getString(R.string.import_title)).putExtra(Const.EXTRA_FILETYPE, FileType.Mvt.name))
+            FileImportActivity.launch(context, FileType.Mvt)
             viewModel?.setSnackbar(null)
         }
         SelectMvt -> viewModel?.handleSelectMvt(preferences, uiState.mainSnackbarData?.data as? String)

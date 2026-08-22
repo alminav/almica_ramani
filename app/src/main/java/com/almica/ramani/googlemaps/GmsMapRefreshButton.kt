@@ -1,7 +1,6 @@
 package com.almica.ramani.googlemaps
 
 import android.content.ClipData
-import android.content.Intent
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -63,7 +62,6 @@ fun GmsMapRefreshButton(
     updateTileOverlay: (LatLng, Pair<String, String>?) -> Unit
 ) {
     val context = LocalContext.current
-    val resources = LocalResources.current
     var showNewMapMenu by remember { mutableStateOf(false) }
     var createMbTileRegion by remember { mutableStateOf<String?>(null) }
     var progressCreateTilename by remember { mutableStateOf<String?>(null) }
@@ -194,11 +192,7 @@ fun GmsMapRefreshButton(
                             Timber.i("$action")
                             currentTileProviderMbTiles = null
                             clipText = mapname
-                            context.startActivity(
-                                Intent(context, FileImportActivity::class.java)
-                                    .setAction(resources.getString(R.string.import_title))
-                                    .putExtra(Const.EXTRA_FILETYPE, FileType.MbTiles.name)
-                            )
+                            FileImportActivity.launch(context, FileType.MbTiles)
                         }
                     }
                 }

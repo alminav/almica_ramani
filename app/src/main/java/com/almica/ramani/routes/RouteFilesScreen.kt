@@ -157,7 +157,7 @@ enum class RouteEntityItemAction{
     Database
 }
 
-private const val MAX_ELEVATION_POINTS = 512
+const val MAX_ELEVATION_POINTS = 512
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -318,11 +318,7 @@ fun RouteFilesScreen(
                 viewModel.setShowSrtmFiles(false)
                 viewModel.setSrtmFile(file)
                 if (import) {
-                    context.startActivity(
-                        Intent(context, FileImportActivity::class.java)
-                            .setAction(context.getString(R.string.import_title))
-                            .putExtra(Const.EXTRA_FILETYPE, FileType.Hgt.name)
-                    )
+                    FileImportActivity.launch(context, FileType.Hgt)
                 }
             }
         }
@@ -331,21 +327,11 @@ fun RouteFilesScreen(
                 when(action) {
                     SingleRouteAction.Nothing -> { viewModel.setShowSingleRouteImportExportMenu(null) }
                     SingleRouteAction.Text -> {
-                        context.startActivity(
-                            Intent(context, FileImportActivity::class.java)
-                                .setAction(context.getString(R.string.import_title))
-                                .putExtra(Const.EXTRA_FILETYPE, FileType.Route.name)
-                                .putExtra(Const.EXTRA_ROUTEFOLDER, region)
-                        )
+                        FileImportActivity.launch(context, FileType.Route, routeFolder = region)
                         viewModel.setShowSingleRouteImportExportMenu(null)
                     }
                     SingleRouteAction.Image -> {
-                        context.startActivity(
-                            Intent(context, FileImportActivity::class.java)
-                                .setAction(context.getString(R.string.import_title))
-                                .putExtra(Const.EXTRA_FILETYPE, FileType.RouteThumbnail.name)
-                                .putExtra(Const.EXTRA_ROUTEFOLDER, region)
-                        )
+                        FileImportActivity.launch(context, FileType.RouteThumbnail, routeFolder = region)
                         viewModel.setShowSingleRouteImportExportMenu(null)
                     }
 
@@ -362,11 +348,7 @@ fun RouteFilesScreen(
                 when(action) {
                     RoutesAction.Import -> {
                         viewModel.setShowRoutesImportExportMenu(false)
-                        context.startActivity(
-                            Intent(context, FileImportActivity::class.java)
-                                .setAction(context.getString(R.string.import_title))
-                                .putExtra(Const.EXTRA_FILETYPE, FileType.RoutesZip.name)
-                        )
+                        FileImportActivity.launch(context, FileType.RoutesZip)
                     }
                     RoutesAction.Export -> {
                         viewModel.setShowRoutesImportExportMenu(false)
@@ -392,11 +374,7 @@ fun RouteFilesScreen(
                     }
                     RoutesAction.ImportThumbnails -> {
                         viewModel.setShowRoutesImportExportMenu(false)
-                        context.startActivity(
-                            Intent(context, FileImportActivity::class.java)
-                                .setAction(context.getString(R.string.import_title))
-                                .putExtra(Const.EXTRA_FILETYPE, FileType.ThumbnailsZip.name)
-                        )
+                        FileImportActivity.launch(context, FileType.ThumbnailsZip)
                     }
                 }
             }
@@ -615,14 +593,22 @@ fun RouteFilesScreen(
                             } else Helpers.getLllhFromFile(routeFile)
                             val hgtFile = uiState.srtmFile
                             if (hgtFile != null && hgtFile.exists()) {
-                                val hgtReader = HgtReader(context, hgtFile)
-                                val refreshedLllh = hgtReader.refreshRouteElevationFromSrtm(lllh).lllh
-                                val path = routeFile.path.replace(Const.GPX_EXT, Const.KML_EXT).replace(Const.JPG_EXT, Const.KML_EXT)
-                                val result = Helpers.writeLllh2KmlFile(refreshedLllh, path)
-                                if (result) {
-                                    viewModel.setSnackRoutesData(
-                                        SnackRoutesData(action, context.getString(R.string.saved_to_, path), action = SnackRoutesAction.Nothing, actionText = null, null)
-                                    )
+                                scope.launch {
+                                    viewModel.setIsLoading(true)
+                                    val hgtReader = HgtReader(context, hgtFile)
+                                    val refreshedLllh = withContext(Dispatchers.IO) {
+                                        hgtReader.refreshRouteElevationFromSrtm(lllh).lllh
+                                    }
+                                    val path = routeFile.path.replace(Const.GPX_EXT, Const.KML_EXT).replace(Const.JPG_EXT, Const.KML_EXT)
+                                    val result = withContext(Dispatchers.IO) {
+                                        Helpers.writeLllh2KmlFile(refreshedLllh, path)
+                                    }
+                                    if (result) {
+                                        viewModel.setSnackRoutesData(
+                                            SnackRoutesData(action, context.getString(R.string.saved_to_, path), action = SnackRoutesAction.Nothing, actionText = null, null)
+                                        )
+                                    }
+                                    viewModel.setIsLoading(false)
                                 }
                             } else {
                                 viewModel.setSnackRoutesData(
@@ -648,6 +634,7 @@ fun RouteFilesScreen(
                                 }.map { it.latLngGms }
                                 val encodedPolyline = PolyUtil.encode(gmsLatLng)
                                 scope.launch {
+                                    viewModel.setIsLoading(true)
                                     val refreshedLllh = MapUtils.gmsElevationService(context, "enc:${encodedPolyline}")
                                     if (refreshedLllh.isNotEmpty()) {
                                         val path = routeFile.path.replace(Const.GPX_EXT, Const.KML_EXT).replace(Const.JPG_EXT, Const.KML_EXT)
@@ -657,6 +644,7 @@ fun RouteFilesScreen(
                                                 SnackRoutesData(action, context.getString(R.string.saved_to_, path), action = SnackRoutesAction.Nothing, actionText = null, null)
                                             )
                                     }
+                                    viewModel.setIsLoading(false)
                                 }
                             }
                         }

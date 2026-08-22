@@ -262,11 +262,7 @@ class GeojsonMakerActivity : ComponentActivity() {
                             onClick = {
                                 clipText = regionName
                                 Timber.i("import clipText: $clipText")
-                                context.startActivity(
-                                    Intent(context, FileImportActivity::class.java)
-                                        .setAction(context.getString(R.string.import_title))
-                                        .putExtra(Const.EXTRA_FILETYPE, FileType.GeojsonQgisZip.name) //FileType.GeoJson.name)
-                                )
+                                FileImportActivity.launch(context, FileType.GeojsonQgisZip)
                             }
                         ) {
                             Text(text = stringResource(R.string.import_title))

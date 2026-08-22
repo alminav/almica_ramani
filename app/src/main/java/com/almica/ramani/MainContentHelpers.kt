@@ -169,7 +169,7 @@ fun refreshRouteElevation(
     onSuccess: (PolygonState, RouteEntity, MainSnackbarData) -> Unit,
     onFailure: (MainSnackbarData) -> Unit
 ) {
-    val tileName = com.almica.ramani.Helpers.getTileName(pos.latitude, pos.longitude).uppercase()
+    val tileName = Helpers.getTileName(pos.latitude, pos.longitude).uppercase()
     val demFolder = File(context.filesDir, Const.HGT_FOLDER_NAME)
     val hgtFile = File(demFolder, tileName + Const.HGT_EXT)
 

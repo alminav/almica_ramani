@@ -125,11 +125,7 @@ fun ListGeojsonScreen(selectGeojsonFolder: (selection: GeojsonFolderSelection) -
         onMapAction = { name ->
             when (showGoogleMap?.second) {
                 context.getString(R.string.import_title) -> {
-                    context.startActivity(
-                        Intent(context, FileImportActivity::class.java)
-                            .setAction(context.getString(R.string.import_title))
-                            .putExtra(Const.EXTRA_FILETYPE, FileType.GeojsonQgisZip.name)
-                    )
+                    FileImportActivity.launch(context, FileType.GeojsonQgisZip)
                 }
 
                 context.getString(R.string.activate) -> {
@@ -158,11 +154,7 @@ fun ListGeojsonScreen(selectGeojsonFolder: (selection: GeojsonFolderSelection) -
             val buttonText = context.getString(R.string.import_title)
             if (driveEntry == buttonText) {
                 showDriveEntries = false
-                context.startActivity(
-                    Intent(context, FileImportActivity::class.java)
-                        .setAction(context.getString(R.string.import_title))
-                        .putExtra(Const.EXTRA_FILETYPE, FileType.GeojsonQgisZip.name)
-                )
+                FileImportActivity.launch(context, FileType.GeojsonQgisZip)
             } else if (driveEntry.isNotNull()) {
                 val splits = driveEntry?.replace(Const.ZIP_EXT, "")?.split(Const.UNDERLINE, limit = 4)
                 if (splits.isNotNull() && splits?.size!! > 2) {

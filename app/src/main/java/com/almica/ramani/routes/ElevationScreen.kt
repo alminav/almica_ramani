@@ -8,8 +8,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.almica.ramani.ui.theme.RamaniTheme
+import com.google.android.gms.maps.model.LatLng
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +83,35 @@ private fun ElevationScreenContent(
             onPointSelected = onPointSelected,
             onClose = {onClose()},
             currentLatLng = uiState.latLng
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ElevationScreenContentPreview() {
+    val sampleDataPoints = listOf(
+        DataPoint(0f, 100f, 0.0, 0.0),
+        DataPoint(1f, 150f, 0.0, 0.0),
+        DataPoint(2f, 120f, 0.0, 0.0),
+        DataPoint(3f, 180f, 0.0, 0.0),
+        DataPoint(4f, 140f, 0.0, 0.0),
+        DataPoint(5f, 160f, 0.0, 0.0),
+        DataPoint(6f, 110f, 0.0, 0.0),
+        DataPoint(7f, 130f, 0.0, 0.0),
+        DataPoint(8f, 170f, 0.0, 0.0),
+        DataPoint(9f, 190f, 0.0, 0.0),
+        DataPoint(10f, 150f, 0.0, 0.0)
+    )
+    val sampleUiState = ElevationUiState(
+        latLng = LatLng(0.0, 0.0)
+    )
+    RamaniTheme {
+        ElevationScreenContent(
+            chartData = sampleDataPoints,
+            onPointSelected = {},
+            onClose = {},
+            uiState = sampleUiState
         )
     }
 }

@@ -127,7 +127,6 @@ fun TilemakerScreen(
     val clipboardManager = LocalClipboard.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
-    val importTitle = stringResource(R.string.import_title)
     val deleteConfirmation = stringResource(R.string.confirmation_question)
 
     LaunchedEffect(uiState.clipText) {
@@ -166,11 +165,7 @@ fun TilemakerScreen(
                 onCreate = { viewModel.startCreateMbTile(uiState.regionName) },
                 onImport = {
                     viewModel.setClipText(uiState.regionName)
-                    context.startActivity(
-                        Intent(context, FileImportActivity::class.java)
-                            .setAction(importTitle)
-                            .putExtra(Const.EXTRA_FILETYPE, FileType.MbTiles.name)
-                    )
+                    FileImportActivity.launch(context, FileType.MbTiles)
                 },
                 onActivate = { viewModel.toggleTileActivation(uiState.regionName, true) },
                 onDeactivate = { viewModel.toggleTileActivation(uiState.regionName, false) },
@@ -270,7 +265,6 @@ fun TilemakerContent(
     viewModel: TilemakerViewModel
 ) {
     val context = LocalContext.current
-    val importTitle = stringResource(R.string.import_title)
     val cameraPositionState = rememberCameraPositionState {
         uiState.startLocation?.let {
             position = CameraPosition.fromLatLngZoom(it, uiState.zoom.toFloat())
@@ -317,11 +311,7 @@ fun TilemakerContent(
             ListRasterDriveEntries(
                 onDismissRequest = { viewModel.setListDriveEntries(false) },
                 import = {
-                    context.startActivity(
-                        Intent(context, FileImportActivity::class.java)
-                            .setAction(importTitle)
-                            .putExtra(Const.EXTRA_FILETYPE, FileType.MbTiles.name)
-                    )
+                    FileImportActivity.launch(context, FileType.MbTiles)
                 }
             ) { rasterItemModel ->
                 viewModel.handleDriveEntrySelection(rasterItemModel.name)

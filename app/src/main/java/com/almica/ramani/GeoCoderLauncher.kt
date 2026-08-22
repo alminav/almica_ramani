@@ -58,6 +58,7 @@ fun GeoCoderLauncher(
     val viewModel: MapViewModel = viewModel()
     var showPoiCatDialog: ResultData? by remember { mutableStateOf(null) }
     var placeAddedSheetData by remember { mutableStateOf<PlaceAddedSheetData?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     // Auto-navigate back to the map after a POI is successfully added to the database.
     // This gives the user 5 seconds to see the confirmation sheet before returning.
@@ -143,6 +144,7 @@ fun GeoCoderLauncher(
                         } else {
                             val locationsParam = "${dialogLatLng.latitude},${dialogLatLng.longitude}"
                             scope.launch {
+                                isLoading = true
                                 val lllh0 = gmsElevationService(context, locationsParam)
                                 val h = lllh0.firstOrNull()?.altitude ?: 0.0
                                 val addedToDatabaseMsg =
@@ -160,6 +162,7 @@ fun GeoCoderLauncher(
                                         actionData = dialogData
                                     )
                                     showPoiCatDialog = null
+                                    isLoading = false
                                 }
                             }
                         }
@@ -167,7 +170,19 @@ fun GeoCoderLauncher(
                 }
             }
         }
+        if (isLoading)
+            ProgressDialog()
     }
+}
+
+@Composable
+private fun ProgressDialog() {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { },
+        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+        confirmButton = {},
+        title = { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(R.string.loading)) }
+    )
 }
 
 data class PlaceAddedSheetData(

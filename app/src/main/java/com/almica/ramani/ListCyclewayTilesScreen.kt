@@ -1,7 +1,6 @@
 package com.almica.ramani
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -104,11 +103,7 @@ fun ListCyclewayTilesScreen(
                 },
                 actions = {
                     IconButton(onClick = {
-                        context.startActivity(
-                            Intent(context, FileImportActivity::class.java)
-                                .setAction(context.getString(R.string.import_title))
-                                .putExtra(Const.EXTRA_FILETYPE, FileType.CycleWay.name)
-                        )
+                        FileImportActivity.launch(context, FileType.CycleWay)
                     }) {
                         Icon(Icons.Outlined.ImportExport, contentDescription = null)
                     }

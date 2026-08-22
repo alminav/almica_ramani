@@ -14,7 +14,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,24 +31,20 @@ import kotlin.math.roundToInt
 fun GradientChart(
     routeEntity: RouteEntity,
     moveMap: (LatLng?) -> Unit,
-    result: (LatLng?) -> Unit,
     viewModel: GradientChartViewModel = viewModel()
 ) {
     LaunchedEffect(routeEntity) {
         viewModel.loadRoute(routeEntity)
     }
 
-    val state = viewModel.uiState.collectAsState().value
-
-    when (state) {
+    when (val state = viewModel.uiState.collectAsState().value) {
         is GradientChartUiState.Loading -> {
             // Potentially show a loading indicator
         }
         is GradientChartUiState.Success -> {
             GradientChartWithSlider(
                 state = state,
-                moveMap = moveMap,
-                result = result
+                moveMap = moveMap
             )
         }
     }
@@ -58,8 +53,7 @@ fun GradientChart(
 @Composable
 fun GradientChartWithSlider(
     state: GradientChartUiState.Success,
-    moveMap: (LatLng?) -> Unit,
-    result: (LatLng?) -> Unit
+    moveMap: (LatLng?) -> Unit
 ) {
     val dataModel = state.dataModel
 
@@ -109,7 +103,7 @@ fun GradientChartWithSlider(
                 },
                 onValueChangeFinished = {
                     Timber.i("sliderPosition: ${dataModel.sliderPosition}")
-                    result(currentLatLng)
+                    //result(currentLatLng)
                 },
                 steps = if (state.points.size > 1) state.points.size - 2 else 0,
                 valueRange = 0f..if (state.points.isNotEmpty()) (state.points.size - 1).toFloat() else 0f
@@ -139,8 +133,7 @@ fun GradientChartPreview() {
     RamaniTheme {
         GradientChart(
             routeEntity = sampleRoute,
-            moveMap = {},
-            result = {}
+            moveMap = {}
         )
     }
 }
@@ -164,8 +157,7 @@ fun GradientChartWithSliderPreview() {
     RamaniTheme {
         GradientChartWithSlider(
             state = state,
-            moveMap = {},
-            result = {}
+            moveMap = {}
         )
     }
 }

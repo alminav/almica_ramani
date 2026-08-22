@@ -135,10 +135,16 @@ import java.util.concurrent.Executors
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Alignment
+import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.pois.PoiEntity
+import com.almica.ramani.routes.MAX_ELEVATION_POINTS
+import com.almica.ramani.routes.SnackRoutesAction
+import com.almica.ramani.routes.SnackRoutesData
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.GeoJsonUtils
+import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
 import com.almica.ramani.weather.WeatherScreen
+import com.google.maps.android.PolyUtil
 import com.google.android.gms.maps.model.LatLng as GmsLatLng
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -242,6 +248,7 @@ fun BoxScope.MapOverlayManagerContent(
     val context = LocalContext.current
     val resources = LocalResources.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     val poiRepository = PoiRepository.getInstance(context, Executors.newSingleThreadExecutor())
 
@@ -913,14 +920,49 @@ fun BoxScope.MapOverlayManagerContent(
                 }
                 RouteMonitorSelection.SrtmRefresh -> {
                     cameraPosition.value.target?.let { pos ->
-                        refreshRouteElevation(context, pos, polygonState, loadedRouteEntity, onSuccess = { ns, ne, sb ->
-                            updatePolygon(ns)
-                            setLoadedRoute(ne)
-                            setSnackbar(sb)
+                        scope.launch {
+                            setProgress(resources.getString(R.string.refreshing_elevation))
+                            refreshRouteElevation(
+                                context,
+                                pos,
+                                polygonState,
+                                loadedRouteEntity,
+                                onSuccess = { ns, ne, sb ->
+                                    updatePolygon(ns)
+                                    setLoadedRoute(ne)
+                                    setSnackbar(sb)
+                                    setHighlightRoutePoint(-1)
+                                    CompassViewModel.setRouteThumbnail(null)
+                                    setRecalcRequired(false)
+                                    setProgress(null)
+                                },
+                                onFailure = { sb -> setSnackbar(sb); setProgress(null) })
+                        }
+                    }
+                }
+                RouteMonitorSelection.GmsElevation -> {
+                    val gmsLatLng = if (polygonState.lllh.size > MAX_ELEVATION_POINTS) {
+                        polygonState.lllh.simplifyToTargetCount(MAX_ELEVATION_POINTS)
+                    } else {
+                        polygonState.lllh
+                    }.map { it.latLngGms }
+                    val encodedPolyline = PolyUtil.encode(gmsLatLng)
+                    scope.launch {
+                        setProgress(resources.getString(R.string.refreshing_elevation))
+                        val refreshedLllh = MapUtils.gmsElevationService(context, "enc:${encodedPolyline}")
+                        setProgress(null)
+                        if (refreshedLllh.isNotEmpty()) {
+                            updatePolygon(polygonState.copy(lllh = refreshedLllh))
+                            setLoadedRoute(loadedRouteEntity?.copy(kmlString = refreshedLllh.lllhToKmlString(polygonState.name)))
                             setHighlightRoutePoint(-1)
                             CompassViewModel.setRouteThumbnail(null)
                             setRecalcRequired(false)
-                        }, onFailure = { sb -> setSnackbar(sb) })
+
+                            setSnackbar(
+                                MainSnackbarData( resources.getString(R.string._gms_refresh_done, polygonState.name),
+                                    action = MainSnackbarSelection.Nothing, actionText = null, data = null)
+                            )
+                        }
                     }
                 }
             }

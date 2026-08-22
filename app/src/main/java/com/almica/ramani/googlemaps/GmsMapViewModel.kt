@@ -92,7 +92,8 @@ data class GmsMapUiState(
     ),
     val tileOverlayVisibility: Boolean = true,
     val coordinatesOverlayVisibility: Boolean = false,
-    val northUp: Boolean = true
+    val northUp: Boolean = true,
+    val isLoading: Boolean = false
 )
 
 class GmsMapViewModel(application: Application) : AndroidViewModel(application) {
