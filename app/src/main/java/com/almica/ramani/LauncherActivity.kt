@@ -278,7 +278,7 @@ fun LauncherContentUI(
                 val firstName = File(set.first() ?: "").name.replace(Const.MBTILES_EXT, "")
                 if (set.size > 1) "$firstName (+${set.size - 1})" else firstName
             }
-
+            Timber.i("uiState.lastLocationCoords: ${uiState.lastLocationCoords}")
             RamaniNavHost(
                 uiState.mvtName,
                 rasterDescription,

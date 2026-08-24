@@ -47,8 +47,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,10 +62,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.preference.PreferenceManager
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.almica.ramani.Const
 import com.almica.ramani.MvtItemModel
 import com.almica.ramani.GeoCoderLauncher
@@ -108,488 +105,327 @@ class MvtmakerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val viewModel: MvtmakerViewModel = viewModel()
+            val uiState by viewModel.uiState.collectAsState()
+
             val clipboardManager = LocalClipboard.current
-            var clipText: String? by remember { mutableStateOf(null) }
-            LaunchedEffect(clipText) {
-                if (!clipText.isNullOrEmpty()) {
-                    Timber.i("clipText: $clipText")
-                    val clipData = ClipData.newPlainText( NewMapAction.Import.name, clipText)
+            LaunchedEffect(uiState.clipText) {
+                uiState.clipText?.let {
+                    Timber.i("clipText: $it")
+                    val clipData = ClipData.newPlainText(NewMapAction.Import.name, it)
                     val clipEntry = ClipEntry(clipData)
                     clipboardManager.setClipEntry(clipEntry)
-                    clipText = null
+                    viewModel.setClipText(null)
                 }
             }
+
             BackPressHandler {
                 Timber.i("Back Press intercepted")
                 setResult(RESULT_OK)
                 finish()
             }
-            val zoom = 9
-            val context = LocalContext.current
-            var contentRefreshRequired by remember { mutableLongStateOf(0L) }
-            val lifecycleOwner = LocalLifecycleOwner.current
-            val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
 
-            LaunchedEffect(lifecycleState) {
-                // Do something with your state
-                // You may want to use DisposableEffect or other alternatives
-                // instead of LaunchedEffect
-                //Timber.i("$lifecycleState")
-                when (lifecycleState) {
-                    Lifecycle.State.DESTROYED -> {}
-                    Lifecycle.State.INITIALIZED -> {}
-                    Lifecycle.State.CREATED -> {}
-                    Lifecycle.State.STARTED -> {}
-                    Lifecycle.State.RESUMED -> {
-                        // refresh after import
-                        Timber.i("Lifecycle.State.RESUMED")
-                        contentRefreshRequired = System.currentTimeMillis()
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+                Timber.i("Lifecycle.Event.ON_RESUME")
+                viewModel.refreshFileData()
+            }
+
+            val context = LocalContext.current
+            val cameraPositionState = rememberCameraPositionState {
+                position = CameraPosition.fromLatLngZoom(
+                    uiState.startLocation ?: LatLng(0.0, 0.0),
+                    uiState.zoom.toFloat()
+                )
+            }
+            val tileCenterLatLngState = rememberUpdatedMarkerState(position = uiState.tileCenterLatLng)
+            val confirmationQuestion = stringResource(R.string.confirmation_question)
+
+            LaunchedEffect(uiState.x, uiState.y) {
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(
+                    uiState.tileCenterLatLng, uiState.zoom.toFloat()
+                )
+                tileCenterLatLngState.position = uiState.tileCenterLatLng
+            }
+
+            LaunchedEffect(cameraPositionState.isMoving) {
+                if (!cameraPositionState.isMoving) {
+                    viewModel.setMapLoaded(true)
+                }
+            }
+
+            MvtmakerScreen(
+                uiState = uiState,
+                cameraPositionState = cameraPositionState,
+                tileCenterLatLngState = tileCenterLatLngState,
+                onBack = {
+                    setResult(RESULT_OK)
+                    finish()
+                },
+                onImport = {
+                    viewModel.setClipText(uiState.regionName)
+                    FileImportActivity.launch(context, FileType.Mvt)
+                },
+                onShowGeoCoder = { viewModel.setShowGeoCoder(it) },
+                onCreateMvt = { viewModel.setCreateMvtRegion(it) },
+                onDeactivate = { viewModel.deactivateMvt() },
+                onDeleteRequest = { viewModel.setMoboDeleteConfirmation(confirmationQuestion) },
+                onActivate = { viewModel.activateMvt(it) },
+                onConfirmDelete = { result ->
+                    viewModel.setMoboDeleteConfirmation(null)
+                    if (result) {
+                        viewModel.deleteMvt(uiState.regionName)
+                    }
+                },
+                onGeoCoderResult = { latLng -> viewModel.handleGeoCoderResult(latLng) },
+                onShowListItems = { viewModel.setListItems(it) },
+                onDriveEntrySelected = { viewModel.handleDriveEntrySelection(it) },
+                onCoordinateChange = { x, y -> viewModel.updateCoordinates(x, y) },
+                onMapLoaded = { viewModel.setMapLoaded(true); Timber.i("onMapLoaded true") }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MvtmakerScreen(
+    uiState: MvtmakerUiState,
+    cameraPositionState: CameraPositionState,
+    tileCenterLatLngState: MarkerState,
+    onBack: () -> Unit,
+    onImport: () -> Unit,
+    onShowGeoCoder: (Boolean) -> Unit,
+    onCreateMvt: (String?) -> Unit,
+    onDeactivate: () -> Unit,
+    onDeleteRequest: () -> Unit,
+    onActivate: (String) -> Unit,
+    onConfirmDelete: (Boolean) -> Unit,
+    onGeoCoderResult: (LatLng) -> Unit,
+    onShowListItems: (Boolean) -> Unit,
+    onDriveEntrySelected: (String) -> Unit,
+    onCoordinateChange: (Int, Int) -> Unit,
+    onMapLoaded: () -> Unit
+) {
+    val context = LocalContext.current
+    val driveMap = DriveSharedLinks.Companion.MvtRegions().list
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Go back home"
+                        )
+                    }
+                },
+                title = { Text(text = stringResource(R.string.mvtmaker), fontSize = 14.sp) },
+                actions = {
+                    TextButton(onClick = onImport) {
+                        Text(text = stringResource(R.string.import_title))
+                    }
+                    IconButton(onClick = { onShowGeoCoder(true) }) {
+                        Icon(Icons.Outlined.Search, null)
                     }
                 }
-            }
-
-            var isMapLoaded by remember { mutableStateOf(false) }
-            var showGeoCoder by remember { mutableStateOf(false) }
-            val rootFolder = LocalContext.current.filesDir
-            val mvtRootFolder = File(rootFolder, Const.MVT_FOLDER)
-            val fileFilter = FileFilter { file: File? -> file?.name?.endsWith(Const.MBTILES_EXT) == true &&
-                    !file.name.contains(Const.JOURNAL)
-            }
-            var fileNames by remember { mutableStateOf<List<String>>(listOf()) }
-            LaunchedEffect(contentRefreshRequired) {
-                val files = mvtRootFolder.listFiles(fileFilter) as Array<File>
-                fileNames = List(files.size) { i ->
-                    files[i].name.replace(Const.MBTILES_EXT, "")
+            )
+        },
+        bottomBar = {
+            BottomAppBar(actions = {
+                AnimatedVisibility(visible = !uiState.fileNames.contains(uiState.regionName)) {
+                    TextButton(onClick = { onCreateMvt(uiState.regionName) }) {
+                        Text(text = stringResource(R.string.create))
+                    }
                 }
-            }
+                AnimatedVisibility(visible = driveMap.keys.contains(uiState.regionName) && !uiState.fileNames.contains(uiState.regionName)) {
+                    Text(text = stringResource(R.string.available_on_drive))
+                }
+                AnimatedVisibility(visible = uiState.fileNames.contains(uiState.regionName)) {
+                    Text(
+                        text = if (uiState.prefMapname.contains(uiState.regionName))
+                            stringResource(R.string._is_active, uiState.regionName)
+                        else
+                            stringResource(R.string._is_available, uiState.regionName)
+                    )
+                }
+                AnimatedVisibility(visible = uiState.prefMapname.contains(uiState.regionName)) {
+                    TextButton(onClick = onDeactivate) {
+                        Text(text = stringResource(R.string.deactivate))
+                    }
+                }
+                AnimatedVisibility(visible = uiState.fileNames.contains(uiState.regionName)) {
+                    IconButton(onClick = onDeleteRequest) {
+                        Icon(Icons.Outlined.DeleteOutline, contentDescription = null)
+                    }
+                }
+                AnimatedVisibility(visible = uiState.fileNames.contains(uiState.regionName) && !uiState.prefMapname.contains(uiState.regionName)) {
+                    TextButton(onClick = { onActivate(uiState.regionName) }) {
+                        Text(text = stringResource(R.string.activate))
+                    }
+                }
+            })
+        }
+    ) { innerPadding ->
+        uiState.moboDeleteConfirmation?.let {
+            MoboConfirmation(it) { result -> onConfirmDelete(result) }
+        }
 
-            val prefMapPath = PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(Const.PREF_MVT_FILEPATH, "")
-            var prefMapname by remember { mutableStateOf(prefMapPath?.let {File(it).name} ?: "") }
+        if (uiState.showGeoCoder) {
+            GeoCoderLauncher(
+                uiState.tileCenterLatLng,
+                showInMap = { geoCoderResultName: String?, _: String?, latlng: org.maplibre.android.geometry.LatLng? ->
+                    latlng?.let {
+                        onGeoCoderResult(LatLng(it.latitude, it.longitude))
+                    }
+                    Timber.i("name $geoCoderResultName")
+                }
+            )
+        }
 
-            var moboDeleteConfirmation: String? by remember { mutableStateOf(null) }
-            val driveMap = DriveSharedLinks.Companion.MvtRegions().list
-            //var driveUrl: String? by remember { mutableStateOf(null) }
-            val startLat = intent.getDoubleExtra(Const.EXTRA_LATITUDE, -1.0)
-            val startLon = intent.getDoubleExtra(Const.EXTRA_LONGITUDE, -1.0)
-            var tile : GeoJsonUtils.Companion.Tile? = null
-            if (startLat >= 0 && startLon >= 0) {
-                tile = GeoJsonUtils.pointToTile(startLon, startLat, zoom.toDouble())
-            }
-            var x by remember { mutableIntStateOf(tile?.x ?: 0) }
-            var y by remember { mutableIntStateOf(tile?.y ?: 0) }
-            var listItems by remember { mutableStateOf(false) }
+        Column(
+            modifier = Modifier.padding(innerPadding),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (uiState.listItems) {
+                val mvtFolder = File(context.filesDir, Const.MVT_FOLDER)
+                val driveItemsGrouped = remember(uiState.mvtRegionNames, uiState.prefMapname) {
+                    uiState.mvtRegionNames.map { name ->
+                        val f = File(mvtFolder, "$name${Const.MBTILES_EXT}")
+                        val splits = name.split(Const.UNDERLINE, limit = 4)
+                        MvtItemModel(
+                            name = name,
+                            path = "",
+                            x = splits.getOrNull(1)?.toIntOrNull() ?: 0,
+                            y = splits.getOrNull(2)?.toIntOrNull() ?: 0,
+                            selected = uiState.prefMapname.contains(name),
+                            exists = f.exists()
+                        )
+                    }.groupBy { it.x }
+                }
 
-            var regionName by remember { mutableStateOf("mvt_${x}_${y}_${zoom}")}
-            val regionNames = arrayListOf<String>()
-            driveMap.keys.forEach { key -> regionNames.add(key) }
-            regionNames.sort()
-            var mvtRegionNames by remember { mutableStateOf(regionNames) }
-            //val splits = regionName.split(Const.UNDERLINE, ".", limit = 6)
-            /*
-                            0 = "tile"
-                            1 = "1082"
-                            2 = "672"
-                            3 = "11"
-                            4 = "OpenTopo"
-                            5 = "mbtiles"
-            */
-            var bounds by remember {mutableStateOf(
-                GeoJsonUtils.tileToBounds(GeoJsonUtils.Companion.Tile(x, y, zoom)))
-            }
-            var createMvtRegion by remember { mutableStateOf<String?>(null) }
-            val cameraPositionState = rememberCameraPositionState {
-                position = CameraPosition.fromLatLngZoom(LatLng(startLat, startLon), zoom.toFloat())
-            }
-            val tileCenterLatLng by remember {
-                mutableStateOf(GeoJsonUtils.tileToGmsBounds(GeoJsonUtils.Companion.Tile(x, y, zoom)).center) }
-            Timber.i("tileCenterLatLng $tileCenterLatLng")
-            val tileCenterLatLngState = rememberUpdatedMarkerState(position = tileCenterLatLng)
-            //tileCenterLatLngState.showInfoWindow()
-
-            LaunchedEffect(key1 = x, key2 = y) {
-            //LaunchedEffect(key1 = regionName) {
-                Timber.i("x: $x y: $y")
-                val tile = GeoJsonUtils.Companion.Tile(x, y, zoom)
-                val tileCenterLatLng = GeoJsonUtils.tileCenter(tile)
-                Timber.i("tileCenterLatLng: ${tileCenterLatLng.latitude} ${tileCenterLatLng.longitude}")
-                cameraPositionState.position = CameraPosition.fromLatLngZoom(
-                        tileCenterLatLng, zoom.toFloat())
-                Timber.i("cameraPositionState: ${cameraPositionState.position.target.latitude} " +
-                            "${cameraPositionState.position.target.longitude}")
-                bounds = GeoJsonUtils.tileToBounds(GeoJsonUtils.Companion.Tile(x, y, zoom))
-                tileCenterLatLngState.position = GeoJsonUtils.tileToGmsBounds(GeoJsonUtils.Companion.Tile(x, y, zoom)).center
-                Timber.i("bounds: $bounds")
-                regionName = "${Const.MVT_PREFIX}${x}_${y}_${zoom}"
-            }
-
-            Scaffold(topBar = {
-                TopAppBar(
-                    navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                setResult(RESULT_OK)
-                                finish()
-                                //ScreenRouter.navigateHome()
-                                Timber.i("${Thread.currentThread().stackTrace[2].lineNumber}: navigateHome")
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Go back home"
-                            )
-                        }
-                    }, title = {
-                        Text(text = stringResource(R.string.mvtmaker), fontSize = 14.sp)
-                    }, actions = {
-                        TextButton(
-                            onClick = {
-                                Timber.i("import")
-                                clipText = regionName
-                                Timber.i("import clipText: $clipText")
-
-                                FileImportActivity.launch(context, FileType.Mvt)
-                            }
-                        ) {
-                            Text(text = stringResource(R.string.import_title))
-                        }
-
-                        IconButton(onClick = {
-                            showGeoCoder = true
-                        }) {Icon(Icons.Outlined.Search, null) }
+                ListMvtDriveEntries(
+                    currentMvtName = uiState.prefMapname.replace(Const.MBTILES_EXT, ""),
+                    itemsGrouped = driveItemsGrouped,
+                    onDismissRequest = { onShowListItems(false) },
+                    import = {
+                        onShowListItems(false)
+                        FileImportActivity.launch(context, FileType.Mvt)
+                    },
+                    onItemClick = { mvtItemModel ->
+                        onDriveEntrySelected(mvtItemModel.name)
                     }
                 )
-            }, bottomBar = {
-                BottomAppBar(//modifier = Modifier.height(56.dp).padding(bottom = 208.dp),
-                    actions = {
-                    AnimatedVisibility(visible = !fileNames.contains(regionName)) {
-                        TextButton(
-                            onClick = {
-                                createMvtRegion = regionName
-                            }
-                        ) {
-                            Text(text = stringResource(R.string.create))
-                        }
-                    }
-                    AnimatedVisibility(visible = driveMap.keys.contains(regionName) && !fileNames.contains(regionName)) {
-                        Text(text = stringResource(R.string.available_on_drive))
-                    }
+            }
 
-                    AnimatedVisibility(visible = fileNames.contains(regionName)) {
-                        Text(text =
-                            if (prefMapname.contains(regionName))
-                                context.getString(R.string._is_active, regionName)
-                            else
-                                context.getString(R.string._is_available, regionName))
-                    }
-                    AnimatedVisibility(visible = prefMapname.contains(regionName)) {
-                        TextButton(
-                            onClick = {
-                                val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-                                prefs.edit { remove(Const.PREF_MVT_FILEPATH) }
-                                Timber.i("$regionName deactivated")
-                                prefMapname = ""
-                                contentRefreshRequired = System.currentTimeMillis()
-                            }
-                        ) {
-                            Text(text = stringResource(R.string.deactivate))
-                        }
-                    }
-                    AnimatedVisibility(visible = fileNames.contains(regionName)) {
-                        IconButton(
-                            onClick = {
-                                moboDeleteConfirmation = context.getString(R.string.confirmation_question)
-                            }
-                        ) {
-                            Icon(
-                                Icons.Outlined.DeleteOutline,
-                                contentDescription = null
-                            )
-                        }
-                    }
-                    AnimatedVisibility(visible = fileNames.contains(regionName) && !prefMapname.contains(regionName)) {
-                        TextButton(
-                            onClick = {
-                                val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-                                val rootFolder = context.filesDir
-                                val mvtRootFolder = File(rootFolder, Const.MVT_FOLDER)
-                                val f = File(mvtRootFolder, regionName.plus(Const.MBTILES_EXT))
-                                if (f.exists()) {
-                                    prefs.edit { putString(Const.PREF_MVT_FILEPATH, f.path) }
-                                    prefMapname = f.name
-                                }
-                            }
-                        ) {
-                            Text(text = context.getString(R.string.activate))
-                        }
-                    }
-                })
-            }) {innerPadding ->
-/*
-                driveUrl?.let {
-                    Timber.i("driveUrl: $driveUrl")
-                    val browserIntent = Intent(Intent.ACTION_VIEW, driveUrl!!.toUri())
-                    context.startActivity(browserIntent)
-                    driveUrl = null
-                }
- */
-                moboDeleteConfirmation?.let {
-                    MoboConfirmation(moboDeleteConfirmation!!) { result ->
-                        moboDeleteConfirmation = null
-                        if (result) {
-                            val rootFolder = context.filesDir
-                            val mvtRootFolder = File(rootFolder, Const.MVT_FOLDER)
-                            val f = File(mvtRootFolder, regionName.plus(Const.MBTILES_EXT))
-                            val b = f.delete()
-                            Timber.i("${f.path} delete: $b")
-                            val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-                            if (prefMapname.contains(regionName)) {
-                                prefs.edit { remove(Const.PREF_MVT_FILEPATH) }
-                                prefMapname = ""
-                            }
-
-                            contentRefreshRequired = System.currentTimeMillis()
-                        }
-                    }
-                }
-                if (showGeoCoder) {
-                    //GeoCoderComposeScreen(cameraPosition.value.target?.let {
-                    GeoCoderLauncher (tileCenterLatLng.let {
-                        LatLng(
-                            it.latitude,
-                            it.longitude
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(5.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Row(modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
+                        Text(
+                            text = "Center N: ${uiState.bounds.center.latitude.formatLatLngShort()}° " +
+                                    "W: ${uiState.bounds.center.longitude.formatLatLngShort()}°",
+                            fontFamily = FontFamily.Monospace
                         )
-                    }, showInMap = { geoCoderResultName: String?, _: String?, latlng: org.maplibre.android.geometry.LatLng? ->
-                        latlng?.let {
-                            val tileMap = GeoJsonUtils.pointToTile(
-                                latlng.longitude, latlng.latitude, 9.0)
-                            x = tileMap.x
-                            y = tileMap.y
-                        }
-                        Timber.i("name $geoCoderResultName")
-
-                        showGeoCoder = false
-                    })
-                }
-                Column(modifier = Modifier.padding(innerPadding),
-                    horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (listItems) {
-                        val mvtFolder = File(context.filesDir, Const.MVT_FOLDER)
-                        val driveItemsGrouped = remember(mvtRegionNames, prefMapname) {
-                            mvtRegionNames.map { name ->
-                                val f = File(mvtFolder, "$name${Const.MBTILES_EXT}")
-                                val splits = name.split(Const.UNDERLINE, limit = 4)
-                                MvtItemModel(
-                                    name = name,
-                                    path = "",
-                                    x = splits.getOrNull(1)?.toIntOrNull() ?: 0,
-                                    y = splits.getOrNull(2)?.toIntOrNull() ?: 0,
-                                    selected = prefMapname.contains(name),
-                                    exists = f.exists()
-                                )
-                            }.groupBy { it.x }
-                        }
-
-                        ListMvtDriveEntries(
-                            currentMvtName = prefMapname.replace(Const.MBTILES_EXT, ""),
-                            itemsGrouped = driveItemsGrouped,
-                            onDismissRequest = { listItems = false },
-                            import = {
-                                listItems = false
-                                FileImportActivity.launch(context, FileType.Mvt)
-                            },
-                            onItemClick = { mvtItemModel ->
-                                listItems = false
-                                mvtItemModel.let {
-                                    try {
-                                        val splits = it.name.split(Const.UNDERLINE, limit = 6)
-                                        x = splits[1].toInt()
-                                        y = splits[2].toInt()
-                                        regionName = it.name
-                                    } catch (e: Exception) {
-                                        Timber.i("$it.name doesn't fit the pattern mvt_x_y_z.mbtiles")
-                                    }
-                                }
-                            }
-                        )
-                    }
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(5.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Row(modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
-                                Text(
-                                    text = "Center N: ${bounds.center.latitude.formatLatLngShort()}° " +
-                                            "W: ${bounds.center.longitude.formatLatLngShort()}°",
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                            Row {
-                                Text(
-                                    modifier = Modifier.weight(0.25f),
-                                    text = "N:${bounds.latitudeNorth.formatLatLngShort()}",
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    modifier = Modifier.weight(0.25f),
-                                    text = "S:${bounds.latitudeSouth.formatLatLngShort()}",
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    modifier = Modifier.weight(0.25f),
-                                    text = "W:${bounds.longitudeWest.formatLatLngShort()}",
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    modifier = Modifier.weight(0.25f),
-                                    text = "E:${bounds.longitudeEast.formatLatLngShort()}",
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.padding(start = 5.dp, end = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            modifier = Modifier.weight(0.8f),
-                            readOnly = true,
-                            value = regionName, onValueChange = { regionName = it },
-                            label = { Text(stringResource(R.string.region_name)) })
-                        IconButton(
-                            onClick = {
-                                listItems = true
-                                mvtRegionNames = regionNames },
-                            modifier = Modifier
-                                .weight(0.20f)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.List,
-                                contentDescription = null
-                            )
-                        }
                     }
                     Row {
-                        IconButton(
-                            onClick = { x += 1
-                                isMapLoaded = true
-                                regionName = "${Const.MVT_PREFIX}${x}_${y}_${zoom}"
-                                Timber.i("regionName: $regionName")
-                                bounds = GeoJsonUtils.tileToBounds(GeoJsonUtils.Companion.Tile(x, y, zoom)) },
-                            modifier = Modifier
-                                .weight(0.20f)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.ArrowRight,
-                                contentDescription = null
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { x -= 1
-                                isMapLoaded = true
-                                regionName = "${Const.MVT_PREFIX}${x}_${y}_${zoom}"
-                                Timber.i("regionName: $regionName")
-                                bounds = GeoJsonUtils.tileToBounds(GeoJsonUtils.Companion.Tile(x, y, zoom)) },
-                            modifier = Modifier
-                                .weight(0.20f)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.ArrowLeft,
-                                contentDescription = null
-                            )
-                        }
-
-                        IconButton(onClick = {
-                            y -= 1
-                            isMapLoaded = true
-                            regionName = "${Const.MVT_PREFIX}${x}_${y}_${zoom}"
-                            Timber.i("regionName: $regionName")
-                            bounds = GeoJsonUtils.tileToBounds(GeoJsonUtils.Companion.Tile(x, y, zoom))
-                        }, modifier = Modifier
-                            .weight(0.20f)) {
-                            Icon(Icons.Outlined.ArrowDropUp, contentDescription = null)
-                        }
-
-                        IconButton(
-                            onClick = {
-                                y += 1
-                                isMapLoaded = true
-                                regionName = "${Const.MVT_PREFIX}${x}_${y}_${zoom}"
-                                Timber.i("regionName: $regionName")
-                                bounds = GeoJsonUtils.tileToBounds(GeoJsonUtils.Companion.Tile(x, y, zoom))
-                            },
-                            modifier = Modifier
-                                .weight(0.20f)
-                        ) {
-                            Icon(Icons.Outlined.ArrowDropDown, contentDescription = null)
-                        }
+                        Text(modifier = Modifier.weight(0.25f), text = "N:${uiState.bounds.latitudeNorth.formatLatLngShort()}", fontFamily = FontFamily.Monospace)
+                        Text(modifier = Modifier.weight(0.25f), text = "S:${uiState.bounds.latitudeSouth.formatLatLngShort()}", fontFamily = FontFamily.Monospace)
+                        Text(modifier = Modifier.weight(0.25f), text = "W:${uiState.bounds.longitudeWest.formatLatLngShort()}", fontFamily = FontFamily.Monospace)
+                        Text(modifier = Modifier.weight(0.25f), text = "E:${uiState.bounds.longitudeEast.formatLatLngShort()}", fontFamily = FontFamily.Monospace)
                     }
+                }
+            }
 
-                    if (createMvtRegion != null) {
-                        val mvtBounds = GeoJsonUtils.tileToGmsBounds(
-                            GeoJsonUtils.Companion.Tile(x, y, zoom))
-                        val bbbikeUrl = GeoJsonUtils.getBbbikeUrl(
-                            "${Const.MVT_PREFIX}${x}_${y}_${zoom}",
-                            mvtBounds, "mbtiles-basic.zip"
-                        )
-                        Timber.i("bbbikeUrl: $bbbikeUrl")
-                        val browserIntent =
-                            Intent(Intent.ACTION_VIEW, bbbikeUrl)
-                        context.startActivity(browserIntent)
-                        createMvtRegion = null
-                    }
-                    Box(contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .width(320.dp)
-                            .height(320.dp)
-                    ) {
-                        GoogleMapViewInColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .testTag("Map")
-                                .pointerInteropFilter(
-                                    onTouchEvent = {
-                                        when (it.action) {
-                                            MotionEvent.ACTION_DOWN -> {
-                                                Timber.i("onMapTouched")
-                                                false
-                                            }
-                                            else -> {
-                                                Timber.i("MotionEvent ${it.action} - this never triggers.")
-                                                true
-                                            }
-                                        }
+            Row(
+                modifier = Modifier.padding(start = 5.dp, end = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    modifier = Modifier.weight(0.8f),
+                    readOnly = true,
+                    value = uiState.regionName,
+                    onValueChange = { },
+                    label = { Text(stringResource(R.string.region_name)) }
+                )
+                IconButton(
+                    onClick = { onShowListItems(true) },
+                    modifier = Modifier.weight(0.20f)
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.List, contentDescription = null)
+                }
+            }
+
+            Row {
+                val x = uiState.x
+                val y = uiState.y
+                IconButton(onClick = { onCoordinateChange(x + 1, y) }, modifier = Modifier.weight(0.20f)) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowRight, contentDescription = null)
+                }
+                IconButton(onClick = { onCoordinateChange(x - 1, y) }, modifier = Modifier.weight(0.20f)) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowLeft, contentDescription = null)
+                }
+                IconButton(onClick = { onCoordinateChange(x, y - 1) }, modifier = Modifier.weight(0.20f)) {
+                    Icon(Icons.Outlined.ArrowDropUp, contentDescription = null)
+                }
+                IconButton(onClick = { onCoordinateChange(x, y + 1) }, modifier = Modifier.weight(0.20f)) {
+                    Icon(Icons.Outlined.ArrowDropDown, contentDescription = null)
+                }
+            }
+
+            if (uiState.createMvtRegion != null) {
+                val mvtBounds = GeoJsonUtils.tileToGmsBounds(
+                    GeoJsonUtils.Companion.Tile(uiState.x, uiState.y, uiState.zoom)
+                )
+                val bbbikeUrl = GeoJsonUtils.getBbbikeUrl(
+                    uiState.regionName, mvtBounds, "mbtiles-basic.zip"
+                )
+                Timber.i("bbbikeUrl: $bbbikeUrl")
+                context.startActivity(Intent(Intent.ACTION_VIEW, bbbikeUrl))
+                onCreateMvt(null)
+            }
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.width(320.dp).height(320.dp)
+            ) {
+                GoogleMapViewInColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("Map")
+                        .pointerInteropFilter(
+                            onTouchEvent = {
+                                when (it.action) {
+                                    MotionEvent.ACTION_DOWN -> {
+                                        Timber.i("onMapTouched")
+                                        false
                                     }
-                                ),
-                            cameraPositionState = cameraPositionState,
-                            tileCenterLatLngState = tileCenterLatLngState,
-                            x, y, zoom,
-                            onMapLoaded = {
-                                isMapLoaded = true
-                                Timber.i("onMapLoaded regular feedback")
-                            }, onMapClick = { latLng ->
-                                isMapLoaded = true
-                                val tile = GeoJsonUtils.pointToTile(latLng.longitude, latLng.latitude, zoom.toDouble())
-                                Timber.i("tile $tile")
-                                x = tile.x
-                                y = tile.y
-                            }, onMarkerClick = { region ->
-                                Timber.i("region $region")
+                                    else -> true
+                                }
                             }
-                        )
-                        if (!isMapLoaded) {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.background)
-                                    .wrapContentSize()
-                            )
-                        }
-                    }
+                        ),
+                    cameraPositionState = cameraPositionState,
+                    tileCenterLatLngState = tileCenterLatLngState,
+                    tileX = uiState.x,
+                    tileY = uiState.y,
+                    zoom = uiState.zoom,
+                    onMapLoaded = onMapLoaded,
+                    onMapClick = { latLng ->
+                        val tile = GeoJsonUtils.pointToTile(latLng.longitude, latLng.latitude, uiState.zoom.toDouble())
+                        onCoordinateChange(tile.x, tile.y)
+                    },
+                    onMarkerClick = { region -> Timber.i("region $region") }
+                )
+                if (!uiState.isMapLoaded) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.background)
+                            .wrapContentSize()
+                    )
                 }
             }
         }

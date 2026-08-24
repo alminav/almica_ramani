@@ -67,13 +67,18 @@ import com.almica.ramani.googlemaps.GmsTileOverlayActivity
 import com.almica.ramani.routes.RouteActivity
 import com.almica.ramani.R
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.edit
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.preference.PreferenceManager
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.format
 import com.almica.ramani.weather.WeatherScreen
 import timber.log.Timber
 import java.util.ArrayList
 import kotlin.reflect.KClass
+
+private val LATITUDE_REGEX = Regex("lat:?\\s*(-?\\d+\\.?\\d*)")
+private val LONGITUDE_REGEX = Regex("lon:?\\s*(-?\\d+\\.?\\d*)")
 
 data class Activity(
     @StringRes val title: Int,
@@ -467,11 +472,27 @@ fun RamaniNavHost(
                                 }
                             }
                         }
-                        val lat = lastLocationCoords?.let {
-                            Regex("lat:?\\s*(-?\\d+\\.?\\d*)").find(it)?.groupValues?.get(1)?.toDoubleOrNull()
+
+                        val context = LocalContext.current
+                        val lat = remember(lastLocationCoords) {
+                            lastLocationCoords?.let {
+                                LATITUDE_REGEX.find(it)?.groupValues?.getOrNull(1)?.toDoubleOrNull()
+                            }
                         }
-                        val lon = lastLocationCoords?.let {
-                            Regex("lon:?\\s*(-?\\d+\\.?\\d*)").find(it)?.groupValues?.get(1)?.toDoubleOrNull()
+                        val lon = remember(lastLocationCoords) {
+                            lastLocationCoords?.let {
+                                LONGITUDE_REGEX.find(it)?.groupValues?.getOrNull(1)?.toDoubleOrNull()
+                            }
+                        }
+
+                        LaunchedEffect(lat, lon) {
+                            if (lat != null && lon != null) {
+                                PreferenceManager.getDefaultSharedPreferences(context).edit {
+                                    putDouble(Const.PREF_LATITUDE, lat)
+                                    putDouble(Const.PREF_LONGITUDE, lon)
+                                }
+                                Timber.i("prefs.edit: latitude = $lat, longitude = $lon")
+                            }
                         }
 
                         WeatherScreen(

@@ -98,6 +98,7 @@
     <string name="after_restart">Change takes effect after restart</string>
     <string name="after_restart_no_rastermaps">Change takes effect after restart, Raster maps will not be used</string>
     <string name="use_cycleway_overlays">Activate</string>
+    <string name="location_coords_format">lat: %1$.4f° lon: %2$.4f°</string>
     <string name="use_geojson_maps">Activate</string>
     <string name="use_mvt">Use Mvt</string>
     <string name="enable">Enable</string>
@@ -567,4 +568,6 @@
         <item>NW</item>
         <item>NNW</item>
     </string-array>
+    <string name="map_available">Map Available</string>
+    <string name="switch_to_map_">Switch to map %1$s?</string>
 </resources>

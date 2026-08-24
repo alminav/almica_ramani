@@ -2,6 +2,14 @@
 
 All notable changes to the **Ramani** project will be documented in this file.
 
+## [Unreleased] - 2026-08-24
+
+### 🏗️ Refactoring & Architecture
+- **State Management**: Fixed an issue in `ListRouteFoldersScreen.kt` where route item snapshots (thumbnails) were not refreshed. The `refreshTrigger` is now correctly propagated down to `RouteFilesItem` and used as a key for thumbnail re-evaluation.
+
+### 🐛 Bug Fixes
+- **Build Stability**: Resolved a compilation error in `LauncherViewModel.kt` caused by a type mismatch in a `when` expression for `lastCoordsStr`.
+
 ## [Unreleased] - 2026-08-22
 
 ### ✨ Features & Improvements
@@ -122,4 +130,4 @@ All notable changes to the **Ramani** project will be documented in this file.
 - **Project Structure**: Excluded `backups` and `pictures` directories from the IDEA project view to declutter the workspace.
 
 ---
-*Generated on 2026-08-22*
+*Generated on 2026-08-24*

@@ -138,7 +138,6 @@ class GhManager internal constructor(context: Context, private var mInitListener
      * This function calculates a route starting from a specified point,
      * going through points perpendicular to the center of the connecting line and the "stop" point,
      * and returning to the start point.
-     * ToDo make factor 0.2 in offsetPoints variable
      */
     fun startRoundTripRequest(
         context: Context,

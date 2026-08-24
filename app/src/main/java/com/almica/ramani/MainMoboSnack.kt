@@ -62,7 +62,7 @@ internal fun MainMoboSnackContent(
             )
             mainSnackbarData.actionText?.let { text ->
                 TextButton(onClick = {
-                    Timber.i("${mainSnackbarData.action?.name}")
+                    Timber.i("mainSnackbarData: ${mainSnackbarData.action?.name}")
                     mainSnackbarData.action?.let { finished(it) }
                 }, modifier = Modifier.weight(0.2f)) {
                     Text(

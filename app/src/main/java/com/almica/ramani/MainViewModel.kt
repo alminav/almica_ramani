@@ -100,6 +100,8 @@ data class MainUiState(
     val poiEntities: List<PoiEntity> = emptyList(),
     val mvtPath: String? = null,
     val styleUriToUse: String? = null,
+    val pendingMvtPath: String? = null,
+    val showMvtConfirmation: Boolean = false,
     val isTrackingEnabled: Boolean = true)
 {
     val sheetPeekHeight: Dp
@@ -515,12 +517,51 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         setToggleButtonsBottomBar(true)
     }
 
+    fun confirmMvtChange() {
+        Timber.i("confirmMvtChange pendingPath: ${_uiState.value.pendingMvtPath}")
+        val pendingPath = _uiState.value.pendingMvtPath ?: run {
+            _uiState.update { it.copy(showMvtConfirmation = false) }
+            return
+        }
+
+        // Immediately hide the dialog
+        _uiState.update { it.copy(showMvtConfirmation = false, pendingMvtPath = null) }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+
+            preferences.edit { putString(Const.PREF_MVT_FILEPATH, pendingPath) }
+            val styleUri = createMvtOfflineStyle(context, File(pendingPath))
+
+            _uiState.update { it.copy(styleUriToUse = styleUri) }
+        }
+    }
+
+    fun dismissMvtConfirmation() {
+        // Immediately hide the dialog
+        _uiState.update { it.copy(showMvtConfirmation = false, pendingMvtPath = null) }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+            val mvtCurrentPath = preferences.getString(Const.PREF_MVT_FILEPATH, null)
+
+            val styleUri = mvtCurrentPath?.takeIf { it.isNotEmpty() }?.let { path ->
+                createMvtOfflineStyle(context, File(path))
+            }
+
+            _uiState.update { it.copy(styleUriToUse = styleUri) }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         liveSharedPreferences.unregister()
     }
 
     fun calculateStyleUri(latitude: Double, longitude: Double) {
+        Timber.i("calculateStyleUri $latitude $longitude")
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
             val preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -540,18 +581,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 MaptypeKey.Mvt.ordinal -> {
                     val mvtTileMatch = pointToTile(longitude, latitude, 9.0)
+                    Timber.i("mvtTileMatch with: $latitude $longitude")
                     val mvtFolder = File(context.filesDir, Const.MVT_FOLDER)
                     val mvtMatchingMap =
                         "${Const.MVT_PREFIX}${mvtTileMatch.x}_${mvtTileMatch.y}_${mvtTileMatch.z}"
                     val mvtMatchingFile = File(mvtFolder, mvtMatchingMap.plus(Const.MBTILES_EXT))
                     val mvtCurrentPath = preferences.getString(Const.PREF_MVT_FILEPATH, null)
-
+                    Timber.i("mvtMatchingFile: ${mvtMatchingFile.name} current: $mvtCurrentPath")
                     if (mvtMatchingFile.exists() && mvtMatchingFile.path != mvtCurrentPath) {
-                        preferences.edit { putString(Const.PREF_MVT_FILEPATH, mvtMatchingFile.path) }
-                        styleUri = createMvtOfflineStyle(context, File(mvtMatchingFile.path))
-                        mvtCurrentPath?.let {
-                            Timber.i("mvt change: ${File(it).name} -> ${mvtMatchingFile.name}")
+                        // Only trigger confirmation if we aren't already pending this specific path
+                        if (_uiState.value.pendingMvtPath != mvtMatchingFile.path) {
+                            _uiState.update { it.copy(
+                                pendingMvtPath = mvtMatchingFile.path,
+                                showMvtConfirmation = true
+                            ) }
                         }
+                        Timber.i("showMvtConfirmation: ${_uiState.value.showMvtConfirmation}")
+                        return@launch
                     } else if (!mvtCurrentPath.isNullOrEmpty()) {
                         styleUri = createMvtOfflineStyle(context, File(mvtCurrentPath))
                     } else {
@@ -624,5 +670,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setIsTrackingEnabled(bool: Boolean) {
         _uiState.update { it.copy(isTrackingEnabled = bool) }
         GpsRepository.getInstance().updateTrackingEnabled(bool)
+    }
+
+    /**
+     * Initializes the app state by determining the starting coordinates from 
+     * SharedPreferences or Intent extras, and updating associated ViewModels/Repositories.
+     */
+    fun initInitialState(intentLat: Double, intentLon: Double) {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(getApplication())
+        
+        // Extension functions from Const.kt are used here
+        val latitude = preferences.getDouble(Const.PREF_LATITUDE, intentLat)
+        val longitude = preferences.getDouble(Const.PREF_LONGITUDE, intentLon)
+
+        Timber.i("initInitialState latitude: $latitude longitude: $longitude")
+
+        // Initialize GPS state
+        GpsViewModel.loadDistance(0.0)
+        GpsViewModel.loadLatitude(latitude)
+        GpsViewModel.loadLongitude(longitude)
+
+        // Reset Compass state
+        CompassViewModel.setDestination(null, null)
+        CompassViewModel.setRouteThumbnail(null)
+        CompassViewModel.setCurrentLocation(null, null)
+
+        // Determine the map style based on initial location
+        calculateStyleUri(latitude, longitude)
     }
 }

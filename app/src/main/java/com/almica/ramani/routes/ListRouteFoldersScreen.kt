@@ -16,11 +16,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +32,7 @@ import androidx.compose.material.icons.outlined.ClearAll
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
@@ -90,7 +89,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
@@ -696,10 +694,11 @@ fun RouteFilesList(context: Context,
 ) {
 
     var routeNameFilter: String? by remember { mutableStateOf(null) }
+    var refreshTrigger by remember { mutableLongStateOf(0L) }
     val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
     val routeFolder = if (routeFolderName != null)
         File(rootRouteFolder, routeFolderName) else null
-    val allRouteFiles by produceState(initialValue = arrayListOf<File>(), key1 = routeNameFilter) {
+    val allRouteFiles by produceState(initialValue = arrayListOf(), key1 = routeNameFilter, key2 = refreshTrigger) {
         filterChanged(routeNameFilter)
         Timber.i("routeNameFilter: $routeNameFilter")
         withContext(Dispatchers.IO) {
@@ -722,7 +721,7 @@ fun RouteFilesList(context: Context,
         }
     }
 
-    val singleFolderRouteFiles by produceState(initialValue = emptyArray<File>(), key1 = routeNameFilter) {
+    val singleFolderRouteFiles by produceState(initialValue = emptyArray<File>(), key1 = routeNameFilter, key2 = refreshTrigger) {
         Timber.i("routeNameFilter: $routeNameFilter")
         withContext(Dispatchers.IO) {
             routeFolder?.let { folder ->
@@ -776,6 +775,10 @@ fun RouteFilesList(context: Context,
             Timber.i("menu: $file")
             menu(file)
         }, onFilterChange = {routeNameFilter = it}
+        , onRefresh = {
+            refreshTrigger = System.currentTimeMillis()
+        },
+        refreshTrigger = refreshTrigger
     )
 //    LaunchedEffect(key1 = displayFiles) {
 //        if (displayFiles.isEmpty()) {
@@ -794,7 +797,9 @@ private fun RoutesDialog(
     onRouteClick: (File) -> Unit,
     onSnapshotClick: (RouteFileBundle) -> Unit,
     onMenuClick: (File) -> Unit,
-    onFilterChange: (String) -> Unit
+    onFilterChange: (String) -> Unit,
+    onRefresh: () -> Unit,
+    refreshTrigger: Long
 ) {
     var isSearchVisible by remember { mutableStateOf(filter.isNotEmpty()) }
     val focusRequester = remember { FocusRequester() }
@@ -825,6 +830,12 @@ private fun RoutesDialog(
                         textAlign = TextAlign.Center
                     )
 
+                    IconButton(onClick = { onRefresh() }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Refresh,
+                            contentDescription = "Refresh list"
+                        )
+                    }
                     IconButton(onClick = {
                         isSearchVisible = !isSearchVisible
                         if (!isSearchVisible) onFilterChange("")
@@ -835,6 +846,7 @@ private fun RoutesDialog(
                             tint = if (isSearchVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
+
                 }
 
                 HorizontalDivider()
@@ -877,6 +889,7 @@ private fun RoutesDialog(
                     ) { routeFile ->
                         RouteFilesItem(
                             routeFile = routeFile,
+                            refreshTrigger = refreshTrigger,
                             onItemClick = onRouteClick,
                             onSnapshotClick = onSnapshotClick,
                             fileMenu = onMenuClick
@@ -921,6 +934,7 @@ data class RouteFileBundle (
 @Composable
 fun RouteFilesItem(
     routeFile: File,
+    refreshTrigger: Long,
     onItemClick: (File) -> Unit,
     onSnapshotClick: (RouteFileBundle) -> Unit,
     fileMenu: (File) -> Unit
@@ -928,7 +942,7 @@ fun RouteFilesItem(
     val context = LocalContext.current
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
 
-    val thumbnailFile = remember(routeFile) {
+    val thumbnailFile = remember(routeFile, refreshTrigger) {
         val centralThumb = File(File(context.filesDir, Const.THUMBNAILS), routeFile.nameWithoutExtension.plus(Const.JPG_EXT))
         if (centralThumb.exists()) {
             centralThumb

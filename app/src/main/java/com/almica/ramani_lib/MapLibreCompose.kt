@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composition
 import androidx.compose.runtime.CompositionContext
 import androidx.compose.runtime.MutableState
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.maplibre.android.gestures.MoveGestureDetector
 import org.maplibre.android.gestures.RotateGestureDetector
 import org.maplibre.android.gestures.StandardScaleGestureDetector
@@ -53,7 +54,7 @@ internal fun MapView.newComposition(
 }
 
 internal suspend fun MapLibreMap.awaitStyle(styleBuilder: Style.Builder) =
-    suspendCoroutine { continuation ->
+    suspendCancellableCoroutine { continuation ->
         setStyle(styleBuilder) { style ->
             continuation.resume(style)
             Timber.i("styleBuilder: ${style.uri}")

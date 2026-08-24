@@ -5,6 +5,8 @@ import androidx.annotation.IntDef
 import androidx.annotation.StringDef
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.graphhopper.routing.util.EncodingManager
 import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.geometry.LatLng
@@ -106,7 +108,6 @@ class Const {
         const val PLANET_LAYER_TAG = "planet"
         const val COUNTRIES_LAYER_TAG = "countries"
         const val JOURNAL: String = "journal"
-        //const val SERVICE_STATUS = "service.status"
         //const val EARTH_RADIUS = 6378137.0
         //const val EXTRA_DIRECT_DOWNLOAD_URL: String = "extra.direct.download.url"
         const val EXTRA_FILETYPE: String = "extra.filetype"
@@ -329,4 +330,16 @@ class Const {
         Raster,
         GeoJson
     }
+}
+
+/**
+ * Extension functions to support Double in SharedPreferences using Long bits.
+ */
+fun SharedPreferences.getDouble(key: String, defaultValue: Double): Double {
+    val bits = getLong(key, java.lang.Double.doubleToRawLongBits(defaultValue))
+    return java.lang.Double.longBitsToDouble(bits)
+}
+
+fun SharedPreferences.Editor.putDouble(key: String, value: Double): SharedPreferences.Editor {
+    return putLong(key, java.lang.Double.doubleToRawLongBits(value))
 }

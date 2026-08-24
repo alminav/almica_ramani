@@ -251,8 +251,7 @@ class Helpers {
                 //Copying the original Mvt content to new file
                 copyStreamToFile(styleJsonInputStream, mvtFile)
                 Timber.i("created: ${mvtFile.path}")
-            } else
-                Timber.i("found: ${mvtFile.path}")
+            } //else Timber.i("found: ${mvtFile.path}")
         }
 
         fun copyAssetPlanetStyle(context: Context, fileName : String) {
@@ -1065,6 +1064,7 @@ class Helpers {
             val mvtPath = preferences.getString(Const.PREF_MVT_FILEPATH, null)
             var localStyleUri: String? // isNotNull ==> mvt
             if (mvtPath != null) {
+                Timber.i("mvtPath: $mvtPath")
                 val fileMbTile = File(mvtPath) //File(dirMbTiles, MBTILES_NAME)
                 localStyleUri = createMvtOfflineStyle(context, fileMbTile)
                 Timber.i("localStyleFile: $localStyleUri")
@@ -1262,6 +1262,7 @@ class Helpers {
             //val minZoomLevel = getMinZoom(mbtilesFile).toDouble()
 
             //Replacing placeholder with uri of the mbtiles file
+            Timber.i("Replacing placeholder ___FILE_URI___ with ${mbtilesFile.name}")
             val newFileStr = styleFile.inputStream().readToString()
                 .replace("___FILE_URI___", "mbtiles:///${mbtilesFile.absolutePath}")
             //Timber.i("newFileStr: $newFileStr")

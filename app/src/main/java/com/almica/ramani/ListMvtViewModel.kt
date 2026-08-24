@@ -82,6 +82,7 @@ class ListMvtViewModel(application: Application) : AndroidViewModel(application)
 
             val files = getMvtFiles(mvtFolder)
             val currentPrefPath = prefs.getString(Const.PREF_MVT_FILEPATH, null)
+            Timber.i("refreshMvtFiles: $currentPrefPath")
             val models = createMvtItemModels(context, files, currentPrefPath)
             
             // Process Drive Entries

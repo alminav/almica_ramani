@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -201,6 +202,8 @@ fun BoxScope.MapOverlayManager(
         addPoiEntity = { viewModel?.addPoiEntity(it) },
         setRouteMonitorState = { viewModel?.setRouteMonitorState(it) },
         setRoutesRegionFilter = { viewModel?.setRoutesRegionFilter(it) },
+        confirmMvtChange = { viewModel?.confirmMvtChange() },
+        dismissMvtConfirmation = { viewModel?.dismissMvtConfirmation() },
     ) { viewModel?.setRouteInfo(it) }
 }
 
@@ -242,6 +245,8 @@ fun BoxScope.MapOverlayManagerContent(
     addPoiEntity: (PoiEntity?) -> Unit,
     setRouteMonitorState: (Int) -> Unit,
     setRoutesRegionFilter: (String) -> Unit,
+    confirmMvtChange: () -> Unit,
+    dismissMvtConfirmation: () -> Unit,
     setRouteInfo: (File?) -> Unit,
 ) {
     val liveSharedPreferences = LocalLiveSharedPreferences.current
@@ -1065,6 +1070,24 @@ fun BoxScope.MapOverlayManagerContent(
         }
     }
 
+    if (uiState.showMvtConfirmation) {
+        AlertDialog(
+            onDismissRequest = { dismissMvtConfirmation() },
+            title = { Text(text = resources.getString(R.string.map_available)) },
+            text = { Text(text = resources.getString(R.string.switch_to_map_, File(uiState.pendingMvtPath ?: "").name)) },
+            confirmButton = {
+                TextButton(onClick = { confirmMvtChange() }) {
+                    Text(resources.getString(android.R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { dismissMvtConfirmation() }) {
+                    Text(resources.getString(android.R.string.cancel))
+                }
+            }
+        )
+    }
+
     if (showRouteFiles) {
         RoutesManager(userLocation.value) { routeEntity, routeAction ->
             closeOverlay()
@@ -1270,6 +1293,8 @@ fun MapOverlayManagerPreview() {
                     addPoiEntity = {},
                     setRouteMonitorState = {},
                     setRoutesRegionFilter = {},
+                    confirmMvtChange = {},
+                    dismissMvtConfirmation = {},
                 ) {}
             }
         }

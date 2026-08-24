@@ -9,7 +9,6 @@ import com.almica.ramani.charts.GraphDataPoints
 import com.almica.ramani.charts.PlotResult
 import com.almica.ramani.charts.createPlotDataResult
 import com.almica.ramani.locations.LocationRepository
-import com.almica.ramani.utils.format
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,23 +66,26 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val ghPath = prefs.getString(Const.PREF_GH_FILEPATH, null)
             val routeFolderPath = prefs.getString(Const.PREF_ROUTEFOLDER_FILEPATH, Const.HOME)
             
-            val latRaw = prefs.getLong(Const.PREF_LATITUDE, Double.NaN.toRawBits())
-            val lonRaw = prefs.getLong(Const.PREF_LONGITUDE, Double.NaN.toRawBits())
-            val lat = if (latRaw != Double.NaN.toRawBits()) Double.fromBits(latRaw) else 0.0
-            val lon = if (lonRaw != Double.NaN.toRawBits()) Double.fromBits(lonRaw) else 0.0
-
+            val lat = prefs.getDouble(Const.PREF_LATITUDE, 0.0)
+            val lon = prefs.getDouble(Const.PREF_LONGITUDE, 0.0)
+            Timber.i("prefs lat lon: $lat, $lon")
             val count = locationRepository.getLocationsCount()
-            Timber.i("Locations count: $count")
-
             val firstLoc = locationRepository.getFirstLocation().firstOrNull()
             val lastLoc = locationRepository.getLastLocation().firstOrNull()
+            Timber.i("locationRepository lat lon: ${lastLoc?.latitude} ${lastLoc?.longitude}")
 
             val firstDateStr = firstLoc?.let { dateFormat.format(it.time) }
             val lastDateStr = lastLoc?.let { dateFormat.format(it.time) }
-            val lastCoordsStr = lastLoc?.let {
-                "lat: ${it.latitude.format(4)}° lon: ${it.longitude.format(4)}°"
+            val lastCoordsStr = when {
+                lastLoc != null -> { // sync prefs with locationRepository
+                    prefs.edit { putDouble(Const.PREF_LATITUDE, lastLoc.latitude) }
+                    prefs.edit { putDouble(Const.PREF_LONGITUDE, lastLoc.longitude) }
+                    formatLocation(lastLoc.latitude, lastLoc.longitude)
+                }
+                lat != 0.0 && lon != 0.0 -> formatLocation(lat, lon)
+                else -> null
             }
-
+            Timber.i("lastCoordsStr: $lastCoordsStr")
             val geojsonFolder = prefs.getString(Const.PREF_GEOJSON_FILEPATH, null)
             val geojsonFile = prefs.getString(Const.RESULT_GEOJSON_FILENAME, null)
             //val isTracking = Helpers.isServiceRunning(getApplication(), LocationService::class.java)
@@ -116,8 +118,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         // This is where the preference is written.
         // It uses toRawBits() to store the Double as a Long in SharedPreferences.
         prefs.edit {
-            putLong(Const.PREF_LATITUDE, lat.toRawBits())
-            putLong(Const.PREF_LONGITUDE, lon.toRawBits())
+            putDouble(Const.PREF_LATITUDE, lat)
+            putDouble(Const.PREF_LONGITUDE, lon)
         }
         refreshAll()
     }
@@ -164,5 +166,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     suspend fun getPlotData(): PlotResult = withContext(Dispatchers.IO) {
         createPlotDataResult(locationRepository, 0L)
+    }
+
+    private fun formatLocation(lat: Double, lon: Double): String {
+        return getApplication<Application>().getString(R.string.location_coords_format, lat, lon)
     }
 }

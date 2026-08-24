@@ -26,7 +26,6 @@ import com.almica.ramani.bglocationaccess.hasActivityRecognitionPermission
 import com.almica.ramani.bglocationaccess.hasBGLocationPermission
 import com.almica.ramani.bglocationaccess.hasLocationPermission
 import com.almica.ramani.bglocationaccess.hasNotificationPerm
-import com.almica.ramani.compass.CompassViewModel
 import com.almica.ramani.utils.MyDebugTree
 import me.ibrahimsn.library.LiveSharedPreferences
 import org.maplibre.android.geometry.LatLng
@@ -102,18 +101,10 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun initInitialState() {
-        val latitude = intent.getDoubleExtra(Const.EXTRA_LATITUDE, 0.0)
-        val longitude = intent.getDoubleExtra(Const.EXTRA_LONGITUDE, 0.0)
-        Timber.i("latitude: $latitude longitude: $longitude")
-        
-        GpsViewModel.loadDistance(0.0)
-        GpsViewModel.loadLatitude(latitude)
-        GpsViewModel.loadLongitude(longitude)
-        CompassViewModel.setDestination(null, null)
-        CompassViewModel.setRouteThumbnail(null)
-        CompassViewModel.setCurrentLocation(null, null)
-        
-        mainViewModel.calculateStyleUri(latitude, longitude)
+        mainViewModel.initInitialState(
+            intentLat = intent.getDoubleExtra(Const.EXTRA_LATITUDE, 0.0),
+            intentLon = intent.getDoubleExtra(Const.EXTRA_LONGITUDE, 0.0)
+        )
     }
 
 

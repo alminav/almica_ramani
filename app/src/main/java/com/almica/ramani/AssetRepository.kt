@@ -10,7 +10,7 @@ import timber.log.Timber
 class AssetRepository(private val context: Context) {
 
     suspend fun copyAssetsIfNeeded() = withContext(Dispatchers.IO) {
-        Timber.i("copyAssetsIfNeeded")
+        //Timber.i("copyAssetsIfNeeded")
         val mbtiles = listOf(Const.COUNTRIES_MVT_FILENAME, Const.PLANET_MVT_FILENAME)
         mbtiles.forEach { copyAssetPlanetMbtiles(context, it) }
 
