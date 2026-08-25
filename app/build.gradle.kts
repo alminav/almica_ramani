@@ -15,6 +15,8 @@ plugins {
 //println("useOpenGL: $useOpenGL")
 // In build.gradle.kts
 val useOpenGL = project.findProperty("ramani.render.useOpenGL")?.toString()?.toBoolean() ?: true
+val ramaniVersionCode = project.findProperty("ramani.versionCode")?.toString()?.toInt() ?: 1
+val ramaniVersionName = project.findProperty("ramani.versionName")?.toString() ?: "1.0"
 logger.lifecycle("Ramani Build: Using ${if (useOpenGL) "OpenGL" else "Vulkan"} rendering backend")
 
 android {
@@ -41,7 +43,7 @@ android {
             if (localPropertiesFile.exists()) {
                 localPropertiesFile.inputStream().use { props.load(it) }
             }
-            
+
             storeFile = file("${rootDir}/keystore/keystore.jks")
             storePassword = props.getProperty("RELEASE_STORE_PASSWORD")
             keyAlias = props.getProperty("RELEASE_KEY_ALIAS")
@@ -53,8 +55,8 @@ android {
         applicationId = "com.almica.ramani"
         minSdk = 28
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = ramaniVersionCode
+        versionName = ramaniVersionName
         android.buildFeatures.buildConfig = true
         buildConfigField("String", "ORS_API_KEY", "\"5b3ce3597851110001cf624800f86f4d35dd452a923c73be6cd20943\"")
         buildConfigField("boolean", "USE_OPEN_GL", "$useOpenGL")
@@ -143,7 +145,7 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.timber)
 //    implementation(libs.androidx.material3.jvmstubs)
-     implementation(libs.androidx.jetbrains.material3)
+    implementation(libs.androidx.jetbrains.material3)
     implementation(libs.androidx.exifinterface)
     implementation(libs.fragment.compose)
     implementation(libs.androidx.lifecycle.process)

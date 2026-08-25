@@ -169,6 +169,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun formatLocation(lat: Double, lon: Double): String {
-        return getApplication<Application>().getString(R.string.location_coords_format, lat, lon)
+        return String.format(Locale.US, getApplication<Application>().getString(R.string.location_coords_format), lat, lon)
     }
 }
