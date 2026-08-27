@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowLeft
@@ -407,7 +408,10 @@ fun TilemakerContent(
             )
             if (!uiState.isMapLoaded) {
                 CircularProgressIndicator(
-                    modifier = Modifier.background(MaterialTheme.colorScheme.background).wrapContentSize()
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.background)
+                        .wrapContentSize()
+                        .clickable { viewModel.setMapLoaded(true) }
                 )
             }
         }
