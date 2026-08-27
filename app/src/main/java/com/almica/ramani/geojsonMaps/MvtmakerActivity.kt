@@ -426,7 +426,7 @@ fun MvtmakerScreen(
                         modifier = Modifier
                             .background(MaterialTheme.colorScheme.background)
                             .wrapContentSize()
-                            .clickable { onMapLoaded() }
+                            .clickable { onMapLoaded() } // workaround for map not loading 26aug2026
                     )
                 }
             }

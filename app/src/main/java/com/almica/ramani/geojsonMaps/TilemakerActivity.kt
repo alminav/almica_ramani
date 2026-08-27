@@ -411,7 +411,7 @@ fun TilemakerContent(
                     modifier = Modifier
                         .background(MaterialTheme.colorScheme.background)
                         .wrapContentSize()
-                        .clickable { viewModel.setMapLoaded(true) }
+                        .clickable { viewModel.setMapLoaded(true) } // workaround for map not loading 27aug2026
                 )
             }
         }
