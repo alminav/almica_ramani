@@ -2,6 +2,25 @@
 
 All notable changes to the **Ramani** project will be documented in this file.
 
+## [Unreleased] - 2026-08-28
+
+### Added
+- Full German translations for the PDF Creator module in `values-de/strings.xml`.
+- String resources for all UI text in the PDF Creator module to support localization.
+
+### Changed
+- **Memory Optimization**: Refactored the PDF Creator to use `Uri`s instead of `Bitmap`s in the application state, significantly reducing memory footprint and preventing `OutOfMemoryError` during image processing.
+- **Material 3 Migration**: Migrated the `pdfcreator` module UI from Material 2 to Material 3, including Buttons, Text, Dialogs, and Scaffolds.
+- **UI/UX Enhancements**:
+  - Replaced `Toast` notifications with `Snackbar` for better interaction flow.
+  - Improved the image selection preview using Coil's `AsyncImage` for efficient loading and caching.
+  - Enhanced the loading experience with a themed modal dialog.
+- **Code Quality**: Improved `MainViewModel` logic for PDF generation, ensuring proper bitmap recycling and more robust file handling for exports.
+
+### Fixed
+- Resolved a naming conflict where `pdf_error` was colliding with the `androidx.pdf` library resources.
+- Fixed potential memory leaks by ensuring all temporary bitmaps are explicitly recycled after use in PDF generation.
+
 ## [Unreleased] - 2026-08-24
 
 ### 🏗️ Refactoring & Architecture
