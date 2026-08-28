@@ -143,9 +143,7 @@ fun MainScaffoldContent(
     
     val isTrackingEnabled by viewModel?.isTrackingEnabled?.collectAsState(initial = true) ?: remember { mutableStateOf(true) }
     
-    var renderModeMap by remember {
-        mutableStateOf(preferences.getString(resources.getString(R.string.pref_render_mode), Const.RENDER_MODE_COMPASS))
-    }
+    val renderModeMap = uiState.renderModeMap
 
     val startTime = remember { System.currentTimeMillis() }
     val localStyleBuilder = remember(localStyleUri) {
@@ -372,7 +370,14 @@ fun MainScaffoldContent(
                 prefMaptypeKey = uiState.prefMaptypeKey,
                 onPopupSnackMsg = { viewModel?.setPopupSnackMsg(it) },
                 onRoutesGeoJsonStringChange = { viewModel?.setRoutesGeoJsonString(it) },
-                onRenderModeMapChange = { renderModeMap = it },
+                onRenderModeMapChange = { newMode ->
+                    val nextCameraMode = when (newMode) {
+                        Const.RENDER_MODE_COMPASS -> CameraMode.TRACKING_GPS_NORTH
+                        Const.RENDER_MODE_TRACKING -> CameraMode.TRACKING_GPS
+                        else -> CameraMode.NONE
+                    }
+                    viewModel?.updateCameraMode(newMode, nextCameraMode)
+                },
                 onUseCyclewayOverlaysChange = { viewModel?.setUseCyclewayOverlays(it) },
                 onToggleButtonsBottomBarChange = { viewModel?.setToggleButtonsBottomBar(it) },
                 startTime = startTime,
@@ -409,8 +414,15 @@ fun MainScaffoldContent(
                     mapPositionZoom = mapPositionZoom,
                     toggleButtonsBottomBar = uiState.toggleButtonsBottomBar,
                     onToggleButtonsBottomBarChange = { viewModel?.setToggleButtonsBottomBar(it) },
-                    renderModeMap = renderModeMap ?: Const.RENDER_MODE_COMPASS,
-                    onRenderModeMapChange = { renderModeMap = it },
+                    renderModeMap = renderModeMap,
+                    onRenderModeMapChange = { newMode ->
+                        val nextCameraMode = when (newMode) {
+                            Const.RENDER_MODE_COMPASS -> CameraMode.TRACKING_GPS_NORTH
+                            Const.RENDER_MODE_TRACKING -> CameraMode.TRACKING_GPS
+                            else -> CameraMode.NONE
+                        }
+                        viewModel?.updateCameraMode(newMode, nextCameraMode)
+                    },
                     onRecalc = {
                         val llStop = if (uiState.stopDragged && uiState.stopPosition != null)
                             com.google.android.gms.maps.model.LatLng(

@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import androidx.lifecycle.ViewModel
@@ -21,7 +20,6 @@ import android.provider.OpenableColumns
 import androidx.core.graphics.createBitmap
 import java.io.IOException
 import java.io.OutputStream
-import androidx.core.graphics.scale
 import com.almica.ramani.Const
 import com.almica.ramani.FeatureProperties.Companion.LINES_TAG
 import com.almica.ramani.Helpers.Companion.createMvtOfflineStyle
@@ -48,84 +46,82 @@ class MainViewModel : ViewModel() {
     private var _state  = MutableStateFlow(MainScreenState())
     val state = _state.asStateFlow()
 
-    fun onImagesSelected(uris: List<Uri>,context: Context){
+    fun onImagesSelected(uris: List<Uri>) {
         Timber.i("uris: ${uris.size}")
         viewModelScope.launch(Dispatchers.IO) {
+            _state.value = state.value.copy(isLoading = true)
+            val currentUris = _state.value.imageUris.toMutableList()
+            currentUris.addAll(uris)
             _state.value = state.value.copy(
-                isLoading = true
-            )
-            val newList = _state.value.imageBitmaps.toMutableList()
-            uris.forEach { uri ->
-                val bitmap = uriToBitmap(uri, context)
-                if (bitmap != null) {
-                    newList.add(bitmap)
-                }
-            }
-            _state.value = state.value.copy(
-                imageBitmaps = newList,
+                imageUris = currentUris,
                 isLoading = false
             )
         }
     }
 
-    fun onRouteFolderSelected(bitmaps: List<Bitmap>, routeFolderExtraName: String, context: Context){
+    fun onRouteFolderSelected(bitmaps: List<Bitmap>, routeFolderExtraName: String, context: Context) {
         Timber.i("bitmaps: ${bitmaps.size}")
         viewModelScope.launch(Dispatchers.IO) {
-            val newList = _state.value.imageBitmaps.toMutableList()
-            _state.value = state.value.copy(
-                isLoading = true
-            )
-            bitmaps.forEach { bitmap ->
-                newList.add(bitmap)
+            _state.value = state.value.copy(isLoading = true)
+            
+            val tempDir = File(context.cacheDir, "pdf_temp")
+            if (!tempDir.exists()) tempDir.mkdirs()
+            
+            val newUris = bitmaps.mapIndexed { index, bitmap ->
+                val file = File(tempDir, "route_img_${System.currentTimeMillis()}_$index.jpg")
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                }
+                Uri.fromFile(file)
             }
+            
+            val currentUris = _state.value.imageUris.toMutableList()
+            currentUris.addAll(newUris)
+
             val rootRouteFolder = File(context.filesDir, Const.ROUTEFOLDER)
             val routeFolder = File(rootRouteFolder, routeFolderExtraName)
-            val fileGeojson = File(context.cacheDir, "routes_${routeFolderExtraName}${Const.GEOJSON_EXT}")
+            val fileGeojson = File(context.cacheDir, "routes_$routeFolderExtraName${Const.GEOJSON_EXT}")
             GeoJsonUtils.createGeojsonFromRouteSnapshots(context, routeFolder, fileGeojson)
-            Timber.i( "fileGeojson ${fileGeojson.absolutePath} exists: ${fileGeojson.exists()}")
+            
             _state.value = state.value.copy(
-                imageBitmaps = newList,
+                imageUris = currentUris,
                 geojsonFile = fileGeojson,
                 isLoading = false
             )
         }
     }
 
-    fun removeImage(index:Int){
-        viewModelScope.launch {
-            val newList = _state.value.imageBitmaps.toMutableList()
-            newList.removeAt(index)
-            _state.value = state.value.copy(
-                imageBitmaps = newList
-            )
+    fun removeImage(index: Int) {
+        val currentUris = _state.value.imageUris.toMutableList()
+        if (index in currentUris.indices) {
+            currentUris.removeAt(index)
+            _state.value = state.value.copy(imageUris = currentUris)
         }
     }
 
     fun writeToSelectedPath(selectedPathUri: Uri, context: Context, baseName: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Capture source geojson before createPdf clears the state
+                _state.value = _state.value.copy(isLoading = true)
                 val sourceGeojson = _state.value.geojsonFile
-                val bitmaps = _state.value.imageBitmaps.toMutableList()
+                val imageUris = _state.value.imageUris
 
-                if (bitmaps.isEmpty()) {
-                    Timber.e("No bitmaps to write")
+                if (imageUris.isEmpty()) {
+                    Timber.e("No images to write")
+                    _state.value = _state.value.copy(isLoading = false)
                     return@launch
                 }
 
                 var pdfUri: Uri?
                 var geojsonUri: Uri? = null
 
-                // Check if it's a tree URI (directory) or a single document URI
                 val isTreeUri = try {
                     DocumentsContract.getTreeDocumentId(selectedPathUri) != null
                 } catch (e: Exception) {
-                    Timber.d("Not a tree URI: ${e.message}")
                     false
                 }
 
                 if (isTreeUri) {
-                    // Handle Tree URI - Create files inside the selected directory
                     val treeId = DocumentsContract.getTreeDocumentId(selectedPathUri)
                     val parentUri = DocumentsContract.buildDocumentUriUsingTree(selectedPathUri, treeId)
                     val name = baseName?.replace(Const.PDF_EXT, "") ?: "export_${System.currentTimeMillis()}"
@@ -134,24 +130,17 @@ class MainViewModel : ViewModel() {
                     if (sourceGeojson != null) {
                         geojsonUri = DocumentsContract.createDocument(context.contentResolver, parentUri, "application/geo+json", "$name.geojson")
                     }
-                    Timber.i("Created documents in tree: $pdfUri, $geojsonUri")
                 } else {
-                    // Handle Single File URI (e.g., from CreateDocument)
                     pdfUri = selectedPathUri
-
-                    // Get the actual file name from the Uri to manage the associated geojson
                     var displayName: String? = null
                     context.contentResolver.query(selectedPathUri, null, null, null, null)?.use { cursor ->
                         val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                        if (cursor.moveToFirst() && nameIndex != -1) {
+                        if (cursor.moveToFirst() && (nameIndex != -1)) {
                             displayName = cursor.getString(nameIndex)
                         }
                     }
-                    Timber.i("displayName: $displayName")
-
                     val geojsonName = (displayName ?: baseName ?: "export").replace(Const.PDF_EXT, "") + Const.GEOJSON_EXT
 
-                    // Attempt to create companion geojson in the same folder
                     if (sourceGeojson != null && sourceGeojson.exists()) {
                         try {
                             val documentId = DocumentsContract.getDocumentId(selectedPathUri)
@@ -164,81 +153,93 @@ class MainViewModel : ViewModel() {
                                     parentUri, "application/geo+json", geojsonName)
                             }
                         } catch (e: Exception) {
-                            Timber.e(e, "Could not create companion geojson. Folder permission likely missing.")
+                            Timber.e("Could not create companion geojson")
                         }
                     }
                 }
 
-                // Write the GeoJSON if created
                 if (geojsonUri != null && sourceGeojson != null && sourceGeojson.exists()) {
                     val geojsonString = sourceGeojson.inputStream().bufferedReader().use { it.readText() }
-                    Timber.d("GeoJSON Content: $geojsonString")
-
                     context.contentResolver.openOutputStream(geojsonUri)?.use { outputStream ->
                         sourceGeojson.inputStream().use { inputStream ->
                             inputStream.copyTo(outputStream)
-                            createOverviewSnapshot(context, geojsonString, baseName, sourceGeojson, result = {bitmap, _ ->
-                                bitmaps.add(bitmap!!)
-                                val bmp: Bitmap = createBitmap(512, 512)
-                                val dummyCanvas = Canvas(bmp)
-                                drawLastPageIndicator(context, dummyCanvas, "LAST PAGE")
-                                bitmaps.add(bmp)
-                                // Write the PDF
-                                pdfUri?.let { uri ->
-                                    context.contentResolver.openOutputStream(uri)?.use { stream ->
-                                        createPdf(bitmaps, stream)
-                                    }
-                                }
-                            })
                         }
                     }
-                    Timber.i("Geojson copied to: $geojsonUri")
+                    createOverviewSnapshot(context, geojsonString, baseName, sourceGeojson) { snapshotBitmap, _ ->
+                        // Write the PDF
+                        pdfUri?.let { uri ->
+                            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                                createPdf(imageUris, snapshotBitmap, context, stream)
+                            }
+                        }
+                    }
+                } else {
+                    // No GeoJSON, just create PDF from selected images
+                    pdfUri?.let { uri ->
+                        context.contentResolver.openOutputStream(uri)?.use { stream ->
+                            createPdf(imageUris, null, context, stream)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error writing to selected path")
-                e.printStackTrace()
+                _state.value = _state.value.copy(isLoading = false, success = false)
             }
         }
     }
 
-    private suspend fun createPdf(bitmaps: List<Bitmap>, stream: OutputStream) {
+    private suspend fun createPdf(
+        imageUris: List<Uri>,
+        snapshotBitmap: Bitmap?,
+        context: Context,
+        stream: OutputStream
+    ) {
         withContext(Dispatchers.IO) {
-            _state.value = state.value.copy(
-                isLoading = true
-            )
             val document = PdfDocument()
-
-            bitmaps.forEachIndexed { index , bitmap ->
-                println("the page no is  $index")
-                val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index+1).create()
-                val page = document.startPage(pageInfo)
-                val canvas = page.canvas
-                val paint = Paint()
-
-                val scaledBm = bitmap.scale(bitmap.width, bitmap.height, false)
-
-                canvas.drawBitmap(scaledBm, 0F, 0F, paint)
-                document.finishPage(page)
-            }
-
+            var pageIndex = 1
             try {
+                // 1. Draw images from Uris
+                imageUris.forEach { uri ->
+                    uriToBitmap(uri, context)?.let { bitmap ->
+                        val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, pageIndex++).create()
+                        val page = document.startPage(pageInfo)
+                        page.canvas.drawBitmap(bitmap, 0F, 0F, null)
+                        document.finishPage(page)
+                        bitmap.recycle()
+                    }
+                }
+
+                // 2. Draw snapshot if available
+                snapshotBitmap?.let { bitmap ->
+                    val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, pageIndex++).create()
+                    val page = document.startPage(pageInfo)
+                    page.canvas.drawBitmap(bitmap, 0F, 0F, null)
+                    document.finishPage(page)
+                    bitmap.recycle()
+                }
+
+                // 3. Draw last page indicator
+                val lastPageBmp = createBitmap(512, 512)
+                val lastPageCanvas = Canvas(lastPageBmp)
+                lastPageCanvas.drawColor(android.graphics.Color.WHITE)
+                drawLastPageIndicator(context, lastPageCanvas, "LAST PAGE")
+                
+                val lastPageInfo = PdfDocument.PageInfo.Builder(lastPageBmp.width, lastPageBmp.height, pageIndex).create()
+                val lastPage = document.startPage(lastPageInfo)
+                lastPage.canvas.drawBitmap(lastPageBmp, 0F, 0F, null)
+                document.finishPage(lastPage)
+                lastPageBmp.recycle()
+
                 document.writeTo(stream)
-                _state.value = state.value.copy(
-                    success = true
-                )
+                _state.value = _state.value.copy(success = true)
             } catch (e: Exception) {
-                _state.value = state.value.copy(
-                    success = false
-                )
-                e.printStackTrace()
+                Timber.e(e, "Error creating PDF")
+                _state.value = _state.value.copy(success = false)
             } finally {
-                // Note: android.graphics.pdf.PdfDocument does not support adding custom metadata
-                // (like Title, Author) via its public API. Metadata handling typically requires
-                // a library like iText or PdfBox-Android.
                 document.close()
-                _state.value = state.value.copy(
+                _state.value = _state.value.copy(
                     isLoading = false,
-                    imageBitmaps = emptyList(),
+                    imageUris = emptyList(),
                     geojsonFile = null
                 )
             }
@@ -373,7 +374,7 @@ internal suspend fun createOverviewSnapshot(
         )
         val mvtMatchingMap =
             "${Const.MVT_PREFIX}${mvtTileMatch.x}_${mvtTileMatch.y}_${mvtTileMatch.z}"
-        val mvtMatchingFile = File(mvtFolder, mvtMatchingMap.plus(Const.MBTILES_EXT))
+        val mvtMatchingFile = File(mvtFolder, mvtMatchingMap + Const.MBTILES_EXT)
         var localStyleUri: String? // isNotNull ==> mvt
         if (mvtMatchingFile.exists()) {
             localStyleUri = createMvtOfflineStyle(context, mvtMatchingFile)
@@ -393,7 +394,7 @@ internal suspend fun createOverviewSnapshot(
                     .Options(512, 512)
                     .withStyleBuilder(builder)
                     .withRegion(bounds)
-                    .withLogo(false) // no effect
+                    .withLogo(showLogo = false) // no effect
 
             )
             Timber.i("mapSnapshotter.start")

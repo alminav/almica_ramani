@@ -93,6 +93,7 @@ data class MainUiState(
     val toggleButtonsBottomBar: Boolean = false,
     val routesGeoJsonString: String? = null,
     val routeEntitiesMap: Map<String, ArrayList<LatLngH>>? = null,
+    val renderModeMap: String = Const.RENDER_MODE_COMPASS,
     val cameraPosition: CameraPosition? = null,
     val mvtBounds: LatLngBounds? = null,
     val clipText: String? = null,
@@ -129,8 +130,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isTrackingEnabled = GpsRepository.getInstance().isTrackingEnabled
 
     init {
-        initializeMapType()
+        initializeSettings()
         loadPoiData()
+    }
+
+    private fun initializeSettings() {
+        val context = getApplication<Application>()
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val mapType = preferences.getInt(Const.PREF_MAPTYPE_KEY, 0)
+        val renderModeMap = preferences.getString(
+            context.getString(R.string.pref_render_mode),
+            Const.RENDER_MODE_COMPASS
+        ) ?: Const.RENDER_MODE_COMPASS
+        
+        _uiState.update { it.copy(
+            prefMaptypeKey = mapType,
+            renderModeMap = renderModeMap
+        ) }
     }
 
     fun loadPoiData() {
@@ -142,13 +158,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.update { it.copy(poiEntities = pois) }
             }
         }
-    }
-
-    private fun initializeMapType() {
-        val context = getApplication<Application>()
-        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-        val mapType = preferences.getInt(Const.PREF_MAPTYPE_KEY, 0)
-        _uiState.update { it.copy(prefMaptypeKey = mapType) }
     }
 
     fun addPoiEntity(poi: PoiEntity?) {
@@ -422,6 +431,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setMonitorGraphType(type: MonitorGraphType) {
         _uiState.update { it.copy(monitorGraphType = type) }
+    }
+
+    fun updateCameraMode(renderModeMap: String, cameraMode: Int) {
+        _uiState.update { it.copy(
+            renderModeMap = renderModeMap,
+            cameraMode = cameraMode
+        ) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+            preferences.edit {
+                putString(context.getString(R.string.pref_render_mode), renderModeMap)
+                putInt(Const.PREF_CAMERA_MODE, cameraMode)
+            }
+        }
     }
 
     fun setCameraMode(mode: Int) {

@@ -8,12 +8,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import com.google.gson.JsonElement
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.absoluteValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import com.almica.ramani.compass.CompassViewModel
 import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.pois.PoiEntity
@@ -69,7 +72,12 @@ fun MainMapView(
     onHighlightRoutePoint: (Int) -> Unit,
     context: Context
 ) {
-    val uiSettings = UiSettings(compassMargins = Margins(top = 200), scrollGesturesEnabled = true)
+    val density = LocalDensity.current
+    val uiSettings = remember(density) {
+        UiSettings(
+            compassMargins = Margins(top = with(density) { 100.dp.roundToPx() })
+        )
+    }
     
     val steps = uiState.polygonState.polygonData?.polygonMarkerDataList //uiState.polygonState.polygonData?.lllhKmSteps
     val target = cameraPosition.value.target

@@ -55,7 +55,6 @@ import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
 import timber.log.Timber
 import java.io.File
 
-private const val logtag = "AdditionalMapsManager"
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun AdditionalMapsManager(

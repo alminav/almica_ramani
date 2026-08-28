@@ -31,6 +31,7 @@ import me.ibrahimsn.library.LiveSharedPreferences
 import org.maplibre.android.maps.MapLibreMap
 import android.content.Context
 import com.almica.ramani.Const.Companion.LATLNG_GRID_LAYER
+import org.maplibre.android.location.modes.CameraMode
 import timber.log.Timber
 
 @Composable
@@ -209,12 +210,27 @@ fun BoxScope.MapControlsLayerContent(
     )
 
     MainCameraModeSwitchButton(
-        toggleButtonsBottomBar,
-        cameraPosition,
-        renderModeMap,
-        setSatStatus = { setOverlay(if (it) OverlayType.SAT_STATUS else OverlayType.NONE) },
-        setButtonsBottomBar = onToggleButtonsBottomBarChange,
-        setRenderMode = onRenderModeMapChange
+        renderModeMap = renderModeMap,
+        toggleButtonsBottomBar = toggleButtonsBottomBar,
+        onToggleCameraMode = {
+            val (nextRenderMode, nextCameraMode) = when (renderModeMap) {
+                Const.RENDER_MODE_FREE -> Pair(Const.RENDER_MODE_COMPASS, CameraMode.TRACKING_GPS_NORTH)
+                Const.RENDER_MODE_TRACKING -> Pair(Const.RENDER_MODE_FREE, CameraMode.NONE)
+                Const.RENDER_MODE_COMPASS -> Pair(Const.RENDER_MODE_TRACKING, CameraMode.TRACKING_GPS)
+                else -> Pair(Const.RENDER_MODE_FREE, CameraMode.NONE)
+            }
+            
+            if (nextRenderMode == Const.RENDER_MODE_COMPASS) {
+                setOverlay(OverlayType.NONE)
+            }
+            if (nextCameraMode == CameraMode.NONE) {
+                cameraPosition.value = CameraPosition(cameraPosition.value).apply {
+                    bearing = 0.0
+                }
+            }
+            onRenderModeMapChange(nextRenderMode)
+        },
+        onOpenMenu = { onToggleButtonsBottomBarChange(true) }
     )
 }
 

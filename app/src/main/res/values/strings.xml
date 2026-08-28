@@ -490,6 +490,12 @@
     <string name="exit_">Exit</string>
     <string name="route_preview">Preview</string>
     <string name="pdf_creator">Create PDF</string>
+    <string name="pdf_select_images">Select images</string>
+    <string name="pdf_save_to_folder">Save to Folder</string>
+    <string name="pdf_remove">Remove</string>
+    <string name="pdf_select_some_images">Select some images</string>
+    <string name="pdf_success">Successfully converted images to pdf</string>
+    <string name="pdf_creator_error">Something went wrong</string>
     <string name="create_snapshots">Create snapshots</string>
     <string name="remove_snapshots">Remove snapshots</string>
     <string name="route_not_found_">Route not found %1$s</string>
