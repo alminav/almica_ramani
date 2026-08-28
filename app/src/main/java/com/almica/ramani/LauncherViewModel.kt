@@ -9,6 +9,7 @@ import com.almica.ramani.charts.GraphDataPoints
 import com.almica.ramani.charts.PlotResult
 import com.almica.ramani.charts.createPlotDataResult
 import com.almica.ramani.locations.LocationRepository
+import com.almica.ramani.utils.MagentaCloudDownloader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +48,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val locationRepository = LocationRepository.getInstance(getApplication(), Executors.newSingleThreadExecutor())
     private val assetRepository = AssetRepository(application)
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    // 28aug2026: download file from MagentaCloud direct
+    private val downloader = MagentaCloudDownloader(getApplication())
 
     private val _uiState = MutableStateFlow(LauncherUiState())
     val uiState: StateFlow<LauncherUiState> = _uiState.asStateFlow()
@@ -56,6 +59,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             assetRepository.copyAssetsIfNeeded()
         }
+        // 28aug2026: download file from MagentaCloud direct
+        //startDownload()
     }
 
     fun refreshAll() {
@@ -170,5 +175,28 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private fun formatLocation(lat: Double, lon: Double): String {
         return String.format(Locale.US, getApplication<Application>().getString(R.string.location_coords_format), lat, lon)
+    }
+
+    /**
+     * Starts the download process for specific assets from MagentaCloud. 28aug2026
+     */
+    fun startDownload() {
+        viewModelScope.launch {
+            val link = "https://magentacloud.de/public.php/dav/files/axgAQy5F2fjcSCB/"
+
+            val downloadedFile = downloader.downloadFile(link, "n52e0103d.ghz")
+
+            if (downloadedFile != null) {
+                Timber.i("Download successful: ${downloadedFile.absolutePath}")
+            } else {
+                Timber.e("Download failed.")
+            }
+        }
+    }
+
+    override fun onCleared() {
+        Timber.d("LauncherViewModel cleared: Releasing resources")
+        downloader.close()
+        super.onCleared()
     }
 }
