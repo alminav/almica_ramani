@@ -10,7 +10,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Tile
 import com.google.android.gms.maps.model.TileProvider
 import timber.log.Timber
-import java.net.URL
 import kotlin.math.pow
 
 /**
@@ -73,13 +72,6 @@ abstract class LocalTileProvider : TileProvider {
         this.zzb = height
         this.ctx = null
         this.mbtilesName = null
-    }
-
-    constructor(context: Context, mbtilesName: String?, width: Int, height: Int) {
-        this.zza = width
-        this.zzb = height
-        this.ctx = context
-        this.mbtilesName = mbtilesName
     }
 
     constructor(context: Context, latLng: LatLng, width: Int, height: Int) {

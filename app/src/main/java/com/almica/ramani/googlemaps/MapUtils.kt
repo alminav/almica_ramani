@@ -27,7 +27,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Date
@@ -40,45 +39,6 @@ import kotlin.math.sqrt
 import kotlin.text.Charsets.UTF_8
 
 object MapUtils {
-    /**
-     * Linearly interpolates (lerps) between two colors based on a given [fraction].
-     * Used to create smooth gradients between a start and end color.
-     *
-     * @param startColor The ARGB color to start from (Int representation).
-     * @param endColor The ARGB color to interpolate to (Int representation).
-     * @param fraction A value between 0.0 and 1.0 representing interpolation progress.
-     *                 0.0 = startColor, 1.0 = endColor, 0.5 = halfway blend.
-     *
-     * @return The interpolated color as a packed ARGB Int.
-     */
-    fun lerpColor(startColor: Int, endColor: Int, fraction: Float): Int {
-        // Decompose startColor into alpha, red, green, blue (8-bit components)
-        val startA = (startColor shr 24) and 0xff // alpha
-        val startR = (startColor shr 16) and 0xff // red
-        val startG = (startColor shr 8) and 0xff  // green
-        val startB = startColor and 0xff          // blue
-
-        // Decompose endColor into alpha, red, green, blue (8-bit components)
-        val endA = (endColor shr 24) and 0xff
-        val endR = (endColor shr 16) and 0xff
-        val endG = (endColor shr 8) and 0xff
-        val endB = endColor and 0xff
-
-        // Linearly interpolate each channel using the formula:
-        // result = start + ((end - start) * fraction)
-        val a = (startA + ((endA - startA) * fraction)).toInt()
-        val r = (startR + ((endR - startR) * fraction)).toInt()
-        val g = (startG + ((endG - startG) * fraction)).toInt()
-        val b = (startB + ((endB - startB) * fraction)).toInt()
-
-        // Recombine the channels into a single ARGB Int:
-        // (alpha << 24) | (red << 16) | (green << 8) | blue
-        return (a and 0xff shl 24) or
-                (r and 0xff shl 16) or
-                (g and 0xff shl 8) or
-                (b and 0xff)
-    }
-
     private const val EARTH_RADIUS_KM = 6371.0  // Average radius of the Earth
 
     /**
@@ -139,54 +99,6 @@ object MapUtils {
         } else {
             1 - (-2 * t + 2).let { it * it * it } / 2
         }
-    }
-
-    // does not run on doogee 24dez2025
-    fun fetchPlaceRequest(context: Context, placeId: String, result: (Place?) -> Unit) {
-        Timber.i( "placeId: $placeId")
-    // Specify the fields to return.
-        val placeFields = listOf(
-            Place.Field.ID,
-            Place.Field.DISPLAY_NAME,
-            Place.Field.FORMATTED_ADDRESS,
-            Place.Field.LOCATION,
-            Place.Field.GOOGLE_MAPS_URI,
-        )
-        // Construct a request object, passing the place ID and fields array.
-        val request = FetchPlaceRequest.newInstance(placeId, placeFields)
-        val placesClient = Places.createClient(context)
-        placesClient.fetchPlace(request)
-            .addOnSuccessListener { response: FetchPlaceResponse ->
-                val place = response.place
-
-                val name = place.displayName
-                val address = place.formattedAddress
-                val location = place.location
-                val gmsUri = place.googleMapsUri
-                //val placeTypes = place.placeTypes
-                //val iconMaskUrl = place.iconMaskUrl
-                //val websiteUri = place.websiteUri
-
-                Timber.i("name: $name")
-                Timber.i("address: $address")
-                Timber.i("GOOGLE_MAPS_URI: $gmsUri")
-                //Timber.i("placeTypes: $placeTypes")
-                //Timber.i("iconMaskUrl: $iconMaskUrl")
-                //Timber.i("websiteUri: $websiteUri")
-                if (location != null) {
-                    Timber.i(
-                            "location: ${location.latitude} ${location.longitude}")
-                    result(place)
-                } else {
-                    Timber.i(
-                            "location: = null")
-                }
-            }.addOnFailureListener { exception: Exception ->
-                if (exception is ApiException) {
-                    val message = context.getString(R.string.place_not_found, exception.message)
-                    Timber.e( "%s", message)
-                }
-            }
     }
 
     //maps.googleapis.com/maps/api/elevation/json?locations=enc:gfo}EtohhUxD@bAxJmGF&key=...

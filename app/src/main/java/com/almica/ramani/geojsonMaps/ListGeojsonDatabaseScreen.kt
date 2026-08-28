@@ -3,7 +3,6 @@ package com.almica.ramani.geojsonMaps
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -81,12 +80,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import androidx.core.graphics.scale
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.preference.PreferenceManager
-import com.almica.ramani.BuildConfig
 import com.almica.ramani.Const
 import com.almica.ramani.Helpers
 import com.almica.ramani.LatLngH
@@ -115,7 +112,7 @@ import java.util.UUID
 import java.util.concurrent.Executors
 import kotlin.math.pow
 
-private const val logtag = "ListGeojsonDatabaseScreen"
+
 @SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -375,16 +372,6 @@ fun ListGeojsonDatabaseScreen(
     }
 }
 
-
-private fun shareFile(context: Context, file: File) {
-    val uri = FileProvider.getUriForFile(context, BuildConfig.APPLICATION_ID + ".provider", file)
-    val intent = Intent(Intent.ACTION_SEND)
-    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    intent.type = "*/*"
-    intent.putExtra(Intent.EXTRA_STREAM, uri)
-    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-    context.startActivity(intent)
-}
 
 private fun deleteGeojsonMaps(context: Context, region: String, finished: () -> Unit) {
     val geojsonMapRepository = GeojsonMapRepository.getInstance(context, Executors.newSingleThreadExecutor())
@@ -947,12 +934,3 @@ private fun MoboSnack(geojsonSnackbarData: GeojsonSnackbarData, finished: (actio
     }
 }
 
-private suspend fun resetGeojsonDb(context: Context) = withContext(Dispatchers.IO){
-    val db = GeojsonMapDatabase.getInstance(context)
-    db.runInTransaction{
-        run {
-            Timber.i( "clearAllTables")
-            db.clearAllTables()
-        }
-    }
-}

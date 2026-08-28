@@ -12,7 +12,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -513,7 +512,6 @@ private fun MapControls(
     viewModel: GmsMapViewModel
 ) {
     val scaleBackground = White.copy(alpha = 0.5f)
-    val scaleBorderStroke = BorderStroke(width = 1.dp, Color.DarkGray.copy(alpha = 0.2f))
 
     // Location Toggle
     Box(modifier = Modifier.fillMaxSize().padding(top = 36.dp), contentAlignment = Alignment.TopEnd) {
@@ -862,7 +860,6 @@ private fun ProcessGeojsonRoutes(zoom: Float, routeEntities: List<RouteEntity>, 
 
 @Composable
 private fun ProcessRouteData(routeData: RouteData?, color: Color, withMarker: Boolean, zoom: Float, zIndex: Float, width: Float, selected: () -> Unit) {
-    val context = LocalContext.current
     val routePoints = routeData?.lllh?.map { LatLng(it.latitude, it.longitude) } ?: emptyList()
     if (routePoints.isNotEmpty()) {
         Polyline(points = routePoints, color = color, width = width, pattern = listOf(Dash(20f), Gap(20f), Dash(20f)), clickable = true, zIndex = zIndex, onClick = { selected() })

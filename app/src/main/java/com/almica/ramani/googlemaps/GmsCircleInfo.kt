@@ -19,7 +19,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.almica.ramani.Const
-import com.almica.ramani.Helpers
 import com.almica.ramani.utils.format
 import androidx.compose.ui.tooling.preview.Preview
 import com.almica.ramani.ui.theme.RamaniTheme

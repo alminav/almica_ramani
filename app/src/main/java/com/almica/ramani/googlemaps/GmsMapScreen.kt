@@ -55,7 +55,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.preference.PreferenceManager
-import com.almica.ramani.Const
 import com.almica.ramani.LatLngH
 import com.almica.ramani.R
 import com.almica.ramani.charts.theme.White
@@ -92,7 +91,6 @@ import kotlin.time.Duration.Companion.milliseconds
  * called from GoogleMapsActivity
  */
 
-private const val logtag = "GmsMapScreen"
 @SuppressLint("MutableCollectionMutableState", "LocalContextGetResourceValueCall")
 @Composable
 fun GmsMapScreen(
@@ -140,15 +138,11 @@ fun GmsMapScreenContent(
     val cameraPositionState = rememberCameraPositionState()
     // Obtain the current context
     val context = LocalContext.current
-    val prefs = remember { PreferenceManager.getDefaultSharedPreferences(context) }
     // Observe the user's location (Passed as parameter)
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var zoom by remember { mutableFloatStateOf((zoomLevel+1).toFloat()) }
     var locationEnabled by remember { mutableStateOf(false) }
-    var currentMapType by remember { mutableStateOf(MapType.TERRAIN) }
 
-    //val mapStyle = MapStyleOptions.loadRawResourceStyle(context, R.raw.style_json) // JavaScript format Nachtmodus
-    val mapStyle = MapStyleOptions.loadRawResourceStyle(context, R.raw.exported_style) //  works only with mapType = MapType.NORMAL
     // Create a mutable state to track the selected route
     var selectedRoute by remember { mutableStateOf<RouteData?>(null) }
     // Create a mutable state to track the selected circle

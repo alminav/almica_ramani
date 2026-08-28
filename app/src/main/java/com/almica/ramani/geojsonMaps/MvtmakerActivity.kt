@@ -96,7 +96,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.almica.ramani.ui.theme.RamaniTheme
 import timber.log.Timber
 import java.io.File
-import java.io.FileFilter
 
 class MvtmakerActivity : ComponentActivity() {
     // ToDo KI improve
@@ -517,24 +516,4 @@ fun GoogleMapViewInColumnPreview() {
     }
 }
 
-@Composable
-private fun DropDownMvtRegions(mvtRegions: ArrayList<String>, prefMapname: String, select: (String?) -> Unit) {
-    //val state = rememberScrollState()
-    //LaunchedEffect(Unit) { state.animateScrollTo(2000) }
-    DropdownMenu( //scrollState = state,
-        expanded = mvtRegions.isNotEmpty(),
-        onDismissRequest = { select(null) }) {
-        for (mvtRegion in mvtRegions) {
-            DropdownMenuItem(
-                text = { Text(text = if (prefMapname.contains(mvtRegion)) "$mvtRegion ${Const.UC_CHECKMARK}" else mvtRegion,
-                    color = Color.Black)},
-                onClick = {
-                    val name = mvtRegion.replace(Const.MBTILES_EXT, "")
-                    //getBitmapForRegion(context, regionName, true)
-                    Timber.i( "select: $name")
-                    select(name)
-                }
-            )
-        }
-    }
-}
+

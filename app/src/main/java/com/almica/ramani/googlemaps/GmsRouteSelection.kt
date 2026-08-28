@@ -33,7 +33,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.almica.ramani.Const
-import com.almica.ramani.Helpers
 import com.almica.ramani.R
 import com.almica.ramani.charts.theme.Teal200
 import com.google.android.gms.maps.model.LatLng

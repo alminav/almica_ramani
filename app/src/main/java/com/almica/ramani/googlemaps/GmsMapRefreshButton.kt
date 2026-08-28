@@ -14,11 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.LinearProgressIndicator
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,7 +33,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -54,6 +51,8 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.tooling.preview.Preview
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.google.maps.android.compose.rememberCameraPositionState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
 import timber.log.Timber
 
 @Composable
@@ -107,7 +106,7 @@ fun GmsMapRefreshButton(
                     textAlign = TextAlign.Center
                 )
                 LinearProgressIndicator(
-                    progress = (0.01 * progressCreateValue).toFloat(),
+                    progress = { (0.01 * progressCreateValue).toFloat() },
                     modifier = Modifier
                         .background(Color.White)
                         .padding(start = 10.dp, end = 10.dp)

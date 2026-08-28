@@ -1,7 +1,6 @@
 package com.almica.ramani.geojsonMaps
 
 import android.app.Application
-import android.content.ClipData
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -96,7 +95,7 @@ class TilemakerViewModel(
                 it.copy(
                     fileNames = fileNames,
                     rasterRegionNames = rasterRegionNames,
-                    tilesPrefSet = tilesPrefSet as Set<String>
+                    tilesPrefSet = tilesPrefSet
                 )
             }
             updateComputedState()

@@ -9,7 +9,6 @@ import android.location.Address
 import android.location.Geocoder
 import android.location.Location
 import android.os.Build
-import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableFloatStateOf
@@ -43,8 +42,6 @@ import kotlinx.coroutines.flow.update
 import timber.log.Timber
 import java.util.Date
 import java.util.concurrent.Executors
-
-private const val logtag = "MapViewModel"
 
 data class GmsMapUiState(
     val userLocation: LatLng? = null,
@@ -266,31 +263,5 @@ class GmsMapViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateState(transform: (GmsMapUiState) -> GmsMapUiState) {
         _uiState.update(transform)
-    }
-
-    // Function to geocode the selected place and update the selected location state
-    fun selectLocation(selectedPlace: String, context: Context) {
-        viewModelScope.launch {
-            val geocoder = Geocoder(context)
-            var addresses : MutableList<Address>? = null
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                geocoder.getFromLocationName(selectedPlace, 1) { ads ->
-                    addresses = ads
-                }
-            } else {
-                addresses = withContext(Dispatchers.IO) {
-                    // Perform geocoding on a background thread
-                    geocoder.getFromLocationName(selectedPlace, 1)
-                }
-            }
-            if (!addresses.isNullOrEmpty()) {
-                // Update the selected location in the state
-                val address = addresses!![0]
-                val latLng = LatLng(address.latitude, address.longitude)
-                _uiState.update { it.copy(selectedLocation = latLng) }
-            } else {
-                Timber.e("${Thread.currentThread().stackTrace[2].lineNumber}:No location found for the selected place.")
-            }
-        }
     }
 }

@@ -1,6 +1,5 @@
 package com.almica.ramani.geojsonMaps
 
-import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Intent
 import android.os.Bundle

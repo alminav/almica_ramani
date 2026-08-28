@@ -3,7 +3,6 @@ package com.almica.ramani.googlemaps
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import com.almica.ramani.utils.GeoJsonUtils
 import com.almica.ramani.utils.format
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.TileOverlay
