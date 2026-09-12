@@ -66,7 +66,7 @@ fun MainZoomButtons(
                             // This ensures the "step width is 1" even if currently at 13.2
                             val newZoom = (Math.round(currentActual) + 1).toDouble()
                             
-                            Timber.i("zoom +: $newZoom (from $currentActual)")
+                            //Timber.i("zoom +: $newZoom (from $currentActual)")
                             
                             // 3. Use moveCamera (Instant) instead of easeCamera
                             // This prevents GPS updates from cancelling the zoom mid-animation
@@ -99,7 +99,7 @@ fun MainZoomButtons(
                             // Snap to nearest integer then subtract 1.0
                             val newZoom = (Math.round(currentActual) - 1).toDouble()
                             
-                            Timber.i("zoom -: $newZoom (from $currentActual)")
+                            //Timber.i("zoom -: $newZoom (from $currentActual)")
                             
                             map?.moveCamera(CameraUpdateFactory.zoomTo(newZoom))
                             setZoom(newZoom)

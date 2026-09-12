@@ -1,6 +1,8 @@
 package com.almica.ramani
 
+import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.location.Location
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -41,8 +43,6 @@ import com.almica.ramani.LayersControlAction.GeojsonBbbike13
 import com.almica.ramani.LayersControlAction.MvtBbbike09
 import com.almica.ramani.LayersControlAction.PmtilesBbbike11
 import com.almica.ramani.LayersControlAction.ToggleRoutesGeojson
-import com.almica.ramani.MainSnackbarSelection.Bbbike
-import com.almica.ramani.MainSnackbarSelection.Drive
 import com.almica.ramani.MainSnackbarSelection.RouteCalculation
 import com.almica.ramani.MainSnackbarSelection.SelectMvt
 import com.almica.ramani.MainSnackbarSelection.SetStop
@@ -133,19 +133,29 @@ import timber.log.Timber
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.Executors
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.Alignment
+import androidx.preference.PreferenceManager.getDefaultSharedPreferences
+import com.almica.ramani.MvtManagementAction.*
+import com.almica.ramani.filepicker.FileImportActivity
+import com.almica.ramani.filepicker.FileType
 import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.routes.MAX_ELEVATION_POINTS
-import com.almica.ramani.routes.SnackRoutesAction
-import com.almica.ramani.routes.SnackRoutesData
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.GeoJsonUtils
+import com.almica.ramani.utils.MagentaCloudDownloader
+import com.almica.ramani.utils.MagentaCloudMvt
 import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
 import com.almica.ramani.weather.WeatherScreen
 import com.google.maps.android.PolyUtil
+import kotlinx.coroutines.CoroutineScope
+import java.util.Locale
 import com.google.android.gms.maps.model.LatLng as GmsLatLng
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -163,7 +173,6 @@ fun BoxScope.MapOverlayManager(
     onRenderModeMapChange: (String) -> Unit,
     onUseCyclewayOverlaysChange: (Boolean) -> Unit,
     onToggleButtonsBottomBarChange: (Boolean) -> Unit,
-    startTime: Long,
     locationCircles: MutableList<LatLng>
 ) {
     MapOverlayManagerContent(
@@ -178,7 +187,6 @@ fun BoxScope.MapOverlayManager(
         onRenderModeMapChange = onRenderModeMapChange,
         onUseCyclewayOverlaysChange = onUseCyclewayOverlaysChange,
         onToggleButtonsBottomBarChange = onToggleButtonsBottomBarChange,
-        startTime = startTime,
         locationCircles = locationCircles,
         setToggleGeojsonMapVisibility = { viewModel?.setToggleGeojsonMapVisibility(it) },
         closeOverlay = { viewModel?.closeOverlay() },
@@ -204,6 +212,7 @@ fun BoxScope.MapOverlayManager(
         setRoutesRegionFilter = { viewModel?.setRoutesRegionFilter(it) },
         confirmMvtChange = { viewModel?.confirmMvtChange() },
         dismissMvtConfirmation = { viewModel?.dismissMvtConfirmation() },
+        setClipText = { viewModel?.setClipText(it) }
     ) { viewModel?.setRouteInfo(it) }
 }
 
@@ -221,7 +230,6 @@ fun BoxScope.MapOverlayManagerContent(
     onRenderModeMapChange: (String) -> Unit,
     onUseCyclewayOverlaysChange: (Boolean) -> Unit,
     onToggleButtonsBottomBarChange: (Boolean) -> Unit,
-    startTime: Long,
     locationCircles: MutableList<LatLng>,
     setToggleGeojsonMapVisibility: (String?) -> Unit,
     closeOverlay: () -> Unit,
@@ -247,6 +255,7 @@ fun BoxScope.MapOverlayManagerContent(
     setRoutesRegionFilter: (String) -> Unit,
     confirmMvtChange: () -> Unit,
     dismissMvtConfirmation: () -> Unit,
+    setClipText: (String?) -> Unit,
     setRouteInfo: (File?) -> Unit,
 ) {
     val liveSharedPreferences = LocalLiveSharedPreferences.current
@@ -254,7 +263,7 @@ fun BoxScope.MapOverlayManagerContent(
     val resources = LocalResources.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
-    val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+    val preferences = getDefaultSharedPreferences(context)
     val poiRepository = PoiRepository.getInstance(context, Executors.newSingleThreadExecutor())
 
     val showPreferenceScreen = uiState.activeOverlay == PREFERENCES
@@ -263,6 +272,7 @@ fun BoxScope.MapOverlayManagerContent(
     val showGeoCoder = uiState.activeOverlay == GEO_CODER
     val showRouteMonitorMenu = uiState.activeOverlay == ROUTE_MONITOR
     val showMapLongClickMenu = uiState.activeOverlay == MAP_LONG_CLICK
+    val showMvtManagementMenu = uiState.activeOverlay == OverlayType.MVT_MANAGEMENT
     val showRasterMapsMenu = uiState.activeOverlay == RASTER_MAPS
     val showMaptypeMenu = uiState.activeOverlay == MAP_TYPE
     val showSatStatus = uiState.activeOverlay == SAT_STATUS
@@ -296,11 +306,74 @@ fun BoxScope.MapOverlayManagerContent(
     val selectedFeatureItem = uiState.selectedFeatureItem
     val progressMsg = uiState.progressMsg
     val gpsValueState = uiState.gpsValueState
-    val highlightRoutePoint = uiState.highlightRoutePoint
     val dimmerState = uiState.dimmerState
     val routesRegionFilter = uiState.routesRegionFilter
     val showRouteInfo = uiState.showRouteInfo
+    val downloader: MagentaCloudDownloader = remember { MagentaCloudDownloader(context) }
+    var isDownloading by remember { mutableStateOf(false) }
+    var downloadMessage by remember { mutableStateOf<String?>(null) }
 
+    fun startDownload(
+        fileName: String,
+        link: String,
+        onProcess: suspend (File) -> Unit
+    ) {
+        Timber.i("Start download of $fileName from $link")
+        scope.launch {
+            try {
+                isDownloading = true
+                downloadMessage = resources.getString(R.string.download_starting)
+                val targetFile = File(fileName)
+                val downloadedFile = downloader.downloadFile(link, targetFile)
+
+                if (downloadedFile != null) {
+                    Timber.i("Download successful: ${downloadedFile.absolutePath}")
+                    downloadMessage = resources.getString(R.string.download_success, downloadedFile.name)
+
+                    try {
+                        onProcess(downloadedFile)
+                        //onGhFoldersRefresh()
+                    } catch (e: Exception) {
+                        Timber.e(e, "Processing failed for $fileName")
+                        downloadMessage = resources.getString(R.string.processing_failed)
+                    } finally {
+                        //val bCleanup = downloadedFile.delete()
+                        //Timber.i("Cleanup: $bCleanup ${downloadedFile.path}")
+                        Timber.i("successful download: ${downloadedFile.path}")
+                    }
+                } else {
+                    Timber.e("Download failed.")
+                    downloadMessage = resources.getString(R.string.download_failed)
+                }
+            } finally {
+                isDownloading = false
+            }
+        }
+    }
+    if (isDownloading || downloadMessage != null) {
+        AlertDialog(
+            onDismissRequest = { if (!isDownloading) downloadMessage = null },
+            title = { Text(if (isDownloading) "Download läuft" else "Download Status") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (isDownloading) {
+                        CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                    }
+                    downloadMessage?.let { Text(it) }
+                }
+            },
+            confirmButton = {
+                if (!isDownloading) {
+                    TextButton(onClick = { downloadMessage = null }) {
+                        Text("OK")
+                    }
+                }
+            }
+        )
+    }
     if (toggleGeojsonMapVisibility != null) {
         GeojsonMapsMenu(context, toggleGeojsonMapVisibility) { action, tileName ->
             setToggleGeojsonMapVisibility(null)
@@ -478,7 +551,7 @@ fun BoxScope.MapOverlayManagerContent(
             if (targetRouteFolder != null) {
                 val routeFolder = File(File(context.filesDir, Const.ROUTEFOLDER), targetRouteFolder.first)
                 val routeFile = File(routeFolder, targetFileName.replace(Const.JPG_EXT, "").replace(Const.GPX_EXT, "").replace(Const.KML_EXT, "") + Const.KML_EXT)
-                val result = com.almica.ramani.Helpers.writeLllh2KmlFile(polygonState.lllh, routeFile.path)
+                val result = Helpers.writeLllh2KmlFile(polygonState.lllh, routeFile.path)
                 setSnackbar(MainSnackbarData("${routeFile.name} ${resources.getString(R.string.route_save_result)}: " + if (result) resources.getString(R.string.ok) else resources.getString(R.string.error), null, null, null))
             }
         }
@@ -636,29 +709,24 @@ fun BoxScope.MapOverlayManagerContent(
         MapLongClickMenu(map, changeGridState = { state, layerId ->
             changeLayerVisibility(map, if (state) Property.VISIBLE else Property.NONE, layerId)
         }, finished = { selection ->
+            Timber.i("$selection")
             closeOverlay()
             when (selection) {
                 ChangeDimmerState -> setDimmer(!dimmerState)
                 SatStatus -> setOverlay(SAT_STATUS)
                 ClearGpsCircles -> locationCircles.clear()
-                MapLongClickAction.MvtBbbike09 -> {
+                MapLongClickAction.ManageMvtMap -> {
                     cameraPosition.value.target?.let { cp ->
                         val mvtTile = pointToTile(cp.longitude, cp.latitude, 9.0)
-                        val mvtBounds = GeoJsonUtils.tileToGmsBounds(mvtTile)
                         val currentMvtPath = preferences.getString(Const.PREF_MVT_FILEPATH, null)
-                        val driveMap = DriveSharedLinks.Companion.MvtRegions().list
                         val mvtname = "mvt_${mvtTile.x}_${mvtTile.y}_${mvtTile.z}${Const.MBTILES_EXT}"
                         val mvtFile = File(File(context.filesDir, Const.MVT_FOLDER), mvtname)
                         if (mvtFile.exists()) {
-                            setSnackbar(if (currentMvtPath == mvtFile.path) MainSnackbarData(resources.getString(R.string.map_is_active, mvtname), null, null, null) else MainSnackbarData(resources.getString(R.string.map_is_available_, mvtname), resources.getString(R.string.select_map), SelectMvt, mvtFile.path))
-                        } else {
-                            val driveUrl = driveMap[mvtname.replace(Const.MBTILES_EXT, "")]
-                            if (driveUrl != null) {
-                                setSnackbar(MainSnackbarData(resources.getString(R.string.map_available_on_drive, mvtname), resources.getString(android.R.string.ok), Drive, mvtname))
-                            } else {
-                                val bbbikeUrl = GeoJsonUtils.getBbbikeUrl("mvt_${mvtTile.x}_${mvtTile.y}_${mvtTile.z}", mvtBounds, "mbtiles-basic.zip")
-                                bbbikeUrl?.let { setSnackbar(MainSnackbarData(resources.getString(R.string.bbbike_mvt, mvtname), resources.getString(android.R.string.ok), Bbbike, it)) }
-                            }
+                            setSnackbar(if (currentMvtPath == mvtFile.path) MainSnackbarData(resources.getString(R.string.map_is_active, mvtname),
+                                null, null, null) else MainSnackbarData(resources.getString(R.string.map_is_available_, mvtname), resources.getString(R.string.select_map), SelectMvt, mvtFile.path))
+                        } else { // DropdownMenu Download, Import, Bbbike
+                            setMapManagerPosition(cp)
+                            setOverlay(OverlayType.MVT_MANAGEMENT)
                         }
                     }
                 }
@@ -790,22 +858,22 @@ fun BoxScope.MapOverlayManagerContent(
                     GeojsonBbbike12, GeojsonBbbike13 -> {
                         val zoom = if (selection == GeojsonBbbike12) 12.0 else 13.0
                         val tile = pointToTile(cp.longitude, cp.latitude, zoom)
-                        val bounds = com.almica.ramani.utils.GeoJsonUtils.tileToGmsBounds(tile)
+                        val bounds = GeoJsonUtils.tileToGmsBounds(tile)
                         val suffix = if (selection == GeojsonBbbike13) FeatureProperties.HASHTAG else ""
-                        val url = com.almica.ramani.utils.GeoJsonUtils.getBbbikeUrl("geojsonTile_${tile.x}_${tile.y}_${tile.z}$suffix", bounds, "geojson.xz")
+                        val url = GeoJsonUtils.getBbbikeUrl("geojsonTile_${tile.x}_${tile.y}_${tile.z}$suffix", bounds, "geojson.xz")
                         url?.let { context.startActivity(Intent(Intent.ACTION_VIEW, it)) }
                     }
                     MvtBbbike09 -> {
                         val tile = pointToTile(cp.longitude, cp.latitude, 9.0)
-                        val bounds = com.almica.ramani.utils.GeoJsonUtils.tileToGmsBounds(tile)
-                        val url = com.almica.ramani.utils.GeoJsonUtils.getBbbikeUrl("mvt_${tile.x}_${tile.y}_${tile.z}", bounds, "mbtiles-basic.zip")
+                        val bounds = GeoJsonUtils.tileToGmsBounds(tile)
+                        val url = GeoJsonUtils.getBbbikeUrl("mvt_${tile.x}_${tile.y}_${tile.z}", bounds, "mbtiles-basic.zip")
                         url?.let { context.startActivity(Intent(Intent.ACTION_VIEW, it)) }
                     }
-                    PmtilesBbbike11, com.almica.ramani.LayersControlAction.PmtilesBbbike10 -> {
+                    PmtilesBbbike11, LayersControlAction.PmtilesBbbike10 -> {
                         val zoom = if (selection == PmtilesBbbike11) 11.0 else 10.0
                         val tile = pointToTile(cp.longitude, cp.latitude, zoom)
-                        val bounds = com.almica.ramani.utils.GeoJsonUtils.tileToGmsBounds(tile)
-                        val url = com.almica.ramani.utils.GeoJsonUtils.getBbbikeUrl("pmtiles_${tile.x}_${tile.y}_${tile.z}", bounds, "pmtiles-basic.zip")
+                        val bounds = GeoJsonUtils.tileToGmsBounds(tile)
+                        val url = GeoJsonUtils.getBbbikeUrl("pmtiles_${tile.x}_${tile.y}_${tile.z}", bounds, "pmtiles-basic.zip")
                         url?.let { context.startActivity(Intent(Intent.ACTION_VIEW, it)) }
                     }
                     else -> {}
@@ -837,9 +905,61 @@ fun BoxScope.MapOverlayManagerContent(
         }
     }
 
+    if (showMvtManagementMenu) {
+        MvtManagementMenu(
+            mapManagerPosition?.let { GmsLatLng(it.latitude, it.longitude) }
+        ) { action, mvtname, mvtTile, link ->
+            when (action) {
+                Nothing -> {closeOverlay()}
+                Download -> {
+                    mvtname?.let {
+                        val mvtFolder = File(context.filesDir, Const.MVT_FOLDER)
+                        val targetFile = File(mvtFolder, mvtname)
+                        //val b = targetFile.createNewFile()
+                        //Timber.i("createNewFile $b ${targetFile.path}")
+                        val downloadedFile = link?.let { directDownloadUrl ->
+                            //downloader.downloadFile(directDownloadUrl, targetFile)
+                            startDownload(
+                                targetFile.path, directDownloadUrl,
+                                onProcess = { file ->
+                                    Timber.i("onProcess ${file.path}")
+                                }
+                            )
+                        }
+                    }
+                    closeOverlay()
+                }
+                Import -> {
+                    setClipText(mvtname)
+                    FileImportActivity.launch(context, FileType.Mvt)
+                    closeOverlay()
+                }
+                Bbbike_Create -> {
+                    mvtname?.let {
+                        val mvtBounds = mvtTile?.let { tile ->
+                            GeoJsonUtils.tileToGmsBounds(tile)
+                        }
+                        mvtBounds?.let {
+                            val bbbikeUrl = GeoJsonUtils.getBbbikeUrl(
+                                "mvt_${mvtTile.x}_${mvtTile.y}_${mvtTile.z}",
+                                mvtBounds,
+                                "mbtiles-basic.zip"
+                            )
+                            bbbikeUrl?.let { context.startActivity(Intent(Intent.ACTION_VIEW, it)) }
+                        }
+                    }
+                    closeOverlay()
+                }
+                null -> {
+                    closeOverlay()
+                }
+            }
+        }
+    }
+
     if (showRouteFilesRegionList) {
         RouteRegionsMenu(context, routesRegionFilter) { action, region ->
-            val layerId = resources.getString(R.string.routes) + FeatureProperties.LINES_TAG
+            val layerId = resources.getString(R.string.routes) + LINES_TAG
             map?.let { m ->
                 (getLayer(m, layerId) as? LineLayer)?.let { layer ->
                     when (action) {
@@ -1133,9 +1253,74 @@ fun BoxScope.MapOverlayManagerContent(
     }
 }
 
+enum class MvtManagementAction {
+    Nothing,
+    Download,
+    Import,
+    Bbbike_Create
+}
+@Composable
+fun MvtManagementMenu(
+    latLng: GmsLatLng?,
+    finished: (MvtManagementAction?, String?, GeoJsonUtils.Companion.Tile?, String?) -> Unit
+) {
+    val mvtTile = latLng?.let { pointToTile(it.longitude, it.latitude, 9.0) }
+    val mvtname = mvtTile?.let { "mvt_${it.x}_${it.y}_${it.z}${Const.MBTILES_EXT}" }
+    val driveMap = DriveSharedLinks.Companion.MvtRegions().list
+    val driveUrl = driveMap[mvtname?.replace(Const.MBTILES_EXT, "")]
+
+    Timber.i("MvtManagementMenu $mvtname")
+    DropdownMenu(
+        expanded = true,
+        onDismissRequest = { finished(Nothing, null, null, null) }
+    ) {
+        MagentaCloudMvt.getAllData()[mvtname]?.let {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.download_mvt, mvtname?.replace(Const.MBTILES_EXT, "") ?: ""),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                onClick = { finished(MvtManagementAction.Download, mvtname, mvtTile, it) }
+            )
+        }
+
+        HorizontalDivider()
+
+        if (driveUrl != null) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.import_mvt_, mvtname?.replace(Const.MBTILES_EXT, "") ?: ""),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                onClick = {
+                    if (latLng != null) {
+                        finished(Import, mvtname, mvtTile, null)
+                    } else {
+                        finished(Import, null, null, null)
+                    }
+                }
+            )
+        } else {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.bbbike_create),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                onClick = { finished(MvtManagementAction.Bbbike_Create, mvtname, mvtTile, null) }
+            )
+        }
+    }
+}
+
 private fun calculateGhRoute(
-    context: android.content.Context,
-    resources: android.content.res.Resources,
+    context: Context,
+    resources: Resources,
     startLat: Double?,
     startLon: Double?,
     stopPosition: LatLng?,
@@ -1179,12 +1364,12 @@ private fun calculateGhRoute(
 private fun handleRouteFileSelection(
     routeFile: File,
     map: MapLibreMap?,
-    context: android.content.Context,
+    context: Context,
     cameraMode: MutableState<Int>,
     cameraPosition: MutableState<CameraPosition>,
     liveSharedPreferences: LiveSharedPreferences,
-    resources: android.content.res.Resources,
-    scope: kotlinx.coroutines.CoroutineScope,
+    resources: Resources,
+    scope: CoroutineScope,
     onRoutesGeoJsonStringChange: (String?) -> Unit,
     onPopupSnackMsg: (String?) -> Unit,
     setLoadedRoute: (RouteEntity?) -> Unit,
@@ -1198,7 +1383,7 @@ private fun handleRouteFileSelection(
     if (clearRouteInfo) setRouteInfo(null)
     closeOverlay()
 
-    val extension = routeFile.extension.lowercase(java.util.Locale.ROOT)
+    val extension = routeFile.extension.lowercase(Locale.ROOT)
     val jpgExt = Const.JPG_EXT.removePrefix(".")
     val geojsonExt = Const.GEOJSON_EXT.removePrefix(".")
 
@@ -1248,7 +1433,7 @@ private fun handleRouteFileSelection(
 @Composable
 fun MapOverlayManagerPreview() {
     val context = LocalContext.current
-    val liveSharedPreferences = remember { LiveSharedPreferences(PreferenceManager.getDefaultSharedPreferences(context)) }
+    val liveSharedPreferences = remember { LiveSharedPreferences(getDefaultSharedPreferences(context)) }
     val cameraPosition = remember { mutableStateOf(CameraPosition()) }
     val cameraMode = remember { mutableIntStateOf(0) }
     val userLocation = remember { mutableStateOf(Location("dummy")) }
@@ -1258,7 +1443,7 @@ fun MapOverlayManagerPreview() {
         CompositionLocalProvider(LocalLiveSharedPreferences provides liveSharedPreferences) {
             Box(modifier = Modifier.fillMaxSize()) {
                 MapOverlayManagerContent(
-                    uiState = MainUiState(progressMsg = "Loading maps...",),
+                    uiState = MainUiState(progressMsg = "Loading maps..."),
                     map = null,
                     cameraPosition = cameraPosition,
                     cameraMode = cameraMode,
@@ -1269,7 +1454,6 @@ fun MapOverlayManagerPreview() {
                     onRenderModeMapChange = {},
                     onUseCyclewayOverlaysChange = {},
                     onToggleButtonsBottomBarChange = {},
-                    startTime = 0L,
                     locationCircles = locationCircles,
                     setToggleGeojsonMapVisibility = {},
                     closeOverlay = {},
@@ -1295,6 +1479,7 @@ fun MapOverlayManagerPreview() {
                     setRoutesRegionFilter = {},
                     confirmMvtChange = {},
                     dismissMvtConfirmation = {},
+                    setClipText = {},
                 ) {}
             }
         }

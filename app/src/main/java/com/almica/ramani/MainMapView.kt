@@ -83,6 +83,7 @@ fun MainMapView(
     val target = cameraPosition.value.target
     val currentHighlight = uiState.highlightRoutePoint
     val onHighlightUpdated = rememberUpdatedState(onHighlightRoutePoint)
+    val currentStyleBuilder = remember(localStyleBuilder, styleBuilderMaptypeRaster) { localStyleBuilder ?: styleBuilderMaptypeRaster }
 
     LaunchedEffect(target, steps) {
         if (steps != null && target != null) {
@@ -108,7 +109,7 @@ fun MainMapView(
             .fillMaxSize()
             .offsetYByPercent(uiState.hairCrossOffsetFraction),
         mapView = mapView,
-        styleBuilder = localStyleBuilder ?: styleBuilderMaptypeRaster,
+        styleBuilder = currentStyleBuilder,
         cameraPosition = cameraPosition.value,
         locationRequestProperties = locationProperties,
         locationStyling = LocationStyling(enablePulse = true, pulseColor = 0xFFFFF200.toInt()),

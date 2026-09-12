@@ -177,23 +177,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         return String.format(Locale.US, getApplication<Application>().getString(R.string.location_coords_format), lat, lon)
     }
 
-    /**
-     * Starts the download process for specific assets from MagentaCloud. 28aug2026
-     */
-    fun startDownload() {
-        viewModelScope.launch {
-            val link = "https://magentacloud.de/public.php/dav/files/axgAQy5F2fjcSCB/"
-
-            val downloadedFile = downloader.downloadFile(link, "n52e0103d.ghz")
-
-            if (downloadedFile != null) {
-                Timber.i("Download successful: ${downloadedFile.absolutePath}")
-            } else {
-                Timber.e("Download failed.")
-            }
-        }
-    }
-
     override fun onCleared() {
         Timber.d("LauncherViewModel cleared: Releasing resources")
         downloader.close()

@@ -10,7 +10,6 @@ import androidx.compose.material.icons.outlined.GpsFixed
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.OpenInBrowser
-import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -25,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.charts.theme.Black
 import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.pois.PoiRepository
@@ -45,7 +43,7 @@ enum class MapLongClickAction {
     PdfViewer,
     ClearGpsCircles,
     RouteFolders,
-    MvtBbbike09,
+    ManageMvtMap,
     Nothing
 }
 @Composable
@@ -140,7 +138,7 @@ fun MapLongClickMenuContent(
         )
         DropdownMenuItem(
             { Text(text = resources.getString(R.string.treat_mvt), color = Black) },
-            onClick = { finished(MapLongClickAction.MvtBbbike09) },
+            onClick = { finished(MapLongClickAction.ManageMvtMap) },
             leadingIcon = { Icon(Icons.Outlined.OpenInBrowser, null) }
         )
     }

@@ -15,7 +15,6 @@ import com.almica.ramani.MainSnackbarSelection.MapManager
 import com.almica.ramani.charts.MonitorGraphType
 import com.almica.ramani.compass.CompassViewModel
 import com.almica.ramani.geojsonMaps.GeojsonMapRepository
-import com.almica.ramani.locations.LocationRepository
 import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.pois.PoiRepository
 import com.almica.ramani.routes.RouteEntity
@@ -39,6 +38,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.location.modes.CameraMode
@@ -55,7 +55,7 @@ enum class OverlayType {
     NONE, PREFERENCES, GH_FOLDERS, VEHICLE_MENU, GEO_CODER, ROUTE_MONITOR, MAP_LONG_CLICK,
     RASTER_MAPS, MAP_TYPE, SAT_STATUS, WEATHER, LAYERS_CONTROL, BBBIKE_FUNCTIONS, HAIRCROSS, MAP_MENU,
     POI_DATABASE, LOCATIONS, ROUTE_FILES, ROUTE_FILES_REGION, ROUTE_FOLDERS, MVT_LIST,
-    ADDITIONAL_MAPS, LOCATION_STATISTIC, ROUTE_SAVING, PDF_VIEWER, PDF_ROUTES, VALUE_PICKER
+    ADDITIONAL_MAPS, LOCATION_STATISTIC, ROUTE_SAVING, PDF_VIEWER, PDF_ROUTES, VALUE_PICKER, MVT_MANAGEMENT
 }
 
 data class MainUiState(
@@ -103,8 +103,8 @@ data class MainUiState(
     val styleUriToUse: String? = null,
     val pendingMvtPath: String? = null,
     val showMvtConfirmation: Boolean = false,
-    val isTrackingEnabled: Boolean = true)
-{
+    val isTrackingEnabled: Boolean = true,
+) {
     val sheetPeekHeight: Dp
         get() = when {
             toggleButtonsBottomBar ->
@@ -124,7 +124,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     private val executor = Executors.newSingleThreadExecutor()
-    private val locationRepository = LocationRepository.getInstance(application, executor)
     private val poiRepository = PoiRepository.getInstance(application, executor)
     private val geojsonMapRepository = GeojsonMapRepository.getInstance(application, executor)
     val isTrackingEnabled = GpsRepository.getInstance().isTrackingEnabled
@@ -171,9 +170,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setMvtPath(path: String?) {
         _uiState.update { it.copy(mvtPath = path) }
-        path?.let {
+        path?.let { p ->
             viewModelScope.launch {
-                val mvtFile = File(it)
+                val mvtFile = File(p)
                 if (mvtFile.exists()) {
                     val bounds = Helpers.getMvtBoundsFromMeta(mvtFile)
                     _uiState.update { it.copy(mvtBounds = bounds) }
@@ -344,10 +343,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(dimmerState = enabled) }
     }
 
-    fun setPdfRoutes(pdfRoutes: List<RouteEntity>?) {
-        _uiState.update { it.copy(pdfRoutes = pdfRoutes) }
-    }
-
     fun setMapFeatures(features: List<FeatureItem>?) {
         _uiState.update { it.copy(mapFeatures = features) }
     }
@@ -448,14 +443,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setCameraMode(mode: Int) {
-        _uiState.update { it.copy(cameraMode = mode) }
-    }
-
-    fun setRenderMode(mode: Int) {
-        _uiState.update { it.copy(renderMode = mode) }
-    }
-
     fun setUseCyclewayOverlays(enabled: Boolean) {
         _uiState.update { it.copy(useCyclewayOverlays = enabled) }
     }
@@ -471,9 +458,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun recalculateStyle() {
-        val lastPos = _uiState.value.cameraPosition?.target
-        if (lastPos != null) {
-            calculateStyleUri(lastPos.latitude, lastPos.longitude)
+        _uiState.value.cameraPosition?.target?.let { target ->
+            calculateStyleUri(target.latitude, target.longitude)
         }
     }
 
@@ -535,7 +521,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun handleSelectMvt(preferences: SharedPreferences, path: String?) {
-        preferences.edit { putString(Const.PREF_MVT_FILEPATH, path) }
+        preferences.edit {
+            putString(Const.PREF_MVT_FILEPATH, path)
+            putInt(Const.PREF_MAPTYPE_KEY, MaptypeKey.Mvt.ordinal)
+        }
+        setPrefMaptypeKey(MaptypeKey.Mvt.ordinal)
+        setMvtPath(path)
+
         setAppRestartRequired(true)
         setSnackbar(null)
         setToggleButtonsBottomBar(true)
@@ -555,10 +547,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val context = getApplication<Application>()
             val preferences = PreferenceManager.getDefaultSharedPreferences(context)
 
-            preferences.edit { putString(Const.PREF_MVT_FILEPATH, pendingPath) }
-            val styleUri = createMvtOfflineStyle(context, File(pendingPath))
-
-            _uiState.update { it.copy(styleUriToUse = styleUri) }
+            preferences.edit {
+                putString(Const.PREF_MVT_FILEPATH, pendingPath)
+                putInt(Const.PREF_MAPTYPE_KEY, MaptypeKey.Mvt.ordinal)
+            }
+            withContext(Dispatchers.Main) {
+                setPrefMaptypeKey(MaptypeKey.Mvt.ordinal)
+                setMvtPath(pendingPath)
+            }
         }
     }
 
@@ -580,8 +576,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
-        super.onCleared()
         liveSharedPreferences.unregister()
+        executor.shutdown()
     }
 
     fun calculateStyleUri(latitude: Double, longitude: Double) {
@@ -609,7 +605,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val mvtFolder = File(context.filesDir, Const.MVT_FOLDER)
                     val mvtMatchingMap =
                         "${Const.MVT_PREFIX}${mvtTileMatch.x}_${mvtTileMatch.y}_${mvtTileMatch.z}"
-                    val mvtMatchingFile = File(mvtFolder, mvtMatchingMap.plus(Const.MBTILES_EXT))
+                    val mvtMatchingFile = File(mvtFolder, mvtMatchingMap + Const.MBTILES_EXT)
                     val mvtCurrentPath = preferences.getString(Const.PREF_MVT_FILEPATH, null)
                     Timber.i("mvtMatchingFile: ${mvtMatchingFile.name} current: $mvtCurrentPath")
                     if (mvtMatchingFile.exists() && mvtMatchingFile.path != mvtCurrentPath) {

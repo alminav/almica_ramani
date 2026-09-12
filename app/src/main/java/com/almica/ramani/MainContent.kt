@@ -54,6 +54,7 @@ import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.maps.renderer.MapRenderer
 import timber.log.Timber
 import java.io.File
 import androidx.compose.runtime.collectAsState
@@ -159,6 +160,21 @@ fun MainScaffoldContent(
     //Timber.i("styleUrlMaptypeRaster: ${styleUrlMaptypeRaster.value}")
     val styleBuilderMaptypeRaster = remember(styleUrlMaptypeRaster.value) { Style.Builder().fromUri(styleUrlMaptypeRaster.value) }
     val mapView = rememberMapViewWithLifecycle()
+
+    /**
+     * 12sep2026 try: make style change effective without app restart
+     * does not work
+     */
+    LaunchedEffect( uiState.mvtPath) {
+        Timber.i("uiState.mvtPath: ${uiState.mvtPath}")
+        if (localStyleUri != null || uiState.prefMaptypeKey == MaptypeKey.Raster.ordinal) {
+            Timber.i("experimental: Setting renderingRefreshMode to CONTINUOUS due to style/type change")
+//            mapView.renderingRefreshMode = MapRenderer.RenderingRefreshMode.CONTINUOUS
+//            mapView.invalidate()
+//            mapView.requestLayout()
+        }
+    }
+    
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     
     var mapPositionLatitude by remember { mutableDoubleStateOf(0.0) }
@@ -272,6 +288,7 @@ fun MainScaffoldContent(
                 onMapClick = { viewModel?.onMapClick(context, it, map, cameraPosition.value) },
                 onMapLongClick = { if (uiState.dimmerState) viewModel?.setDimmer(false) },
                 onStyleLoaded = { style ->
+                    //mapView.setRenderingRefreshMode(MapRenderer.RenderingRefreshMode.WHEN_DIRTY)
                     //val prefMaptypeKey = preferences.getInt(Const.PREF_MAPTYPE_KEY, 0)
                     //Timber.i("prefMaptypeKey (0): $prefMaptypeKey")
                     Timber.i("prefMaptypeKey (1): ${uiState.prefMaptypeKey}") // returns always 0 ??? AI has solution 23jul2026
@@ -354,8 +371,8 @@ fun MainScaffoldContent(
                 border = BorderStroke(1.dp, Color.White)
             ) {}
 
-            if (uiState.mainSnackbarData != null) {
-                MainMoboSnack(uiState.mainSnackbarData) { action ->
+            uiState.mainSnackbarData?.let { data ->
+                MainMoboSnack(data) { action ->
                     handleSnackbarAction(context, action, viewModel, uiState, cameraPosition, preferences, reComposition)
                 }
             }
@@ -380,7 +397,6 @@ fun MainScaffoldContent(
                 },
                 onUseCyclewayOverlaysChange = { viewModel?.setUseCyclewayOverlays(it) },
                 onToggleButtonsBottomBarChange = { viewModel?.setToggleButtonsBottomBar(it) },
-                startTime = startTime,
                 locationCircles = locationCircles
             )
 
@@ -395,7 +411,7 @@ fun MainScaffoldContent(
                 }
             }
 
-            //ChartOverlays(uiState, viewModel, cameraPosition, startTime)
+            //LocationUpdatesScreen()
             LocationUpdatesScreen()
             if (uiState.activeOverlay != OverlayType.ROUTE_FOLDERS
                 && uiState.activeOverlay != OverlayType.POI_DATABASE
@@ -460,26 +476,6 @@ fun MainScaffoldContent(
                 )
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ChartOverlays(uiState: MainUiState, viewModel: MainViewModel?, cameraPosition: MutableState<CameraPosition>, startTime: Long) {
-    if (uiState.activeOverlay == OverlayType.LOCATION_STATISTIC) {
-        MonitorGraphLocations(
-            lllh = uiState.polygonState.lllh,
-            _plotResult = null,
-            startTime = startTime,
-            result = { viewModel?.closeOverlay() },
-            map = { latLng ->
-                latLng?.let {
-                    cameraPosition.value = CameraPosition(cameraPosition.value).apply { target = LatLng(it.latitude, it.longitude) }
-                }
-            },
-            highlightRoutePoint = { viewModel?.setHighlightRoutePoint(it) },
-            onChartTypeChange = { viewModel?.setMonitorGraphType(it) }
-        )
     }
 }
 

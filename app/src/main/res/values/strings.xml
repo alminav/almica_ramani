@@ -224,7 +224,10 @@
     <string name="summary_tilemaker_maxzoom">Sets the maximum zoom level when raster maps are created</string>
     <string name="summary_tilemaker_minzoom">Sets the minimum zoom level when raster maps are created</string>
     <string name="import_map">Import Map</string>
+    <string name="import_mvt_">Import %1$s</string>
+    <string name="download_mvt">Download %1$s</string>
     <string name="create_map">Create Map</string>
+    <string name="bbbike_create">Create Map with Bbbike</string>
     <string name="create_maps">Create Maps</string>
     <string name="region_name">Region Name</string>
     <string name="vector_maps">Vector Maps</string>
@@ -288,7 +291,7 @@
     <string name="bbbike_mvt09">Launch Mvt bbbike 09</string>
     <string name="bbbike_pmtiles11">Launch PmTiles bbbike 11</string>
     <string name="bbbike_pmtiles10">Launch PmTiles bbbike 10</string>
-    <string name="treat_mvt">Change Mvt Map</string>
+    <string name="treat_mvt">Manage Mvt Map</string>
     <string name="remove_single_geojson12">Remove single Geojson Map 12</string>
     <string name="remove_single_geojson13">Remove single Geojson Map 13</string>
 
@@ -576,4 +579,8 @@
     </string-array>
     <string name="map_available">Map Available</string>
     <string name="switch_to_map_">Switch to map %1$s?</string>
+    <string name="download_starting">download starting</string>
+    <string name="download_success">download success %1$s</string>
+    <string name="processing_failed">processing failed</string>
+    <string name="download_failed">download failed</string>
 </resources>
