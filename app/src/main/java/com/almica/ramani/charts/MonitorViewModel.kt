@@ -29,6 +29,7 @@ import java.util.concurrent.Executors
 import android.graphics.Canvas
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.toColorInt
+import com.almica.ramani.Const
 import com.almica.ramani.utils.KiThumbnailer.GPSPoint
 import com.almica.ramani.utils.KiThumbnailer.drawRouteThumbnail
 import com.almica.ramani.utils.isNotNull
@@ -100,7 +101,7 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
             }
             launch {
                 GpsViewModel.speed.collectLatest { speed ->
-                    _uiState.update { it.copy(locationSpeed = speed * 3.6f) }
+                    _uiState.update { it.copy(locationSpeed = speed * Const.MS_TO_KMH) }
                     updateDataPoint()
                 }
             }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DragIndicator
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.MapsHomeWork
 import androidx.compose.material.icons.outlined.Settings
@@ -40,7 +41,8 @@ enum class ActionMapBottomMenu {
     Home,
     LayersControlFunctions,
     ManageAdditionalMaps,
-    Preferences
+    Preferences,
+    RasterMaptype
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,7 +101,11 @@ fun MapBottomMenuContent(
             text = stringResource(R.string.preferences),
             onClick = { onAction(ActionMapBottomMenu.Preferences) }
         )
-
+        MapMenuItem(
+            icon = Icons.Outlined.DragIndicator,
+            text = stringResource(R.string.raster_map_type),
+            onClick = { onAction(ActionMapBottomMenu.RasterMaptype) }
+        )
         Spacer(modifier = Modifier.padding(8.dp))
 
         SettingsCard(

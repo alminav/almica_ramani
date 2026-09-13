@@ -62,13 +62,15 @@ class TilemakerViewModel(
     init {
         val lat = savedStateHandle.get<Double>(Const.EXTRA_LATITUDE) ?: -1.0
         val lon = savedStateHandle.get<Double>(Const.EXTRA_LONGITUDE) ?: -1.0
+        val mapType = savedStateHandle.get<String>(Const.EXTRA_MAPTYPE) ?: Const.OUTDOOR
         if (lat >= 0 && lon >= 0) {
             val tile = GeoJsonUtils.pointToTile(lon, lat, _uiState.value.zoom.toDouble())
             _uiState.update {
                 it.copy(
                     x = tile.x,
                     y = tile.y,
-                    startLocation = LatLng(lat, lon)
+                    startLocation = LatLng(lat, lon),
+                    mapType = mapType
                 )
             }
         }

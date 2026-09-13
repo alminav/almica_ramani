@@ -1,6 +1,7 @@
 package com.almica.ramani.utils
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.RectF
@@ -61,6 +62,7 @@ import com.almica.ramani.R
 import com.almica.ramani.RasterMapsItems
 import com.almica.ramani.geojsonMaps.GeojsonMapEntity
 import com.almica.ramani.geojsonMaps.GeojsonMapRepository
+import com.almica.ramani.geojsonMaps.TilemakerActivity
 import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.pois.PoiRepository
@@ -624,6 +626,20 @@ fun launchOrsRouting(context: Context,
             }
         }
     }
+}
+
+fun launchTilemaker(
+    context: Context,
+    regionName: String,
+    bounds: com.google.android.gms.maps.model.LatLngBounds,
+    mapType: String
+) {
+    val intent = Intent(context, TilemakerActivity::class.java).apply {
+        putExtra(Const.EXTRA_LATITUDE, bounds.center.latitude)
+        putExtra(Const.EXTRA_LONGITUDE, bounds.center.longitude)
+        putExtra(Const.EXTRA_MAPTYPE, mapType)
+    }
+    context.startActivity(intent)
 }
 
 fun selectRasterMaps(map: MapLibreMap, context: Context, activeMaps: (Int, String) -> Unit) {

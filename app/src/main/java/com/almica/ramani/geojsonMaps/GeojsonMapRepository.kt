@@ -7,12 +7,14 @@ import com.almica.ramani.utils.isNotNull
 import timber.log.Timber
 import java.util.UUID
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 private const val logtag = "GeojsonMapRepository"
 class GeojsonMapRepository private constructor(
     geojsonMapDatabase: GeojsonMapDatabase,
-    private val executor: ExecutorService
+    executor: ExecutorService
 ) {
+    private val executor = Executors.newSingleThreadExecutor()
     // Database related fields/methods:
     val geojsonMapDao = geojsonMapDatabase.geojsonMapDao()
 

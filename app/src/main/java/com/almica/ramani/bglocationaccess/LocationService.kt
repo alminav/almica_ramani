@@ -227,7 +227,7 @@ class LocationService : Service(), LocationUpdatesCallBack, SensorEventListener,
                     longitude = location.longitude,
                     altitude = if (location.altitude > 0) location.altitude + altitudeCorrection
                     else location.altitude,
-                    speed = location.speed * 3.6f,
+                    speed = location.speed * Const.MS_TO_KMH,
                     bearing = location.bearing,
                     hasBearing = location.hasBearing(),
                     time = location.time,

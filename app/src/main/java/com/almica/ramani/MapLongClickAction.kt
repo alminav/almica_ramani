@@ -137,7 +137,7 @@ fun MapLongClickMenuContent(
             onClick = {},
         )
         DropdownMenuItem(
-            { Text(text = resources.getString(R.string.treat_mvt), color = Black) },
+            { Text(text = resources.getString(R.string.manage_map), color = Black) },
             onClick = { finished(MapLongClickAction.ManageMvtMap) },
             leadingIcon = { Icon(Icons.Outlined.OpenInBrowser, null) }
         )

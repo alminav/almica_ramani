@@ -5,10 +5,11 @@ package com.almica.ramani.utils
  * not needed in this app, but kept for ramani app
  */
 class MagentaCloudMbtiles {
-    fun getAllData(): Map<String, String> {
-        return phonemaps + opentopo + outdoor + thunderforest + germany
-    }
     companion object {
+        fun getAllData(): Map<String, String> {
+            return phonemaps + opentopo + outdoor + thunderforest + germany
+        }
+
         val phonemaps: Map<String, String> =
             mapOf(
                 Pair("tile_518_388_10_Phonemaps.mbtiles", "https://magentacloud.de/public.php/dav/files/4kPHep8DecRnRPR"),
@@ -41,6 +42,7 @@ class MagentaCloudMbtiles {
                 Pair("tile_540_338_10_OpenTopo.mbtiles", "https://magentacloud.de/public.php/dav/files/pc2F6fLjPartY6i"),
                 Pair("tile_541_335_10_OpenTopo.mbtiles", "https://magentacloud.de/public.php/dav/files/MW9LQejbECQyoSx"),
                 Pair("tile_541_336_10_OpenTopo.mbtiles", "https://magentacloud.de/public.php/dav/files/PZ53BeeJAMA4qLH"),
+                Pair("tile_541_337_10_OpenTopo.mbtiles", "https://magentacloud.de/public.php/dav/files/tFjYr4cyZFrKarJ"),
                 Pair("tile_541_338_10_OpenTopo.mbtiles", "https://magentacloud.de/public.php/dav/files/LHHytPmYW6FgtQj"),
                 Pair("tile_541_339_10_OpenTopo.mbtiles", "https://magentacloud.de/public.php/dav/files/84ZfSz6fMemx6e2"),
                 Pair("tile_542_335_10_OpenTopo.mbtiles", "https://magentacloud.de/public.php/dav/files/yPxfpBHHJSgwi8D"),

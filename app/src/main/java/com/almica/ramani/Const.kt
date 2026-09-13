@@ -116,6 +116,7 @@ class Const {
         const val EXTRA_ROUTEFOLDER: String = "extra.routefolder"
         const val EXTRA_LATITUDE: String = "extra.latitude"
         const val EXTRA_LONGITUDE: String = "extra.longitude"
+        const val EXTRA_MAPTYPE: String = "extra.maptype"
         const val EXTRA_ZOOM: String = "extra.zoom"
         const val EXTRA_KMLSTRING: String = "extra.kmlstring"
         const val EXTRA_CLOUD_STYLE: String = "extra.cloud.style"
@@ -143,6 +144,7 @@ class Const {
         //const val PREF_NORTH_UP: String = "pref.north.up"
         const val PREF_GMS_NORTH_UP: String = "pref.gms.north.up"
         const val KM_TO_MILES: Double = 0.621371192
+        const val MS_TO_KMH = 3.6f
         const val ALTITUDE_CORRECTION: Int = -46
         const val TRACKFOLDER: String = "tracks"
         const val ROUTEFOLDER: String = "routes"

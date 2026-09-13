@@ -3,6 +3,7 @@ package com.almica.ramani.routes
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.almica.ramani.Const
 import com.almica.ramani.GpsViewModel
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +43,7 @@ class ElevationViewModel(application: Application) : AndroidViewModel(applicatio
             }
             launch {
                 GpsViewModel.speed.collectLatest { speed ->
-                    _uiState.update { it.copy(locationSpeed = speed * 3.6f) }
+                    _uiState.update { it.copy(locationSpeed = speed * Const.MS_TO_KMH) }
                     updateDataPoint()
                 }
             }

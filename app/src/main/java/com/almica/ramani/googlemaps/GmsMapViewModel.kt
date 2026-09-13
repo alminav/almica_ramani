@@ -149,11 +149,11 @@ class GmsMapViewModel(application: Application) : AndroidViewModel(application) 
                             userLocation = userLatLng,
                             userBearing = location.bearing,
                             userAltitude = location.altitude,
-                            userSpeed = location.speed * 3.6f // Convert to km/h
+                            userSpeed = location.speed // Meters per second
                         )
                     }
 
-                    GpsViewModel.loadSpeed(location.speed * 3.6f) // Convert to km/h
+                    GpsViewModel.loadSpeed(location.speed) // Meters per second
                     GpsViewModel.loadTime(location.time)
                     GpsViewModel.loadLatitude(userLatLng.latitude)
                     GpsViewModel.loadLongitude(userLatLng.longitude)
@@ -189,7 +189,7 @@ class GmsMapViewModel(application: Application) : AndroidViewModel(application) 
                 latitude = currentLocation.latitude,
                 longitude = currentLocation.longitude,
                 altitude = correctedAltitude,
-                speed = currentLocation.speed * 3.6f,
+                speed = currentLocation.speed, // Meters per second
                 bearing = currentLocation.bearing,
                 hasBearing = currentLocation.hasBearing(),
                 time = currentLocation.time,

@@ -882,7 +882,7 @@ private fun processCircleData(circleData: ArrayList<CircleInfo>, latLng: LatLng,
     val deltaTime = if (circleData.isNotEmpty()) 0.001 * (System.currentTimeMillis() - circleData[0].time) else 0.0
     val dur = deltaTime.toLong().toDuration(DurationUnit.SECONDS)
     val durString = dur.toComponents { hours, minutes, seconds, _ -> String.format(Locale.ENGLISH, "%02d:%02d:%02d", hours, minutes, seconds) }
-    return CircleInfo(dist.formatDistM(true), latLng, durString, System.currentTimeMillis(), userAltitude, userSpeed, if (deltaTime > 0) (3.6 * dist / deltaTime) else 0.0)
+    return CircleInfo(dist.formatDistM(true), latLng, durString, System.currentTimeMillis(), userAltitude, userSpeed, if (deltaTime > 0) (Const.MS_TO_KMH * dist / deltaTime) else 0.0)
 }
 
 enum class MenuAction {

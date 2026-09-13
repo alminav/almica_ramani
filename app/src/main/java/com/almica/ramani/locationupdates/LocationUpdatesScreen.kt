@@ -178,7 +178,7 @@ fun LocationUpdatesContent() {
                         longitude = currentLocation.longitude,
                         altitude = if (currentLocation.altitude > 0) currentLocation.altitude + altitudeCorrection //Const.ALTITUDE_CORRECTION
                         else currentLocation.altitude,
-                        speed = currentLocation.speed * 3.6f,
+                        speed = currentLocation.speed * Const.MS_TO_KMH,
                         bearing = currentLocation.bearing,
                         hasBearing = currentLocation.hasBearing(),
                         time = currentLocation.time,

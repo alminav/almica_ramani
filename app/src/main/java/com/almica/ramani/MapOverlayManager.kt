@@ -8,6 +8,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,8 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.preference.PreferenceManager
 import com.almica.ramani.FeatureProperties.Companion.LINES_TAG
 import com.almica.ramani.LayersControlAction.GeojsonBbbike12
 import com.almica.ramani.LayersControlAction.GeojsonBbbike13
@@ -108,6 +110,7 @@ import com.almica.ramani.utils.isNetworkAvailable
 import com.almica.ramani.utils.isNotNull
 import com.almica.ramani.utils.kmlString2Lllh
 import com.almica.ramani.utils.launchOrsRouting
+import com.almica.ramani.utils.launchTilemaker
 import com.almica.ramani.utils.ValuePickerDialog
 import com.almica.ramani.utils.lllhToKmlString
 import com.almica.ramani.utils.removeLayers
@@ -136,12 +139,19 @@ import java.util.concurrent.Executors
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
+import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
-import com.almica.ramani.MvtManagementAction.*
+import com.almica.ramani.MapManagementAction.*
 import com.almica.ramani.filepicker.FileImportActivity
 import com.almica.ramani.filepicker.FileType
 import com.almica.ramani.googlemaps.MapUtils
@@ -150,6 +160,7 @@ import com.almica.ramani.routes.MAX_ELEVATION_POINTS
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.GeoJsonUtils
 import com.almica.ramani.utils.MagentaCloudDownloader
+import com.almica.ramani.utils.MagentaCloudMbtiles
 import com.almica.ramani.utils.MagentaCloudMvt
 import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
 import com.almica.ramani.weather.WeatherScreen
@@ -264,7 +275,7 @@ fun BoxScope.MapOverlayManagerContent(
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val preferences = getDefaultSharedPreferences(context)
-    val poiRepository = PoiRepository.getInstance(context, Executors.newSingleThreadExecutor())
+    val poiRepository = remember { PoiRepository.getInstance(context, Executors.newSingleThreadExecutor()) }
 
     val showPreferenceScreen = uiState.activeOverlay == PREFERENCES
     val showGhFolders = uiState.activeOverlay == GH_FOLDERS
@@ -272,13 +283,14 @@ fun BoxScope.MapOverlayManagerContent(
     val showGeoCoder = uiState.activeOverlay == GEO_CODER
     val showRouteMonitorMenu = uiState.activeOverlay == ROUTE_MONITOR
     val showMapLongClickMenu = uiState.activeOverlay == MAP_LONG_CLICK
-    val showMvtManagementMenu = uiState.activeOverlay == OverlayType.MVT_MANAGEMENT
+    val showMapManagementMenu = uiState.activeOverlay == OverlayType.MAP_MANAGEMENT
     val showRasterMapsMenu = uiState.activeOverlay == RASTER_MAPS
     val showMaptypeMenu = uiState.activeOverlay == MAP_TYPE
     val showSatStatus = uiState.activeOverlay == SAT_STATUS
     val showPdfViewer = uiState.activeOverlay == PDF_VIEWER
     val showPdfRoutes = uiState.activeOverlay == PDF_ROUTES
     val showLayersControlMenu = uiState.activeOverlay == LAYERS_CONTROL
+    val showRasterMaptypeMenu = uiState.activeOverlay == OverlayType.RASTER_MAPTYPE
     val showBbbikeFunctionsMenu = uiState.activeOverlay == BBBIKE_FUNCTIONS
     // Place Weather check here to ensure it can be evaluated alongside or after menus
     val showWeather = uiState.activeOverlay == OverlayType.WEATHER
@@ -590,6 +602,7 @@ fun BoxScope.MapOverlayManagerContent(
                 }
                 ActionMapBottomMenu.Preferences -> setOverlay(PREFERENCES)
                 ActionMapBottomMenu.LayersControlFunctions -> setOverlay(LAYERS_CONTROL)
+                ActionMapBottomMenu.RasterMaptype -> setOverlay(OverlayType.RASTER_MAPTYPE)
             }
         })
     }
@@ -721,12 +734,12 @@ fun BoxScope.MapOverlayManagerContent(
                         val currentMvtPath = preferences.getString(Const.PREF_MVT_FILEPATH, null)
                         val mvtname = "mvt_${mvtTile.x}_${mvtTile.y}_${mvtTile.z}${Const.MBTILES_EXT}"
                         val mvtFile = File(File(context.filesDir, Const.MVT_FOLDER), mvtname)
-                        if (mvtFile.exists()) {
+                        if (uiState.prefMaptypeKey == MaptypeKey.Mvt.ordinal && mvtFile.exists()) {
                             setSnackbar(if (currentMvtPath == mvtFile.path) MainSnackbarData(resources.getString(R.string.map_is_active, mvtname),
                                 null, null, null) else MainSnackbarData(resources.getString(R.string.map_is_available_, mvtname), resources.getString(R.string.select_map), SelectMvt, mvtFile.path))
                         } else { // DropdownMenu Download, Import, Bbbike
                             setMapManagerPosition(cp)
-                            setOverlay(OverlayType.MVT_MANAGEMENT)
+                            setOverlay(OverlayType.MAP_MANAGEMENT)
                         }
                     }
                 }
@@ -786,11 +799,10 @@ fun BoxScope.MapOverlayManagerContent(
     }
 
     if (gpsValueState == GpsValue.Speedometer) {
-        var speed by remember { mutableFloatStateOf(0f) }
-        val currentSpeed by animateFloatAsState(targetValue = speed, animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing))
+        val gpsSpeed by GpsViewModel.speed.collectAsStateWithLifecycle()
+        val currentSpeed by animateFloatAsState(targetValue = gpsSpeed * Const.MS_TO_KMH, animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing))
         val sections: ImmutableList<Section> = persistentListOf(Section(0f, 1f, Color(0xFFFF0000.toInt()), width = 15.dp))
         val locomotion = preferences.getString(resources.getString(R.string.setting_locomotion), Const.DEFAULT_LOCOMOTION)
-        speed = 3.6f * (GpsViewModel.speed.value ?: 0f)
         if (!showLocationStatistic)
             SpeedView(maxSpeed = when (locomotion) {
                 "0.0", "0.1" -> 10f
@@ -881,7 +893,12 @@ fun BoxScope.MapOverlayManagerContent(
             }
         }
     }
-
+    if (showRasterMaptypeMenu) {
+        MaptypeMenu(context) { maptype ->
+            Timber.i("RasterMaptype $maptype")
+            closeOverlay()
+        }
+    }
     if (showLayersControlMenu) {
         if (map != null) {
             LayersControlMenu(context, map, prefMaptypeKey, changeGridState = { state, layerId ->
@@ -905,20 +922,19 @@ fun BoxScope.MapOverlayManagerContent(
         }
     }
 
-    if (showMvtManagementMenu) {
-        MvtManagementMenu(
-            mapManagerPosition?.let { GmsLatLng(it.latitude, it.longitude) }
-        ) { action, mvtname, mvtTile, link ->
+    if (showMapManagementMenu) {
+        MapManagementMenu(uiState.prefMaptypeKey,
+            mapManagerPosition?.let { GmsLatLng(it.latitude, it.longitude) },
+            finished =  { action, mapName, mapTile, link ->
             when (action) {
                 Nothing -> {closeOverlay()}
                 Download -> {
-                    mvtname?.let {
-                        val mvtFolder = File(context.filesDir, Const.MVT_FOLDER)
-                        val targetFile = File(mvtFolder, mvtname)
-                        //val b = targetFile.createNewFile()
-                        //Timber.i("createNewFile $b ${targetFile.path}")
-                        val downloadedFile = link?.let { directDownloadUrl ->
-                            //downloader.downloadFile(directDownloadUrl, targetFile)
+                    mapName?.let {
+                        Timber.i("Download $it")
+                        val mvtFolder = File(context.filesDir,
+                            if (uiState.prefMaptypeKey == MaptypeKey.Mvt.ordinal) Const.MVT_FOLDER else Const.MBTILES_FOLDER)
+                        val targetFile = File(mvtFolder, mapName)
+                        link?.let { directDownloadUrl ->
                             startDownload(
                                 targetFile.path, directDownloadUrl,
                                 onProcess = { file ->
@@ -930,22 +946,52 @@ fun BoxScope.MapOverlayManagerContent(
                     closeOverlay()
                 }
                 Import -> {
-                    setClipText(mvtname)
-                    FileImportActivity.launch(context, FileType.Mvt)
+                    Timber.i("Import $mapName")
+                    setClipText(mapName)
+                    FileImportActivity.launch(context,
+                        if (uiState.prefMaptypeKey == MaptypeKey.Mvt.ordinal) FileType.Mvt
+                                    else FileType.MbTiles)
                     closeOverlay()
                 }
-                Bbbike_Create -> {
-                    mvtname?.let {
-                        val mvtBounds = mvtTile?.let { tile ->
-                            GeoJsonUtils.tileToGmsBounds(tile)
+                Create -> {
+                    if (uiState.prefMaptypeKey == MaptypeKey.Raster.ordinal) {
+                        mapName?.let {
+                            val rasterBounds = mapTile?.let { tile ->
+                                GeoJsonUtils.tileToGmsBounds(tile)
+                            }
+                            rasterBounds?.let { bounds ->
+                                val currentMapType = preferences.getString(
+                                    resources.getString(R.string.pref_tilemaker_maptype),
+                                    Const.OUTDOOR
+                                ) ?: Const.OUTDOOR
+                                launchTilemaker(
+                                    context,
+                                    it.replace(Const.MBTILES_EXT, ""),
+                                    bounds,
+                                    currentMapType
+                                )
+                            }
                         }
-                        mvtBounds?.let {
-                            val bbbikeUrl = GeoJsonUtils.getBbbikeUrl(
-                                "mvt_${mvtTile.x}_${mvtTile.y}_${mvtTile.z}",
-                                mvtBounds,
-                                "mbtiles-basic.zip"
-                            )
-                            bbbikeUrl?.let { context.startActivity(Intent(Intent.ACTION_VIEW, it)) }
+                    } else if (uiState.prefMaptypeKey == MaptypeKey.Mvt.ordinal) {
+                        mapName?.let {
+                            val mvtBounds = mapTile?.let { tile ->
+                                GeoJsonUtils.tileToGmsBounds(tile)
+                            }
+                            mvtBounds?.let {
+                                val bbbikeUrl = GeoJsonUtils.getBbbikeUrl(
+                                    "mvt_${mapTile.x}_${mapTile.y}_${mapTile.z}",
+                                    mvtBounds,
+                                    "mbtiles-basic.zip"
+                                )
+                                bbbikeUrl?.let {
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            it
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
                     closeOverlay()
@@ -954,7 +1000,10 @@ fun BoxScope.MapOverlayManagerContent(
                     closeOverlay()
                 }
             }
-        }
+        }, onPopupSnackMsg = { msg ->
+            Timber.i("onPopupSnackMsg $msg")
+            onPopupSnackMsg(msg)
+        })
     }
 
     if (showRouteFilesRegionList) {
@@ -1253,67 +1302,238 @@ fun BoxScope.MapOverlayManagerContent(
     }
 }
 
-enum class MvtManagementAction {
+enum class MapManagementAction {
     Nothing,
     Download,
     Import,
-    Bbbike_Create
+    Create
 }
 @Composable
-fun MvtManagementMenu(
+fun MapManagementMenu(
+    mapTypeKey: Int,
     latLng: GmsLatLng?,
-    finished: (MvtManagementAction?, String?, GeoJsonUtils.Companion.Tile?, String?) -> Unit
+    // action, mapName, mapTile, link
+    finished: (MapManagementAction?, String?, GeoJsonUtils.Companion.Tile?, String?) -> Unit,
+    onPopupSnackMsg: (String) -> Unit
 ) {
-    val mvtTile = latLng?.let { pointToTile(it.longitude, it.latitude, 9.0) }
-    val mvtname = mvtTile?.let { "mvt_${it.x}_${it.y}_${it.z}${Const.MBTILES_EXT}" }
-    val driveMap = DriveSharedLinks.Companion.MvtRegions().list
-    val driveUrl = driveMap[mvtname?.replace(Const.MBTILES_EXT, "")]
-
-    Timber.i("MvtManagementMenu $mvtname")
-    DropdownMenu(
-        expanded = true,
-        onDismissRequest = { finished(Nothing, null, null, null) }
-    ) {
-        MagentaCloudMvt.getAllData()[mvtname]?.let {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = stringResource(R.string.download_mvt, mvtname?.replace(Const.MBTILES_EXT, "") ?: ""),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                onClick = { finished(MvtManagementAction.Download, mvtname, mvtTile, it) }
+    val resources = LocalResources.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val cloudMbtilesMap = remember { MagentaCloudMbtiles.getAllData() }
+    val cloudMvtMap = remember { MagentaCloudMvt.getAllData() }
+    val driveRasterMap = remember { DriveSharedLinks.Companion.RasterMaps().list }
+    val driveMvtMap = remember { DriveSharedLinks.Companion.MvtRegions().list }
+    if (mapTypeKey == MaptypeKey.Raster.ordinal) {
+        val rasterTile = latLng?.let { pointToTile(it.longitude, it.latitude, 10.0) }
+        val tileName = "tile_${rasterTile?.x}_${rasterTile?.y}_${rasterTile?.z}"
+        Timber.i("MapManagementMenu rasterTile: $rasterTile")
+        val isTypeSelected = remember { mutableIntStateOf(-1) }
+        val maptypeEntries = remember { resources.getStringArray(R.array.pref_tilemaker_maptypes_entries) }
+        val preferences = remember { getDefaultSharedPreferences(context) }
+        val currentMapType = remember {
+            preferences.getString(
+                resources.getString(R.string.pref_tilemaker_maptype),
+                Const.OUTDOOR
             )
         }
-
-        HorizontalDivider()
-
-        if (driveUrl != null) {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = stringResource(R.string.import_mvt_, mvtname?.replace(Const.MBTILES_EXT, "") ?: ""),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                onClick = {
-                    if (latLng != null) {
-                        finished(Import, mvtname, mvtTile, null)
-                    } else {
-                        finished(Import, null, null, null)
+        isTypeSelected.intValue = maptypeEntries.indexOf(currentMapType)
+        AlertDialog(
+            onDismissRequest = { finished(Nothing, null, null, null) },
+            dismissButton = {
+                TextButton(onClick = { finished(Nothing, null, null, null) }) {
+                    Text(text = stringResource(R.string.uc_close))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { finished(Nothing, null, null, null) }) {
+                    Text(text = stringResource(android.R.string.ok))
+                }
+            },
+            title = {
+                Column {
+                    rasterTile?.let {
+                        Text(
+                            text = rasterTile.x.toString() + " " + rasterTile.y.toString() + " " + rasterTile.z.toString(),
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    }
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        //Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null)
+                        maptypeEntries.forEachIndexed { index, name ->
+                            item {
+                                FilterChip(
+                                    selected = isTypeSelected.intValue == index,
+                                    onClick = {
+                                        isTypeSelected.intValue = index
+                                        preferences.edit {
+                                            putString(
+                                                resources.getString(R.string.pref_tilemaker_maptype),
+                                                name
+                                            )
+                                        }
+                                    },
+                                    label = { Text(name, style = MaterialTheme.typography.bodyMedium) },
+                                    leadingIcon = if (isTypeSelected.intValue == index) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                            )
+                                        }
+                                    } else null
+                                )
+                            }
+                        }
                     }
                 }
-            )
-        } else {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = stringResource(R.string.bbbike_create),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                onClick = { finished(MvtManagementAction.Bbbike_Create, mvtname, mvtTile, null) }
-            )
+            },
+            text = {
+                if (isTypeSelected.intValue != -1) {
+                    val selectedType = maptypeEntries.getOrNull(isTypeSelected.intValue) ?: ""
+                    val baseTileName = "${tileName}_$selectedType"
+                    val fullTileFileName = "$baseTileName${Const.MBTILES_EXT}"
+                    Timber.i("fullTileFileName: $fullTileFileName")
+                    val mbTilesRootFolder = File(context.filesDir, Const.MBTILES_FOLDER)
+                    val fullTileFile = File(mbTilesRootFolder, fullTileFileName)
+                    if (fullTileFile.exists()) {
+                        Text(text = stringResource(R.string._is_available, fullTileFileName),
+                            modifier = Modifier.clickable {
+                                scope.launch(Dispatchers.IO) {
+                                    val currentSet = preferences.getStringSet(Const.PREF_MBTILES_FILEPATH_SET, emptySet())?.toMutableSet() ?: mutableSetOf()
+                                    val b = currentSet.add(fullTileFile.path)
+                                    if (b) {
+                                        preferences.edit { putStringSet(Const.PREF_MBTILES_FILEPATH_SET, currentSet) }
+                                        onPopupSnackMsg(
+                                            resources.getString(
+                                                R.string._activated,
+                                                baseTileName
+                                            )
+                                        )
+                                    } else
+                                        onPopupSnackMsg(resources.getString(R.string._is_active, baseTileName))
+                                    finished(Nothing, null, null, null)
+                                }
+                            }
+                        )
+                    } else {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            cloudMbtilesMap[fullTileFileName]?.let { cloudUrl ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                R.string.download_,
+                                                baseTileName
+                                            )
+                                        )
+                                    },
+                                    onClick = {
+                                        finished(Download, fullTileFileName, rasterTile, cloudUrl)
+                                    }
+                                )
+                            }
+                            if (driveRasterMap[fullTileFileName] != null) {
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                R.string.import_,
+                                                baseTileName
+                                            )
+                                        )
+                                    },
+                                    onClick = {
+                                        finished(Import, tileName, rasterTile, null)
+                                    }
+                                )
+                            }
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = {
+                                    val isAvailableRemotely = cloudMbtilesMap.containsKey(fullTileFileName) ||
+                                            driveRasterMap.containsKey(fullTileFileName)
+                                    Text(
+                                        text = stringResource(R.string.create_, baseTileName),
+                                        color = if (isAvailableRemotely) MaterialTheme.colorScheme.onSurfaceVariant
+                                        else MaterialTheme.colorScheme.onSurface
+                                    )
+                                },
+                                onClick = {
+                                    finished(Create, fullTileFileName, rasterTile, null)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        )
+
+    }
+
+    if (mapTypeKey == MaptypeKey.Mvt.ordinal) {
+        val mvtTile = latLng?.let { pointToTile(it.longitude, it.latitude, 9.0) }
+        val mvtname = mvtTile?.let { "mvt_${it.x}_${it.y}_${it.z}${Const.MBTILES_EXT}" }
+        val driveUrl = driveMvtMap[mvtname?.replace(Const.MBTILES_EXT, "")]
+        Timber.i("MapManagementMenu $mvtname")
+        DropdownMenu(
+            expanded = true,
+            onDismissRequest = { finished(Nothing, null, null, null) }
+        ) {
+            cloudMvtMap[mvtname]?.let {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(
+                                R.string.download_mvt,
+                                mvtname?.replace(Const.MBTILES_EXT, "") ?: ""
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    onClick = { finished(Download, mvtname, mvtTile, it) }
+                )
+            }
+
+            HorizontalDivider()
+
+            if (driveUrl != null) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(
+                                R.string.import_mvt_,
+                                mvtname?.replace(Const.MBTILES_EXT, "") ?: ""
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    onClick = {
+                        if (latLng != null) {
+                            finished(Import, mvtname, mvtTile, null)
+                        } else {
+                            finished(Import, null, null, null)
+                        }
+                    }
+                )
+            } else {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.bbbike_create),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    onClick = { finished(Create, mvtname, mvtTile, null) }
+                )
+            }
         }
     }
 }

@@ -51,7 +51,7 @@ fun LayersControlMenu(
 
     val preferences = PreferenceManager.getDefaultSharedPreferences(context)
 
-    val prefMapType = getPrefRasterMapType(context)
+    val prefRasterMapType = getPrefRasterMapType(context)
     DropdownMenu(
         expanded = true,
         onDismissRequest = { finished(LayersControlAction.Nothing) }
@@ -72,7 +72,7 @@ fun LayersControlMenu(
                 onClick = {},
             )
         DropdownMenuItem(
-            text = { Text(text = "${context.getString(R.string.raster_maps_grid_)} (${prefMapType})", color = Black) },
+            text = { Text(text = "${context.getString(R.string.raster_maps_grid_)} (${prefRasterMapType})", color = Black) },
             leadingIcon = { Icon(Icons.Outlined.GridView, null) },
             trailingIcon = {
                 Switch(

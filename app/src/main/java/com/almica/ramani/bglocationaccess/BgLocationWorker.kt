@@ -80,7 +80,7 @@ class BgLocationWorker(context: Context, param: WorkerParameters) :
                     longitude = it.longitude,
                     altitude = if (it.altitude > 0) it.altitude + altitudeCorrection
                     else it.altitude,
-                    speed = it.speed * 3.6f,
+                    speed = it.speed * Const.MS_TO_KMH,
                     bearing = it.bearing,
                     hasBearing = it.hasBearing(),
                     time = it.time,

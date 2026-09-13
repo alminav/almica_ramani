@@ -160,8 +160,9 @@ fun MainScaffoldContent(
     //Timber.i("styleUrlMaptypeRaster: ${styleUrlMaptypeRaster.value}")
     val styleBuilderMaptypeRaster = remember(styleUrlMaptypeRaster.value) { Style.Builder().fromUri(styleUrlMaptypeRaster.value) }
     val mapView = rememberMapViewWithLifecycle()
-
+    var map by remember { mutableStateOf<MapLibreMap?>(null) }
     /**
+     * style change on the fly
      * 12sep2026 try: make style change effective without app restart
      * does not work
      */
@@ -169,13 +170,15 @@ fun MainScaffoldContent(
         Timber.i("uiState.mvtPath: ${uiState.mvtPath}")
         if (localStyleUri != null || uiState.prefMaptypeKey == MaptypeKey.Raster.ordinal) {
             Timber.i("experimental: Setting renderingRefreshMode to CONTINUOUS due to style/type change")
+            // nothing is working:
+//            map?.setStyle(localStyleUri) {
+//                Timber.i("setStyle() done")
+//            }
 //            mapView.renderingRefreshMode = MapRenderer.RenderingRefreshMode.CONTINUOUS
 //            mapView.invalidate()
 //            mapView.requestLayout()
         }
     }
-    
-    var map by remember { mutableStateOf<MapLibreMap?>(null) }
     
     var mapPositionLatitude by remember { mutableDoubleStateOf(0.0) }
     var mapPositionLongitude by remember { mutableDoubleStateOf(0.0) }

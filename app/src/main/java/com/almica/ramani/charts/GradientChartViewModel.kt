@@ -2,6 +2,7 @@ package com.almica.ramani.charts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.almica.ramani.Const
 import com.almica.ramani.GpsViewModel
 import com.almica.ramani.LatLngH
 import com.almica.ramani.googlemaps.MapUtils
@@ -140,7 +141,7 @@ class GradientChartViewModel : ViewModel() {
             }
             launch {
                 GpsViewModel.speed.collectLatest { speed ->
-                    _uiState.update { it.copy(locationSpeed = speed * 3.6f) }
+                    _uiState.update { it.copy(locationSpeed = speed * Const.MS_TO_KMH) }
                     updateDataPoint()
                 }
             }

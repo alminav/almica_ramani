@@ -11,12 +11,14 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.UUID
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 private const val logtag = "PoiRepository"
 class PoiRepository private constructor(
     poiDatabase: PoiDatabase,
-    private val executor: ExecutorService
+    executor: ExecutorService
 ) {
+    private val executor = Executors.newSingleThreadExecutor()
     // Database related fields/methods:
     val poiDao = poiDatabase.poiDao()
 

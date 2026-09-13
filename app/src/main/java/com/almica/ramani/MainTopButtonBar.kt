@@ -101,7 +101,7 @@ fun MainTopButtonBarContent(
             GpsValue.Elevation -> altitude.format(0) to "m"
             GpsValue.Velocity, GpsValue.Speedometer -> {
                 if (stepCountInUse) stepCounter.toString() to ""
-                else (3.6f * speed).format(0) to "KmH"
+                else (Const.MS_TO_KMH * speed).format(0) to "KmH"
             }
         }
     }

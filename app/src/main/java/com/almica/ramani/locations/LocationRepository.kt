@@ -12,13 +12,15 @@ import com.almica.room.data.location.LocationEntity
 import timber.log.Timber
 import java.util.UUID
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 private const val logtag = "LocationRepository"
 class LocationRepository private constructor(
     private val locationDatabase: LocationDatabase,
     //private val locationManager: BackgroundLocationManager,
-    private val executor: ExecutorService
+    executor: ExecutorService
 ) {
+    private val executor = Executors.newSingleThreadExecutor()
     //val myLog = MyLog(true)
     // Database related fields/methods:
     val locationDao = locationDatabase.locationDao()

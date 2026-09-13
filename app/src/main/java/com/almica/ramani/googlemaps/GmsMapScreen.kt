@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.preference.PreferenceManager
+import com.almica.ramani.Const
 import com.almica.ramani.LatLngH
 import com.almica.ramani.R
 import com.almica.ramani.charts.theme.White
@@ -268,7 +269,7 @@ fun GmsMapScreenContent(
 
                     val textDist = dist.formatDistM(true)
                     Timber.i( "circleNumber $circleNumber")
-                    val avgSpeed = if (deltaTime.toDouble() > 0) (3.6 * dist / deltaTime.toDouble()) else 0.0
+                    val avgSpeed = if (deltaTime.toDouble() > 0) (Const.MS_TO_KMH * 1000.0 * dist / deltaTime.toDouble()) else 0.0
                     val circleInfo = CircleInfo(
                         textDist, latLng,
                         Date(deltaTime).simpleStringTime(),
