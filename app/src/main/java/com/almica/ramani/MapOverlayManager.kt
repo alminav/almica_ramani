@@ -1344,11 +1344,7 @@ fun MapManagementMenu(
                     Text(text = stringResource(R.string.uc_close))
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { finished(Nothing, null, null, null) }) {
-                    Text(text = stringResource(android.R.string.ok))
-                }
-            },
+            confirmButton = {},
             title = {
                 Column {
                     rasterTile?.let {
@@ -1462,7 +1458,7 @@ fun MapManagementMenu(
                                             driveRasterMap.containsKey(fullTileFileName)
                                     Text(
                                         text = stringResource(R.string.create_, baseTileName),
-                                        color = if (isAvailableRemotely) MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (isAvailableRemotely) MaterialTheme.colorScheme.outline
                                         else MaterialTheme.colorScheme.onSurface
                                     )
                                 },

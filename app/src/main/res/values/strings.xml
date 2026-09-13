@@ -245,6 +245,8 @@
     <string name="maplibre_offline_manager">MapLibre Offline Manager</string>
     <string name="preferences">Preferences</string>
     <string name="download_">Download %1$s</string>
+    <string name="import_">Import %1$s</string>
+    <string name="create_">Create %1$s</string>
     <string name="stop_">Stop</string>
     <string name="tilemaker">Tile Maker for raster maps</string>
     <string name="mvtmaker">Mvt Maker with Bbbike</string>
@@ -291,7 +293,7 @@
     <string name="bbbike_mvt09">Launch Mvt bbbike 09</string>
     <string name="bbbike_pmtiles11">Launch PmTiles bbbike 11</string>
     <string name="bbbike_pmtiles10">Launch PmTiles bbbike 10</string>
-    <string name="treat_mvt">Manage Mvt Map</string>
+    <string name="manage_map">Manage Map</string>
     <string name="remove_single_geojson12">Remove single Geojson Map 12</string>
     <string name="remove_single_geojson13">Remove single Geojson Map 13</string>
 
@@ -579,8 +581,8 @@
     </string-array>
     <string name="map_available">Map Available</string>
     <string name="switch_to_map_">Switch to map %1$s?</string>
-    <string name="download_starting">download starting</string>
-    <string name="download_success">download success %1$s</string>
-    <string name="processing_failed">processing failed</string>
-    <string name="download_failed">download failed</string>
+    <string name="download_starting">Download started …</string>
+    <string name="download_success">Download success %1$s</string>
+    <string name="processing_failed">Processing failed</string>
+    <string name="download_failed">Download failed</string>
 </resources>
