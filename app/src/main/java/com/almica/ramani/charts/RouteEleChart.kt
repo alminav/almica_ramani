@@ -210,7 +210,7 @@ fun RouteEleChart(
                         axisStart = columnWidth)
                 },
                 onDraw = { scrollOffset, xZoom ->
-                    Timber.i("scrollOffset: $scrollOffset")
+                    //Timber.i("scrollOffset: $scrollOffset")
                     linePlotData.lines.forEach { line ->
                         val yBottom = size.height - rowHeight
                         val yOffset = ((yBottom - paddingTop.toPx()) / maxElementInYAxis)

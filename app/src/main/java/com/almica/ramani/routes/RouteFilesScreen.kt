@@ -148,6 +148,7 @@ import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.utils.GeoJsonUtils.Companion.pointToTile
 import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
 import com.almica.ramani.utils.getCenter
+import kotlin.math.abs
 
 enum class RouteEntityItemAction{
     Select,
@@ -591,13 +592,27 @@ fun RouteFilesScreen(
                             val lllh = if (route.name.endsWith(Const.JPG_EXT)) {
                                 Helpers.getCoordinatesFromExif(routeFile)
                             } else Helpers.getLllhFromFile(routeFile)
-                            val hgtFile = uiState.srtmFile
+
+                            val hgtFolder = File(context.filesDir, Const.HGT_FOLDER_NAME)
+                            val hgtFile = if (lllh.isNullOrEmpty().not()) {
+                                val first = lllh[0]
+                                val latPrefix = if (first.latitude >= 0) "N" else "S"
+                                val lonPrefix = if (first.longitude >= 0) "E" else "W"
+                                val lat = abs(first.latitude.toInt()).toString().padStart(2, '0')
+                                val lon = abs(first.longitude.toInt()).toString().padStart(3, '0')
+                                val fileName = "$latPrefix$lat$lonPrefix$lon.hgt"
+                                File(hgtFolder, fileName)
+                            } else uiState.srtmFile
+
                             if (hgtFile != null && hgtFile.exists()) {
                                 scope.launch {
                                     viewModel.setIsLoading(true)
                                     val hgtReader = HgtReader(context, hgtFile)
                                     val refreshedLllh = withContext(Dispatchers.IO) {
-                                        hgtReader.refreshRouteElevationFromSrtm(lllh).lllh
+                                        val hgtReaderResult = hgtReader.refreshRouteElevationFromSrtm(lllh)
+                                        Timber.i("hgtReaderResult missingHgtFiles: ${hgtReaderResult.missingHgtFiles}")
+                                        Timber.i("hgtReaderResult usedHgtFiles: ${hgtReaderResult.usedHgtFiles}")
+                                        hgtReaderResult.lllh
                                     }
                                     val path = routeFile.path.replace(Const.GPX_EXT, Const.KML_EXT).replace(Const.JPG_EXT, Const.KML_EXT)
                                     val result = withContext(Dispatchers.IO) {
