@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import com.google.gson.JsonElement
@@ -15,17 +17,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.absoluteValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.almica.ramani.compass.CompassViewModel
 import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.pois.PoiEntity
+import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.isNotNull
 import com.almica.ramani.utils.offsetYByPercent
 import com.almica.ramani.utils.format
 import com.almica.ramani_lib.CameraPosition
 import com.almica.ramani_lib.Circle
 import com.almica.ramani_lib.LocationRequestProperties
+import com.almica.ramani_lib.rememberMapViewWithLifecycle
 import com.almica.ramani_lib.LocationStyling
 import com.almica.ramani_lib.MapLibre
 import com.almica.ramani_lib.Margins
@@ -221,5 +227,58 @@ fun MainMapView(
                 onMapReady(maplibreMap)
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MainMapViewPreview() {
+    val context = LocalContext.current
+    val poiEntities = listOf(
+        PoiEntity("Sample Point", 52.0, 10.0, 100.0, "city"),
+        PoiEntity("Another Point", 52.01, 10.01, 150.0, "summit")
+    )
+    val uiState = MainUiState(
+        poiEntities = poiEntities,
+        stopPosition = LatLng(52.0, 10.0)
+    )
+    val cameraPosition = remember { mutableStateOf(CameraPosition(target = LatLng(52.0, 10.0), zoom = 13.0)) }
+    val userLocation = remember { mutableStateOf(Location(null)) }
+    val cameraMode = remember { mutableIntStateOf(0) }
+    val renderMode = remember { mutableIntStateOf(0) }
+    val mapView = rememberMapViewWithLifecycle()
+    val styleBuilder = Style.Builder().fromUri("https://demotiles.maplibre.org/style.json")
+
+    RamaniTheme {
+        MainMapView(
+            uiState = uiState,
+            map = null,
+            onMapChange = {},
+            mapView = mapView,
+            cameraPosition = cameraPosition,
+            userLocation = userLocation,
+            cameraMode = cameraMode,
+            renderMode = renderMode,
+            localStyleBuilder = null,
+            styleBuilderMaptypeRaster = styleBuilder,
+            imageList = null,
+            locationProperties = LocationRequestProperties(),
+            locationCircles = emptyList(),
+            poiEntities = uiState.poiEntities,
+            poiCategoryMap = emptyMap(),
+            onMapClick = {},
+            onMapLongClick = {},
+            onStyleLoaded = {},
+            onMapMove = { _, _ -> },
+            onMapReady = {},
+            onStopClick = {},
+            onStopDragFinished = {},
+            onMarkerClick = { _, _, _ -> },
+            onMarkerLongClick = {},
+            onPoiClick = {},
+            onLogCountChange = {},
+            onHighlightRoutePoint = {},
+            context = context
+        )
     }
 }

@@ -2,6 +2,7 @@ package com.almica.ramani.utils
 
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.preference.PreferenceManager
 import com.almica.ramani.Const
@@ -9,43 +10,16 @@ import com.almica.ramani.R
 import com.google.android.gms.maps.model.LatLng
 import com.graphhopper.GraphHopper
 import com.graphhopper.util.PointList
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
+import java.io.FileOutputStream
+import java.util.zip.ZipInputStream
+
 private const val logtag = "GhHelper"
 class GhHelper {
     companion object {
-/*
-        fun setSrtmValuesInGhResponse(
-            context: Context?,
-            pointList: PointList,
-            tileName: String
-        ): PointList? {
-            if (context != null) {
-                val demFolder =
-                    File(context.filesDir, Const.HGT_FOLDER_NAME)
-                Log.i(this::class.java.simpleName, "demFolder: " + demFolder.path + " " + tileName)
-                val hgtFile = File(demFolder, tileName + Const.HGT_EXT)
-                if (hgtFile.exists()) {
-                    val pointList3d = PointList(pointList.size(), true)
-                    val hgtReader = HgtReader(hgtFile)
-                    for (i in 0 until pointList.size()) {
-                        val latLng = LatLng(pointList.getLat(i), pointList.getLon(i))
-                        val newAlti = hgtReader.getElevationFromHgt(latLng)
-                        if (newAlti != HgtReader.NO_ELEVATION) pointList3d.add(
-                            latLng.latitude,
-                            latLng.longitude,
-                            newAlti
-                        )
-                        else pointList3d.add(latLng.latitude, latLng.longitude, 0.0)
-                    }
-                    return pointList3d
-                }
-
-                return null
-            }
-            return null
-        }
-*/
         private fun getGhFolder(context: Context): String? {
             //val ghFolder = File(context.filesDir, Const.GH_TAG)
             //val ghDefaultFile = File(ghFolder, "n52e0103d")
@@ -133,6 +107,7 @@ class GhHelper {
             }
             return -1
         }
+
         fun getVehicleDescriptionFromPref(context: Context): String? {
             var sResult: String? = null
             val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -227,6 +202,57 @@ class GhHelper {
                 )
             }
         }
+
+        suspend fun unzipFile(
+            context: Context,
+            zipUri: Uri,
+            targetFolder: File,
+            createSubfolder: Boolean = false,
+            extensionFilter: String? = null,
+            flatten: Boolean = false
+        ) = withContext(Dispatchers.IO) {
+            try {
+                val inputStream =
+                    context.contentResolver.openInputStream(zipUri) ?: return@withContext
+                ZipInputStream(inputStream).use { zipInput ->
+                    val baseDir = if (createSubfolder) {
+                        val zipFileName = zipUri.lastPathSegment ?: "extracted"
+                        val folderName = if (zipFileName.contains(".")) {
+                            zipFileName.substringBeforeLast(".")
+                        } else {
+                            zipFileName
+                        }
+                        File(targetFolder, folderName).also { it.mkdirs() }
+                    } else {
+                        targetFolder.also { it.mkdirs() }
+                    }
+
+                    var entry = zipInput.nextEntry
+                    while (entry != null) {
+                        if (!entry.isDirectory && (extensionFilter == null || entry.name.lowercase()
+                                .endsWith(extensionFilter))
+                        ) {
+                            val entryName = if (flatten) File(entry.name).name else entry.name
+                            val targetFile = File(baseDir, entryName)
+                            targetFile.parentFile?.mkdirs()
+                            FileOutputStream(targetFile).use { output ->
+                                zipInput.copyTo(output)
+                            }
+                        } else if (entry.isDirectory && !flatten) {
+                            File(baseDir, entry.name).mkdirs()
+                        }
+                        zipInput.closeEntry()
+                        entry = zipInput.nextEntry
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error unzipping file $zipUri")
+                throw e
+            }
+        }
+
+        suspend fun unzipGhFile(context: Context, zipUri: Uri, targetFolder: File) =
+            unzipFile(context, zipUri, targetFolder, createSubfolder = true, flatten = false)
 
     }
 }

@@ -151,6 +151,7 @@ class Const {
         const val MBTILES_FOLDER: String = "mbtiles"
         const val CYCLEWAY_FOLDER: String = "cycleways"
         const val MVT_FOLDER: String = "mvt"
+        const val GH_ROOT_FOLDER = "gh"
         const val GEOJSON_QGIS_STYLE_FILENAME = "geojson_local_file_qgis.json"
         //const val CYCLE_LAYER_PREFIX: String = "cycle."
         const val DB_JOURNAL_SUFFIX: String = "-journal"

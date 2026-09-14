@@ -469,8 +469,10 @@ fun MainScaffoldContent(
                         reComposition(false, uiState.mvtPath, cameraPosition.value.target)
                     }
                 )
+
                 HairCrossOverlay(
-                    visible = renderModeMap == Const.RENDER_MODE_FREE && cameraMode.intValue == CameraMode.NONE,
+                    visible = uiState.activeOverlay != OverlayType.GH_FOLDERS &&
+                        renderModeMap == Const.RENDER_MODE_FREE && cameraMode.intValue == CameraMode.NONE,
                     hairCrossOffsetFraction = uiState.hairCrossOffsetFraction,
                     onClick = {
                         Timber.i("HairCrossOverlay onClick()")

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
 import android.location.Location
+import android.net.Uri
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -149,7 +150,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
-import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.MapManagementAction.*
 import com.almica.ramani.filepicker.FileImportActivity
@@ -1148,7 +1148,14 @@ fun BoxScope.MapOverlayManagerContent(
         }
     }
 
-    if (showGhFolders) { ListGhScreen { closeOverlay() } }
+    if (showGhFolders) {
+        Box(
+            modifier = Modifier.fillMaxSize().padding(top = 160.dp, bottom = 80.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            ListGhScreen(latlng = cameraPosition.value.target, selectGhFolder = { _ -> closeOverlay() })
+        }
+    }
 
     if (showPoiDatabase) {
         PoiDatabaseScreen(0f, cameraPosition.value.target?.let { GmsLatLng(it.latitude, it.longitude) }) { poiEntity, action ->

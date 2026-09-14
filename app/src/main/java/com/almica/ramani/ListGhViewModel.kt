@@ -45,6 +45,16 @@ class ListGhViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun deleteFolder(path: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ghFolder = File(path)
+            if (ghFolder.exists()) {
+                Timber.i("Deleting folder: $path")
+                ghFolder.deleteRecursively()
+                refreshFolders()
+            }
+        }
+    }
     fun deleteSelectedFolder() {
         val path = _uiState.value.prefGhFolderPath
         if (path.isNullOrEmpty()) return

@@ -15,7 +15,7 @@ class ListGhActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             RamaniTheme {
-                ListGhScreen { resultPair ->
+                ListGhScreen(latlng = null) { resultPair ->
                     Timber.i("resultPair: ${resultPair.first} ${resultPair.second}")
                     if (resultPair.first.isNotEmpty() && resultPair.second.isNotEmpty()) {
                         val resultIntent = Intent().apply {

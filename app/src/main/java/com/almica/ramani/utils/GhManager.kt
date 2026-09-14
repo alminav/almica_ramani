@@ -90,7 +90,7 @@ class GhManager internal constructor(context: Context, private var mInitListener
         val ghLocationIndex = mGh.locationIndex
         val queryResult = ghLocationIndex.findClosest(lat, lon, EdgeFilter.ALL_EDGES)
         //Log.i(logtag, "${Thread.currentThread().getStackTrace()[2].lineNumber}: ${queryResult.closestEdge.name}")
-        var closestEdge = queryResult.closestEdge
+        val closestEdge = queryResult.closestEdge
         return if (closestEdge != null) queryResult.closestEdge.name else ""
     }
 

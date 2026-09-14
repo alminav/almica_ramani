@@ -731,7 +731,8 @@ private fun MapDialogs(
         }
     }
 
-    if (uiState.showGhFolders) ListGhScreen { viewModel.updateState { state -> state.copy(showGhFolders = false) } }
+    if (uiState.showGhFolders) ListGhScreen(latlng = uiState.userLocation?.let { org.maplibre.android.geometry.LatLng(it.latitude, it.longitude) })
+        { viewModel.updateState { state -> state.copy(showGhFolders = false) } }
     if (uiState.showVehicleMenu) VehicleMenu(context) { viewModel.updateState { state -> state.copy(showVehicleMenu = false) } }
     if (uiState.showDropDownRasterMaptype) MaptypeMenu(context) { maptype ->
         viewModel.updateState { state -> state.copy(showDropDownRasterMaptype = false) }
