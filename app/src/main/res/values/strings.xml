@@ -582,7 +582,9 @@
     <string name="map_available">Map Available</string>
     <string name="switch_to_map_">Switch to map %1$s?</string>
     <string name="download_starting">Download started …</string>
+    <string name="download_running_">Downloading %1$s</string>
     <string name="download_success">Download success %1$s</string>
     <string name="processing_failed">Processing failed</string>
     <string name="download_failed">Download failed</string>
+    <string name="srtm_downloads">Srtm files downloaded: %1$d</string>
 </resources>

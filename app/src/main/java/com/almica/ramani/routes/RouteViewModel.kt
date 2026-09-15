@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.almica.ramani.Const
 import com.almica.ramani.Helpers
 import com.almica.ramani.LatLngH
+import com.almica.ramani.R
 import com.almica.ramani.googlemaps.MapUtils
 import com.almica.ramani.utils.HgtReader
 import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
@@ -30,6 +31,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 import java.util.ArrayList
+import kotlin.math.abs
 
 const val ROUTE_MAX_ELEVATION_POINTS = 512
 
@@ -242,7 +244,18 @@ class RouteViewModel(
     }
 
     fun refreshElevationFromSrtm(context: Context, route: RouteEntity) {
-        val srtmFile = uiState.value.srtmFile
+        val hgtFolder = File(context.filesDir, Const.HGT_FOLDER_NAME)
+        val lllh = route.kmlString.kmlString2Lllh()
+        val srtmFile = if (lllh.isEmpty().not()) {
+            val first = lllh[0]
+            val latPrefix = if (first.latitude >= 0) "N" else "S"
+            val lonPrefix = if (first.longitude >= 0) "E" else "W"
+            val lat = abs(first.latitude.toInt()).toString().padStart(2, '0')
+            val lon = abs(first.longitude.toInt()).toString().padStart(3, '0')
+            val fileName = "$latPrefix$lat$lonPrefix$lon.hgt"
+            File(hgtFolder, fileName)
+        } else
+            uiState.value.srtmFile
         if (srtmFile == null) {
             _uiState.update {
                 it.copy(
@@ -259,38 +272,45 @@ class RouteViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val lllh = route.kmlString.kmlString2Lllh()
-            if (srtmFile.exists()) {
-                val hgtReader = HgtReader(context, srtmFile)
-                val refreshedLllh = withContext(Dispatchers.IO) {
-                    hgtReader.refreshRouteElevationFromSrtm(lllh).lllh
-                } as ArrayList<LatLngH>
+            val hgtReader = HgtReader(context, srtmFile)
+            val hgtResult = withContext(Dispatchers.IO) {
+                hgtReader.refreshRouteElevationFromSrtm(lllh, withDownload = true)
+            }
 
-                val kmlStringUpdated = refreshedLllh.lllhToKmlString(route.name)
+            if (!hgtResult.lllh.isNullOrEmpty()) {
+                Timber.i("SRTM Refresh usedHgtFiles: ${hgtResult.usedHgtFiles}")
+                val kmlStringUpdated = hgtResult.lllh.lllhToKmlString(route.name)
                 withContext(Dispatchers.IO) {
                     repository.updateRoute(kmlStringUpdated, route.id)
                 }
 
                 _uiState.update {
                     it.copy(
-                        snackData = SnackDbRoutesData(
-                            "Route Database Update: ${route.name.removeSuffix(".gpx").removeSuffix(".jpg").removeSuffix(".kml")}",
-                            SnackDbRoutesAction.Nothing
-                        ),
+                        snackData = if (hgtResult.hasDownloaded > 0)
+                            SnackDbRoutesData(title = context.getString(R.string.srtm_downloads, hgtResult.hasDownloaded),
+                                action = SnackDbRoutesAction.Nothing)
+                        else
+                            SnackDbRoutesData(
+                            "Route Database Update: ${
+                                route.name.removeSuffix(".gpx").removeSuffix(".jpg")
+                                    .removeSuffix(".kml")
+                            }",
+                            SnackDbRoutesAction.Nothing),
                         showRouteMoBo = null
                     )
                 }
             } else {
-                 _uiState.update {
+                _uiState.update {
                     it.copy(
                         snackData = SnackDbRoutesData(
-                            "File not found: ${srtmFile.path}",
+                            "SRTM Elevation Service FAILED",
                             SnackDbRoutesAction.Nothing
                         ),
                         showRouteMoBo = null
                     )
                 }
             }
+
             _uiState.update { it.copy(isLoading = false) }
         }
     }

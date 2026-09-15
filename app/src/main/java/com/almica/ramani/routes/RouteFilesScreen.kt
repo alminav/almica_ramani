@@ -140,7 +140,6 @@ import java.io.File
 import java.io.FileFilter
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
-import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.Executors
 import androidx.core.graphics.createBitmap
@@ -608,17 +607,27 @@ fun RouteFilesScreen(
                                 scope.launch {
                                     viewModel.setIsLoading(true)
                                     val hgtReader = HgtReader(context, hgtFile)
-                                    val refreshedLllh = withContext(Dispatchers.IO) {
-                                        val hgtReaderResult = hgtReader.refreshRouteElevationFromSrtm(lllh)
-                                        Timber.i("hgtReaderResult missingHgtFiles: ${hgtReaderResult.missingHgtFiles}")
-                                        Timber.i("hgtReaderResult usedHgtFiles: ${hgtReaderResult.usedHgtFiles}")
-                                        hgtReaderResult.lllh
+                                    val hgtReaderResult = withContext(Dispatchers.IO) {
+                                        val result = hgtReader.refreshRouteElevationFromSrtm(lllh, withDownload = true)
+                                        Timber.i("hgtReaderResult missingHgtFiles: ${result.missingHgtFiles}")
+                                        Timber.i("hgtReaderResult usedHgtFiles: ${result.usedHgtFiles}")
+                                        if (result.hasDownloaded > 0) {
+                                            viewModel.setSnackRoutesData(
+                                                SnackRoutesData(
+                                                    RouteMenu.Placeholder,
+                                                    context.getString(R.string.srtm_downloads, result.hasDownloaded),
+                                                    action = SnackRoutesAction.Nothing, actionText = null, null
+                                                )
+                                            )
+                                        }
+                                        result
                                     }
+                                    val refreshedLllh = hgtReaderResult.lllh
                                     val path = routeFile.path.replace(Const.GPX_EXT, Const.KML_EXT).replace(Const.JPG_EXT, Const.KML_EXT)
                                     val result = withContext(Dispatchers.IO) {
                                         Helpers.writeLllh2KmlFile(refreshedLllh, path)
                                     }
-                                    if (result) {
+                                    if (result && hgtReaderResult.hasDownloaded == 0) {
                                         viewModel.setSnackRoutesData(
                                             SnackRoutesData(action, context.getString(R.string.saved_to_, path), action = SnackRoutesAction.Nothing, actionText = null, null)
                                         )

@@ -87,7 +87,7 @@ fun ListGhScreen(
         scope.launch {
             try {
                 isDownloading = true
-                downloadMessage = resources.getString(R.string.download_starting)
+                downloadMessage = resources.getString(R.string.download_running_, fileName)
                 val cacheFile = File(context.cacheDir, fileName)
                 val downloadedFile = downloader.downloadFile(link, cacheFile)
 
@@ -135,7 +135,7 @@ fun ListGhScreen(
                     if (isDownloading) {
                         CircularProgressIndicator(modifier = Modifier.padding(16.dp))
                     }
-                    downloadMessage?.let { Text(it) }
+                    downloadMessage?.let { Text(it) }?: Text("Bitte warten ...")
                 }
             },
             confirmButton = {

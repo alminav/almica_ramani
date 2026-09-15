@@ -175,19 +175,19 @@ fun refreshRouteElevation(
 
     if (hgtFile.exists()) {
         val hgtReader = HgtReader(context, hgtFile)
-        val lllhRefreshed = hgtReader.refreshRouteElevationFromSrtm(currentState.lllh).lllh
+        val hgtResult = hgtReader.refreshRouteElevationFromSrtm(currentState.lllh, withDownload = true)
 
-        if (lllhRefreshed != null) {
+        if (hgtResult.lllh != null) {
             val routeName = currentState.name
             val routeDist = currentState.distance
-            val startLat = lllhRefreshed[0].latitude
-            val startLon = lllhRefreshed[0].longitude
+            val startLat = hgtResult.lllh[0].latitude
+            val startLon = hgtResult.lllh[0].longitude
             val tag = currentEntity?.region ?: Const.GH_TAG
             val id = currentEntity?.id ?: UUID.randomUUID()
-            val center = lllhRefreshed.getCenter()
+            val center = hgtResult.lllh.getCenter()
 
-            val newState = PolygonState(lllhRefreshed, routeName, routeDist).apply {
-                polygonData = PolygonData(lllhRefreshed, routeName, routeDist, false, null)
+            val newState = PolygonState(hgtResult.lllh, routeName, routeDist).apply {
+                polygonData = PolygonData(hgtResult.lllh, routeName, routeDist, false, null)
                 polygonData?.createPolygonMarkers(context, 0.0)
             }
 
@@ -195,20 +195,24 @@ fun refreshRouteElevation(
                 id, routeName, tag, startLat, startLon,
                 latitudeCenter = center.latitude,
                 longitudeCenter = center.longitude,
-                latitudeStop = lllhRefreshed[lllhRefreshed.lastIndex].latitude,
-                longitudeStop = lllhRefreshed[lllhRefreshed.lastIndex].longitude,
-                kmlString = lllhRefreshed.lllhToKmlString(routeName)
+                latitudeStop = hgtResult.lllh[hgtResult.lllh.lastIndex].latitude,
+                longitudeStop = hgtResult.lllh[hgtResult.lllh.lastIndex].longitude,
+                kmlString = hgtResult.lllh.lllhToKmlString(routeName)
             )
 
             onSuccess(
                 newState,
                 newEntity,
-                MainSnackbarData(
-                    context.getString(R.string.srtm_refresh_done),
-                    null,
-                    null,
-                    null
-                )
+                if (hgtResult.hasDownloaded > 0) {
+                    MainSnackbarData(context.getString(R.string.srtm_downloads, hgtResult.hasDownloaded),
+                        null, null, null)
+                } else
+                    MainSnackbarData(
+                        context.getString(R.string.srtm_refresh_done),
+                        null,
+                        null,
+                        null
+                    )
             )
         } else {
             onFailure(

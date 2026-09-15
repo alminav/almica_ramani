@@ -97,6 +97,7 @@ class Const {
         const val GMS_TAG: String = "gms"
         const val HGT_FOLDER_NAME = "hgt"
         const val HGT_EXT = ".hgt"
+        const val HGT_TAG = "hgt"
         const val ZIP_EXT: String = ".zip"
         const val UNKNOWN = "unknown"
         const val PREF_MBTILES_FILEPATH_SET: String = "pref.mbtiles.filepath.set"

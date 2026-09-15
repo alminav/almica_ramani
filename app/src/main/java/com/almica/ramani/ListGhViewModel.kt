@@ -19,7 +19,7 @@ import java.io.FileFilter
 data class ListGhUiState(
     val ghFolders: List<File> = emptyList(),
     val prefGhFolderName: String? = null,
-    val prefGhFolderPath: String? = null,
+    val prefGhFolderPath: String? = null
 )
 
 class ListGhViewModel(application: Application) : AndroidViewModel(application) {

@@ -3,8 +3,12 @@ package com.almica.ramani.utils
 import android.content.Context
 import com.almica.ramani.Const
 import com.almica.ramani.LatLngH
+import com.almica.ramani.filepicker.UnzipUtils
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.File
 import java.io.FileInputStream
@@ -13,6 +17,7 @@ import java.nio.ByteOrder
 import java.nio.ShortBuffer
 import java.nio.channels.FileChannel
 import java.util.Locale
+import java.util.zip.ZipInputStream
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -139,10 +144,11 @@ class HgtReader(private val context: Context, private var hgtFile: File?) {
         val hMax: Double,
         val lllh: List<LatLngH>?,
         val usedHgtFiles: Set<String> = emptySet(),
-        val missingHgtFiles: Set<String> = emptySet()
+        val missingHgtFiles: Set<String> = emptySet(),
+        val hasDownloaded: Int = 0
     )
     
-    fun refreshRouteElevationFromSrtm(lllh: List<LatLngH>?): SrtmRefresh {
+    fun refreshRouteElevationFromSrtm(lllh: List<LatLngH>?, withDownload: Boolean = false): SrtmRefresh {
         var hMax = 0.0
         val usedFiles = mutableSetOf<String>()
         val missingFiles = mutableSetOf<String>()
@@ -161,7 +167,41 @@ class HgtReader(private val context: Context, private var hgtFile: File?) {
                 LatLngH(point.latitude, point.longitude, maxOf(0.0, point.altitude))
             }
         }
-        return SrtmRefresh(hMax, resultLllh, usedFiles, missingFiles)
+        val remoteHgtFiles = mutableSetOf<String>()
+        missingFiles.forEach { tileName ->
+            val fileName = tileName.lowercase() + Const.HGT_TAG + Const.ZIP_EXT
+            if (MagentaCloud.hgt[fileName] != null) {
+                remoteHgtFiles.add(fileName)
+            }
+        }
+
+        if (withDownload && remoteHgtFiles.isNotEmpty()) {
+            Timber.i("Downloading missing files: $remoteHgtFiles")
+            val downloader = MagentaCloudDownloader(context)
+            CoroutineScope(Dispatchers.IO).launch {
+                remoteHgtFiles.forEach { fileName ->
+                    val remotePath = MagentaCloud.hgt[fileName]
+                    if (remotePath != null) {
+                        val destination = File(context.filesDir, Const.HGT_FOLDER_NAME)
+                        if (!destination.exists()) destination.mkdirs()
+                        val downloadedFile = downloader.downloadFile(remotePath, File(destination, fileName))
+                        if (downloadedFile != null && downloadedFile.exists()) {
+                            try {
+                                val zipInputStream = ZipInputStream(downloadedFile.inputStream())
+                                UnzipUtils.unzip(destination.absolutePath, zipInputStream) { _, _ -> }
+                                downloadedFile.delete()
+                                Timber.i("Successfully unzipped and deleted $fileName")
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error unzipping $fileName")
+                            }
+                        }
+                    }
+                }
+                downloader.close()
+            }
+        }
+        return SrtmRefresh(hMax, resultLllh, usedFiles, missingFiles,
+            hasDownloaded = if (withDownload) remoteHgtFiles.size else 0)
     }
 
     companion object {
