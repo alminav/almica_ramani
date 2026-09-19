@@ -1,6 +1,5 @@
-package com.almica.ramani.utils
+package com.almica.ramani.externalData
 
-import android.content.Context
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.prepareGet
@@ -14,7 +13,7 @@ import java.io.File
 /**
  * 28aug2026 direct download from magenta cloud
  */
-class MagentaCloudDownloader(private val context: Context) {
+class MagentaCloudDownloader {
 
     // Ktor Client initialisieren
     private val client = HttpClient(Android) {

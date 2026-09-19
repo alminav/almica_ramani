@@ -3,6 +3,8 @@ package com.almica.ramani.utils
 import android.content.Context
 import com.almica.ramani.Const
 import com.almica.ramani.LatLngH
+import com.almica.ramani.externalData.MagentaCloud
+import com.almica.ramani.externalData.MagentaCloudDownloader
 import com.almica.ramani.filepicker.UnzipUtils
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
@@ -177,7 +179,7 @@ class HgtReader(private val context: Context, private var hgtFile: File?) {
 
         if (withDownload && remoteHgtFiles.isNotEmpty()) {
             Timber.i("Downloading missing files: $remoteHgtFiles")
-            val downloader = MagentaCloudDownloader(context)
+            val downloader = MagentaCloudDownloader()
             CoroutineScope(Dispatchers.IO).launch {
                 remoteHgtFiles.forEach { fileName ->
                     val remotePath = MagentaCloud.hgt[fileName]

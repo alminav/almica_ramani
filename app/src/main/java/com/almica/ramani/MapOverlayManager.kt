@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
 import android.location.Location
-import android.net.Uri
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -152,6 +151,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.almica.ramani.MapManagementAction.*
+import com.almica.ramani.externalData.MagentaCloudDownloader
+import com.almica.ramani.externalData.MagentaCloudMbtiles
+import com.almica.ramani.externalData.MagentaCloudMvt
 import com.almica.ramani.filepicker.FileImportActivity
 import com.almica.ramani.filepicker.FileType
 import com.almica.ramani.googlemaps.MapUtils
@@ -159,9 +161,6 @@ import com.almica.ramani.pois.PoiEntity
 import com.almica.ramani.routes.MAX_ELEVATION_POINTS
 import com.almica.ramani.ui.theme.RamaniTheme
 import com.almica.ramani.utils.GeoJsonUtils
-import com.almica.ramani.utils.MagentaCloudDownloader
-import com.almica.ramani.utils.MagentaCloudMbtiles
-import com.almica.ramani.utils.MagentaCloudMvt
 import com.almica.ramani.utils.RouteSmoothingUtil.simplifyToTargetCount
 import com.almica.ramani.weather.WeatherScreen
 import com.google.maps.android.PolyUtil
@@ -321,7 +320,7 @@ fun BoxScope.MapOverlayManagerContent(
     val dimmerState = uiState.dimmerState
     val routesRegionFilter = uiState.routesRegionFilter
     val showRouteInfo = uiState.showRouteInfo
-    val downloader: MagentaCloudDownloader = remember { MagentaCloudDownloader(context) }
+    val downloader: MagentaCloudDownloader = remember { MagentaCloudDownloader() }
     var isDownloading by remember { mutableStateOf(false) }
     var downloadMessage by remember { mutableStateOf<String?>(null) }
 

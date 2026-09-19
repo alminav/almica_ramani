@@ -1,8 +1,7 @@
-package com.almica.ramani.utils
+package com.almica.ramani.externalData
 
 /**
- * 10sep2026
- * not needed in this app, but kept for ramani app
+ * 19sep2026
  */
 class MagentaCloudMvt {
     companion object {

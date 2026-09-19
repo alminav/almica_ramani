@@ -1,4 +1,4 @@
-package com.almica.ramani.utils
+package com.almica.ramani.externalData
 
 class MagentaCloud {
     companion object {

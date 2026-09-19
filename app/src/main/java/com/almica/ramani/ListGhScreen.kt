@@ -53,12 +53,12 @@ import com.almica.ramani.filepicker.FileType
 import com.almica.ramani.ui.theme.Margin
 import com.almica.ramani.utils.BackPressHandler
 import com.almica.ramani.utils.GhHelper
-import com.almica.ramani.utils.MagentaCloud
-import com.almica.ramani.utils.MagentaCloudDownloader
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.File
 import androidx.compose.ui.platform.LocalResources
+import com.almica.ramani.externalData.MagentaCloud
+import com.almica.ramani.externalData.MagentaCloudDownloader
 
 
 /**
@@ -75,7 +75,7 @@ fun ListGhScreen(
     val context = LocalContext.current
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
-    val downloader: MagentaCloudDownloader = remember { MagentaCloudDownloader(context) }
+    val downloader: MagentaCloudDownloader = remember { MagentaCloudDownloader() }
     var isDownloading by remember { mutableStateOf(false) }
     var downloadMessage by remember { mutableStateOf<String?>(null) }
     fun startDownloadArchive(

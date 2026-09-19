@@ -197,4 +197,5 @@ class MvtmakerViewModel(
             Timber.e(e, "$name doesn't fit the pattern mvt_x_y_z.mbtiles")
         }
     }
+
 }

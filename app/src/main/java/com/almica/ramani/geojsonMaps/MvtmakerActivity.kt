@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.visible
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
@@ -29,13 +32,14 @@ import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.ArrowDropUp
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,15 +54,18 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -93,7 +100,12 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import androidx.compose.ui.tooling.preview.Preview
+import com.almica.ramani.Helpers
+import com.almica.ramani.MaptypeKey
+import com.almica.ramani.externalData.MagentaCloudDownloader
+import com.almica.ramani.externalData.MagentaCloudMvt
 import com.almica.ramani.ui.theme.RamaniTheme
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.File
 
@@ -107,6 +119,71 @@ class MvtmakerActivity : ComponentActivity() {
         setContent {
             val viewModel: MvtmakerViewModel = viewModel()
             val uiState by viewModel.uiState.collectAsState()
+            val downloader: MagentaCloudDownloader = remember { MagentaCloudDownloader() }
+            var isDownloading by remember { mutableStateOf(false) }
+            var downloadMessage by remember { mutableStateOf<String?>(null) }
+            val scope = rememberCoroutineScope()
+            fun startDownload(
+                fileName: String,
+                link: String,
+                onProcess: suspend (File) -> Unit
+            ) {
+                Timber.i("Start download of $fileName from $link")
+                scope.launch {
+                    try {
+                        isDownloading = true
+                        downloadMessage = resources.getString(R.string.download_starting)
+                        val targetFile = File(fileName)
+                        val downloadedFile = downloader.downloadFile(link, targetFile)
+
+                        if (downloadedFile != null) {
+                            Timber.i("Download successful: ${downloadedFile.absolutePath}")
+                            downloadMessage = resources.getString(R.string.download_success, downloadedFile.name)
+
+                            try {
+                                onProcess(downloadedFile)
+                                //onGhFoldersRefresh()
+                            } catch (e: Exception) {
+                                Timber.e(e, "Processing failed for $fileName")
+                                downloadMessage = resources.getString(R.string.processing_failed)
+                            } finally {
+                                //val bCleanup = downloadedFile.delete()
+                                //Timber.i("Cleanup: $bCleanup ${downloadedFile.path}")
+                                Timber.i("successful download: ${downloadedFile.path}")
+                            }
+                        } else {
+                            Timber.e("Download failed.")
+                            downloadMessage = resources.getString(R.string.download_failed)
+                        }
+                    } finally {
+                        isDownloading = false
+                    }
+                }
+            }
+            if (isDownloading || downloadMessage != null) {
+                AlertDialog(
+                    onDismissRequest = { if (!isDownloading) downloadMessage = null },
+                    title = { Text(if (isDownloading) "Download läuft" else "Download Status") },
+                    text = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (isDownloading) {
+                                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                            }
+                            downloadMessage?.let { Text(it) }
+                        }
+                    },
+                    confirmButton = {
+                        if (!isDownloading) {
+                            TextButton(onClick = { downloadMessage = null }) {
+                                Text("OK")
+                            }
+                        }
+                    }
+                )
+            }
 
             val clipboardManager = LocalClipboard.current
             LaunchedEffect(uiState.clipText) {
@@ -180,8 +257,22 @@ class MvtmakerActivity : ComponentActivity() {
                 onShowListItems = { viewModel.setListItems(it) },
                 onDriveEntrySelected = { viewModel.handleDriveEntrySelection(it) },
                 onCoordinateChange = { x, y -> viewModel.updateCoordinates(x, y) },
-                onMapLoaded = { viewModel.setMapLoaded(true); Timber.i("onMapLoaded true") }
-            )
+                onDownloadMagenta = {mapName, link ->
+                    mapName?.let {
+                        Timber.i("Download $it")
+                        val mvtFolder = File(context.filesDir, Const.MVT_FOLDER)
+                        val targetFile = File(mvtFolder, mapName)
+                        startDownload(
+                            targetFile.path, link,
+                            onProcess = { file ->
+                                Timber.i("onProcess ${file.path}")
+                                viewModel.refreshFileData()
+                            }
+                        )
+                    }
+
+                },
+                onMapLoaded = { viewModel.setMapLoaded(true); Timber.i("onMapLoaded true") })
         }
     }
 }
@@ -204,10 +295,12 @@ fun MvtmakerScreen(
     onShowListItems: (Boolean) -> Unit,
     onDriveEntrySelected: (String) -> Unit,
     onCoordinateChange: (Int, Int) -> Unit,
-    onMapLoaded: () -> Unit
+    onMapLoaded: () -> Unit,
+    onDownloadMagenta: (String?, String) -> Unit
 ) {
     val context = LocalContext.current
     val driveMap = DriveSharedLinks.Companion.MvtRegions().list
+    val cloudMvtMap = remember { MagentaCloudMvt.getAllData() }
 
     Scaffold(
         topBar = {
@@ -264,7 +357,27 @@ fun MvtmakerScreen(
                         Text(text = stringResource(R.string.activate))
                     }
                 }
-            })
+                Timber.i("uiState.regionName: ${uiState.regionName}")
+                IconButton(
+                    modifier = Modifier.visible(cloudMvtMap.containsKey(uiState.regionName + Const.MBTILES_EXT)).weight(1.0f),
+                    onClick = {
+                        cloudMvtMap[uiState.regionName + Const.MBTILES_EXT]?.let {
+                            onDownloadMagenta(
+                                uiState.regionName + Const.MBTILES_EXT,
+                                it
+                            )
+                        }
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.mipmap.magenta_cloud),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.scale(1.4f)
+                    )
+                }
+
+            }, modifier = Modifier.fillMaxWidth())
         }
     ) { innerPadding ->
         uiState.moboDeleteConfirmation?.let {

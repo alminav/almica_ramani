@@ -8,8 +8,8 @@ import androidx.preference.PreferenceManager
 import com.almica.ramani.charts.GraphDataPoints
 import com.almica.ramani.charts.PlotResult
 import com.almica.ramani.charts.createPlotDataResult
+import com.almica.ramani.externalData.MagentaCloudDownloader
 import com.almica.ramani.locations.LocationRepository
-import com.almica.ramani.utils.MagentaCloudDownloader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,7 +49,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val assetRepository = AssetRepository(application)
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
     // 28aug2026: download file from MagentaCloud direct
-    private val downloader = MagentaCloudDownloader(getApplication())
+    private val downloader = MagentaCloudDownloader()
 
     private val _uiState = MutableStateFlow(LauncherUiState())
     val uiState: StateFlow<LauncherUiState> = _uiState.asStateFlow()
